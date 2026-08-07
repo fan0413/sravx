@@ -1,0 +1,10 @@
+{
+  "name": "gift-card",
+  "version": "1.0.0",
+  "description": "Gift card redeem cloud function",
+  "main": "index.js",
+  "dependencies": {
+    "mysql2": "^3.6.0",
+    "wx-server-sdk": "latest"
+  }
+}

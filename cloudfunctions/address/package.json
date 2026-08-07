@@ -1,0 +1,10 @@
+{
+  "name": "address",
+  "version": "1.0.0",
+  "description": "Address cloud function",
+  "main": "index.js",
+  "dependencies": {
+    "mysql2": "^3.6.0",
+    "wx-server-sdk": "latest"
+  }
+}

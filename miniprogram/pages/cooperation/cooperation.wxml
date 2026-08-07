@@ -1,0 +1,159 @@
+<view class="container">
+  <view class="form-scroll">
+    <!-- 称呼 -->
+    <view class="form-group">
+      <text class="form-label">称呼<text class="required">*</text></text>
+      <input
+        class="form-input"
+        placeholder="请输入您的称呼"
+        placeholder-style="color:#C7C7CC;"
+        value="{{form.name}}"
+        bindinput="onNameInput"
+        maxlength="20"
+      />
+    </view>
+
+    <!-- 性别 -->
+    <view class="form-group">
+      <text class="form-label">性别<text class="required">*</text></text>
+      <picker
+        mode="selector"
+        range="{{genderOptions}}"
+        value="{{genderIndex}}"
+        bindchange="onGenderChange"
+      >
+        <view class="picker-view {{form.gender ? 'picker-filled' : ''}}">
+          <text>{{form.gender || '请选择性别'}}</text>
+          <view class="picker-arrow"></view>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 规模 -->
+    <view class="form-group">
+      <text class="form-label">规模<text class="required">*</text></text>
+      <picker
+        mode="selector"
+        range="{{scaleOptions}}"
+        value="{{scaleIndex}}"
+        bindchange="onScaleChange"
+      >
+        <view class="picker-view {{form.scale ? 'picker-filled' : ''}}">
+          <text>{{form.scale || '请选择规模'}}</text>
+          <view class="picker-arrow"></view>
+        </view>
+      </picker>
+    </view>
+
+    <!-- 联系号码 -->
+    <view class="form-group">
+      <text class="form-label">联系号码<text class="required">*</text></text>
+      <input
+        class="form-input"
+        type="number"
+        placeholder="请输入手机号码"
+        placeholder-style="color:#C7C7CC;"
+        value="{{form.phone}}"
+        bindinput="onPhoneInput"
+        maxlength="11"
+      />
+    </view>
+
+    <!-- 微信号码 -->
+    <view class="form-group">
+      <text class="form-label">微信号码</text>
+      <input
+        class="form-input"
+        placeholder="请输入微信号码（选填）"
+        placeholder-style="color:#C7C7CC;"
+        value="{{form.wechat}}"
+        bindinput="onWechatInput"
+        maxlength="30"
+      />
+    </view>
+
+    <!-- 联系地址 -->
+    <view class="form-group">
+      <text class="form-label">联系地址</text>
+      <input
+        class="form-input"
+        placeholder="请输入联系地址（选填）"
+        placeholder-style="color:#C7C7CC;"
+        value="{{form.address}}"
+        bindinput="onAddressInput"
+        maxlength="200"
+      />
+    </view>
+
+    <!-- 合作意向 -->
+    <view class="form-group">
+      <text class="form-label">合作意向</text>
+      <textarea
+        class="form-textarea"
+        placeholder="请描述您的合作意向或需求..."
+        placeholder-style="color:#C7C7CC;"
+        value="{{form.intention}}"
+        bindinput="onIntentionInput"
+        maxlength="500"
+        auto-height
+      />
+    </view>
+
+    <!-- 提交按钮 -->
+    <view class="submit-area">
+      <view class="btn-primary {{submitting ? 'btn-disabled' : ''}}" bindtap="onSubmit">
+        <text>{{submitting ? '提交中...' : '提交咨询'}}</text>
+      </view>
+      <button class="btn-ghost" open-type="contact" session-from="cooperation" style="margin-top:20rpx;">在线客服</button>
+    </view>
+
+    <view style="height: 80rpx;"></view>
+  </view>
+
+  <!-- 确认弹窗 -->
+  <view wx:if="{{showConfirm}}" class="modal-mask" bindtap="onCancelConfirm">
+    <view class="modal-card" catchtap="">
+      <text class="modal-title">请确认合作信息</text>
+
+      <scroll-view class="modal-body" scroll-y>
+        <view class="confirm-row">
+          <text class="confirm-label">称呼</text>
+          <text class="confirm-value">{{form.name}}</text>
+        </view>
+        <view class="confirm-row">
+          <text class="confirm-label">性别</text>
+          <text class="confirm-value">{{form.gender}}</text>
+        </view>
+        <view class="confirm-row">
+          <text class="confirm-label">规模</text>
+          <text class="confirm-value">{{form.scale}}</text>
+        </view>
+        <view class="confirm-row">
+          <text class="confirm-label">联系号码</text>
+          <text class="confirm-value">{{form.phone}}</text>
+        </view>
+        <view wx:if="{{form.wechat}}" class="confirm-row">
+          <text class="confirm-label">微信号码</text>
+          <text class="confirm-value">{{form.wechat}}</text>
+        </view>
+        <view wx:if="{{form.address}}" class="confirm-row">
+          <text class="confirm-label">联系地址</text>
+          <text class="confirm-value confirm-address">{{form.address}}</text>
+        </view>
+        <view wx:if="{{form.intention}}" class="confirm-row confirm-intention">
+          <text class="confirm-label">合作意向</text>
+          <text class="confirm-value confirm-address">{{form.intention}}</text>
+        </view>
+      </scroll-view>
+
+      <view class="confirm-actions">
+        <view class="confirm-cancel" bindtap="onCancelConfirm">
+          <text>返回修改</text>
+        </view>
+        <view class="confirm-submit {{submitting ? 'btn-disabled' : ''}}" bindtap="onConfirmSubmit">
+          <text>{{submitting ? '提交中...' : '确认提交'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

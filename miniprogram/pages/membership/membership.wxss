@@ -1,0 +1,439 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  transition: background 0.5s ease;
+}
+
+/* ---- level backgrounds (full page + card same) ---- */
+
+.bg-level-1 { background: #ffffff; }
+.bg-level-2 { background: linear-gradient(180deg, #d4d4dc 0%, #b8b8c2 100%); }
+.bg-level-3 { background: linear-gradient(180deg, #fef7e6 0%, #f2e2b8 100%); }
+.bg-level-4 { background: linear-gradient(180deg, #f0e8ff 0%, #dac8fa 100%); }
+.bg-level-5 { background: linear-gradient(180deg, #4a1d7a 0%, #2a0a4e 100%); }
+.bg-level-6 { background: linear-gradient(180deg, #1a1a2e 0%, #3c0a72 50%, #c9a84c 100%); }
+
+.scroll-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ====== Card Section ====== */
+
+.card-section {
+  flex-shrink: 0;
+  padding: 0 24rpx 16rpx;
+}
+
+/* ====== Member Card ====== */
+
+.member-card {
+  width: 100%;
+  aspect-ratio: 1.86 / 1;
+  border-radius: 24rpx;
+  padding: 36rpx 36rpx 30rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  border: 2rpx solid transparent;
+}
+
+.card-texture {
+  position: absolute;
+  inset: 0;
+  opacity: 0.06;
+  background: radial-gradient(ellipse at 50% 0%, #ffffff 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ---- level card gradients ---- */
+
+.member-card.level-1 {
+  background: #f5f5f7;
+  border-color: #e5e5ea;
+}
+
+.member-card.level-2 {
+  background: linear-gradient(135deg, #c8c8d0, #a8a8b4);
+  border-color: #b0b0ba;
+}
+
+.member-card.level-3 {
+  background: linear-gradient(135deg, #f2dfa8, #e0c470);
+  border-color: #e8d080;
+}
+
+.member-card.level-4 {
+  background: linear-gradient(135deg, #c9b0f8, #a070e8);
+  border-color: #b888f0;
+}
+
+.member-card.level-5 {
+  background: linear-gradient(135deg, #7e22ce, #4a0e78);
+  border-color: #9333ea;
+}
+
+.member-card.level-6 {
+  background: linear-gradient(135deg, #1a1a2e, #3c0a72, #c9a84c);
+  border-color: #e8c56d;
+}
+
+/* ---- card text colors ---- */
+
+.member-card.level-1 .card-next-level,
+.member-card.level-1 .card-available-label,
+.member-card.level-1 .card-available-num,
+.member-card.level-1 .card-vip,
+.member-card.level-1 .card-points-star,
+.member-card.level-1 .card-points-num,
+.member-card.level-1 .card-points-label,
+.member-card.level-1 .card-level-name,
+.member-card.level-1 .card-username { color: #1d1d1f; }
+
+.member-card.level-2 .card-username,
+.member-card.level-2 .card-level-name,
+.member-card.level-2 .card-points-label,
+.member-card.level-2 .card-points-num,
+.member-card.level-2 .card-points-star,
+.member-card.level-2 .card-next-level,
+.member-card.level-2 .card-available-label,
+.member-card.level-2 .card-available-num,
+.member-card.level-2 .card-vip { color: #1d1d1f; }
+
+.member-card.level-3 .card-username,
+.member-card.level-3 .card-level-name,
+.member-card.level-3 .card-points-label,
+.member-card.level-3 .card-points-num,
+.member-card.level-3 .card-points-star,
+.member-card.level-3 .card-next-level,
+.member-card.level-3 .card-available-label,
+.member-card.level-3 .card-available-num,
+.member-card.level-3 .card-vip { color: #5c3d1a; }
+
+.member-card.level-4 .card-username,
+.member-card.level-4 .card-level-name,
+.member-card.level-4 .card-points-label,
+.member-card.level-4 .card-points-num,
+.member-card.level-4 .card-points-star,
+.member-card.level-4 .card-next-level,
+.member-card.level-4 .card-available-label,
+.member-card.level-4 .card-available-num,
+.member-card.level-4 .card-vip { color: #2e1065; }
+
+.member-card.level-5 .card-username,
+.member-card.level-5 .card-level-name,
+.member-card.level-5 .card-points-label,
+.member-card.level-5 .card-points-num,
+.member-card.level-5 .card-points-star,
+.member-card.level-5 .card-next-level,
+.member-card.level-5 .card-available-label,
+.member-card.level-5 .card-available-num,
+.member-card.level-5 .card-vip { color: #e9d5ff; }
+
+.member-card.level-6 .card-username,
+.member-card.level-6 .card-level-name,
+.member-card.level-6 .card-points-label,
+.member-card.level-6 .card-points-num,
+.member-card.level-6 .card-points-star,
+.member-card.level-6 .card-next-level,
+.member-card.level-6 .card-available-label,
+.member-card.level-6 .card-available-num,
+.member-card.level-6 .card-vip { color: #fef3c7; }
+
+/* ---- card internals ---- */
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  z-index: 2;
+}
+
+.card-user-row {
+  display: flex;
+  align-items: center;
+}
+
+.card-user-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-username {
+  font-size: 52rpx;
+  font-weight: 700;
+}
+
+.card-level-name {
+  font-size: 22rpx;
+  opacity: 0.75;
+  margin-top: 4rpx;
+}
+
+.card-vip {
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 5rpx;
+  opacity: 0.4;
+}
+
+.card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  position: relative;
+  z-index: 2;
+}
+
+.card-points-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-points-label {
+  font-size: 20rpx;
+  opacity: 0.75;
+  margin-bottom: 4rpx;
+}
+
+.card-points-row {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.card-points-star {
+  font-size: 30rpx;
+}
+
+.card-points-num {
+  font-size: 44rpx;
+  font-weight: 800;
+}
+
+.card-next-level {
+  font-size: 20rpx;
+  opacity: 0.6;
+  margin-top: 6rpx;
+}
+
+.card-right-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.card-available-label {
+  font-size: 18rpx;
+  opacity: 0.55;
+}
+
+.card-available-num {
+  font-size: 28rpx;
+  font-weight: 600;
+}
+
+/* ====== Level Pills ====== */
+
+.level-pills-wrap {
+  padding: 0 24rpx 20rpx;
+}
+
+.level-preview-label {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 16rpx;
+}
+
+.level-pills {
+  white-space: nowrap;
+  display: flex;
+  gap: 10rpx;
+}
+
+.level-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 24rpx;
+  border-radius: 100rpx;
+  border: 1rpx solid rgba(0,0,0,0.1);
+  background: rgba(255,255,255,0.7);
+}
+
+.level-pill text {
+  font-size: 22rpx;
+  color: var(--color-secondary);
+  font-weight: 500;
+}
+
+.level-pill.pill-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  box-shadow: 0 2rpx 12rpx rgba(29,29,31,0.2);
+}
+
+.level-pill.pill-active text {
+  color: #FFFFFF;
+}
+
+.level-reset {
+  margin-top: 14rpx;
+  text-align: center;
+}
+
+.level-reset text {
+  font-size: 24rpx;
+  color: var(--color-accent);
+}
+
+/* ====== Benefits Table ====== */
+
+.benefits-section {
+  margin: 0 16rpx;
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(20rpx);
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.06);
+}
+
+.benefits-table {
+  width: 100%;
+}
+
+/* ---- header ---- */
+
+.table-head {
+  display: flex;
+  background: rgba(0,0,0,0.03);
+  border-bottom: 1rpx solid rgba(0,0,0,0.06);
+}
+
+.head-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22rpx 4rpx;
+  border-right: 1rpx solid transparent;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.head-cell text {
+  font-size: 20rpx;
+  color: var(--color-secondary);
+  font-weight: 500;
+}
+
+.name-cell {
+  flex: 2.4;
+  min-width: 0;
+  justify-content: flex-start;
+  padding-left: 20rpx;
+  border-right: none;
+}
+
+.level-cell {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- active column glow ---- */
+
+.level-cell.active-col {
+  background: rgba(29,29,31,0.06);
+  border-right-color: var(--color-primary);
+}
+
+.level-cell.active-col:last-child {
+  border-right-color: transparent;
+}
+
+.level-cell.active-col text {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+/* ---- category row ---- */
+
+.table-cat-row {
+  background: rgba(0,0,0,0.02);
+  padding: 12rpx 20rpx;
+}
+
+.cat-text {
+  font-size: 20rpx;
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+/* ---- data row ---- */
+
+.table-row {
+  display: flex;
+  border-bottom: 1rpx solid rgba(0,0,0,0.05);
+}
+
+.table-row:last-child {
+  border-bottom: none;
+}
+
+.row-name-cell {
+  flex: 2.4;
+  min-width: 0;
+  padding: 20rpx 20rpx;
+  display: flex;
+  align-items: center;
+}
+
+.row-name-cell text {
+  font-size: 22rpx;
+  color: var(--color-primary);
+  line-height: 1.3;
+}
+
+.row-level-cell {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 4rpx;
+  border-right: 1rpx solid transparent;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+/* ---- active column highlight ---- */
+
+.row-level-cell.active-col {
+  background: rgba(29,29,31,0.04);
+  border-right-color: rgba(29,29,31,0.08);
+}
+
+.row-level-cell.active-col:last-child {
+  border-right-color: transparent;
+}
+
+.check-mark {
+  font-size: 28rpx;
+  color: var(--color-success);
+  font-weight: 700;
+  transition: all 0.3s;
+}
+
+/* glowing check in active column */
+.row-level-cell.active-col .check-mark {
+  color: #22c55e;
+  text-shadow: 0 0 12rpx rgba(34,197,94,0.5);
+  font-size: 32rpx;
+}
+
+.minus-mark {
+  font-size: 22rpx;
+  color: rgba(0,0,0,0.12);
+}

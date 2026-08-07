@@ -1,0 +1,71 @@
+<view class="container">
+  <view wx:if="{{scissors.length > 0}}" class="card-scroll">
+    <view wx:for="{{scissors}}" wx:key="sn" class="card-item">
+      <view class="card-surface" bindtap="onCardTap" data-item="{{item}}">
+        <image class="card-bg" src="{{item.card_image || item.image}}" mode="aspectFill" lazy-load />
+        <view class="card-overlay"></view>
+        <view class="card-body">
+          <text class="card-name ellipsis">{{item.name}}</text>
+          <text class="card-model">{{item.spec_name || item.model || '--'}}</text>
+        </view>
+      </view>
+
+      <view class="info-bar">
+        <view class="info-row">
+          <text class="info-label">SN编码</text>
+          <text class="sn-code">{{item.sn}}</text>
+        </view>
+        <view class="info-row-double">
+          <text class="info-label warranty-label {{item.warranty.type}}">{{item.warranty.label}}</text>
+          <text class="info-value {{item.warranty.type}}">{{item.warranty.text}}</text>
+        </view>
+      </view>
+
+      <view class="card-actions">
+        <view class="action-unbind" bindtap="onDeleteDevice" data-id="{{item.id}}">
+          <text>解除绑定</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view wx:else class="empty-state">
+    <view class="empty-icon">
+      <image class="empty-img" src="/images/logo.png" mode="aspectFit" />
+    </view>
+    <text class="empty-title">暂无绑定剪刀</text>
+    <text class="empty-desc">绑定您的 Sravx 剪刀，查看专属卡片与保修信息</text>
+  </view>
+
+  <view class="bottom-bar safe-bottom">
+    <view class="btn-primary" bindtap="onShowBindModal">
+      <text>新增绑定</text>
+    </view>
+  </view>
+
+  <view wx:if="{{showBindModal}}" class="modal-mask" bindtap="onCloseBindModal">
+    <view class="modal-content" catchtap="">
+      <text class="modal-title">绑定剪刀</text>
+      <text class="modal-desc">请输入剪刀 SN 序列号</text>
+      <view class="sn-input-wrap">
+        <input
+          class="sn-input"
+          placeholder="例如: SP20260101001"
+          placeholder-style="color:#C7C7CC;font-size:28rpx;line-height:88rpx;"
+          value="{{snInput}}"
+          bindinput="onSnInput"
+          maxlength="20"
+          focus="{{showBindModal}}"
+        />
+      </view>
+      <view class="modal-actions">
+        <view class="modal-cancel" bindtap="onCloseBindModal">
+          <text>取消</text>
+        </view>
+        <view class="modal-confirm {{snInput ? '' : 'modal-confirm-disabled'}}" bindtap="onConfirmBind">
+          <text>{{binding ? '验证中...' : '确认绑定'}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

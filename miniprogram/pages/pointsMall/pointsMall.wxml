@@ -1,0 +1,51 @@
+<view class="container">
+  <view class="points-card {{levelClass}}">
+    <view class="points-card-accent"></view>
+    <view class="user-left">
+      <image class="avatar" src="{{avatar || '/images/logo.png'}}" mode="aspectFill" />
+      <view class="user-meta">
+        <text class="username">{{username}}</text>
+        <text class="member-level">{{memberLevel}}</text>
+      </view>
+    </view>
+    <view class="points-right">
+      <text class="points-label">我的积分</text>
+      <text class="points-value">{{points}}</text>
+    </view>
+  </view>
+
+  <scroll-view class="category-scroll" scroll-x show-scrollbar="{{false}}">
+    <view class="category-wrap">
+      <view
+        wx:for="{{categories}}"
+        wx:key="id"
+        class="category-item {{activeCategoryId === item.id ? 'active' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onCategoryTap"
+      >
+        <text>{{item.name}}</text>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{loading}}" class="state-text">加载中...</view>
+  <view wx:elif="{{products.length === 0}}" class="state-text">暂无积分商品</view>
+
+  <view wx:else class="grid">
+    <view
+      class="item"
+      wx:for="{{products}}"
+      wx:key="id"
+      data-item="{{item}}"
+      bindtap="onItemTap"
+    >
+      <image class="item-image" src="{{item.cover_image || '/images/logo.png'}}" mode="aspectFill" />
+      <view class="level-tag {{item.can_redeem === false ? 'level-tag-lock' : ''}}">
+        <text>{{item.min_member_level_name}}可兑</text>
+      </view>
+      <text class="item-name">{{item.short_name || item.name}}</text>
+      <text class="item-points">{{item.points_price}} 积分</text>
+      <text wx:if="{{item.can_redeem === false}}" class="item-lock-text">当前等级不可兑换</text>
+    </view>
+  </view>
+</view>

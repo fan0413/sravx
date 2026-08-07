@@ -1,0 +1,138 @@
+.container {
+  min-height: 100%;
+  background: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+}
+
+.nav-placeholder {
+  height: calc(env(safe-area-inset-top) + 88rpx);
+}
+
+.header {
+  padding: 40rpx 48rpx 60rpx;
+}
+
+.title {
+  display: block;
+  font-size: 56rpx;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: 2rpx;
+  line-height: 1.2;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 16rpx;
+  font-size: 28rpx;
+  color: var(--color-secondary);
+  font-weight: 300;
+}
+
+/* ====== Form ====== */
+
+.form {
+  flex: 1;
+  padding: 0 48rpx;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 36rpx 0;
+  min-height: 100rpx;
+}
+
+.field-label {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: var(--color-primary);
+  flex-shrink: 0;
+  width: 140rpx;
+}
+
+.field-input {
+  flex: 1;
+  text-align: right;
+  font-size: 30rpx;
+  color: var(--color-primary);
+}
+
+.field-value {
+  font-size: 30rpx;
+  color: var(--color-primary);
+}
+
+.field-placeholder {
+  font-size: 30rpx;
+  color: #C7C7CC;
+}
+
+.field-line {
+  height: 1rpx;
+  background-color: var(--color-border);
+}
+
+/* ====== Gender Radio ====== */
+
+.gender-group {
+  display: flex;
+  gap: 20rpx;
+}
+
+.gender-item {
+  width: 120rpx;
+  height: 68rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2rpx solid var(--color-border);
+  border-radius: 12rpx;
+  transition: all 0.25s ease;
+}
+
+.gender-item text {
+  font-size: 28rpx;
+  color: var(--color-secondary);
+  transition: color 0.25s ease;
+}
+
+.gender-active {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.gender-active text {
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+/* ====== Submit ====== */
+
+.submit-area {
+  padding: 60rpx 48rpx 40rpx;
+  margin-top: auto;
+}
+
+.btn-disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* 底部「开始使用」：与 view.btn-primary 视觉一致，仅用于手机号授权 */
+.btn-phone-start {
+  margin: 0;
+  padding: 0;
+  border: none;
+  line-height: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.btn-phone-start::after {
+  border: none;
+}

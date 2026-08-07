@@ -1,0 +1,247 @@
+.container {
+  min-height: 100%;
+  background: var(--color-bg-secondary);
+}
+
+/* ====== Address List ====== */
+
+.address-list {
+  padding-bottom: 200rpx;
+}
+
+.address-card {
+  display: flex;
+  align-items: center;
+  padding: 32rpx;
+  margin: 0 0 2rpx;
+  background: #FFFFFF;
+}
+
+/* 选择模式样式 */
+.address-card.selectable {
+  padding-left: 20rpx;
+}
+
+.address-card.selected {
+  background: linear-gradient(90deg, rgba(184,149,106,0.06), #FFFFFF);
+}
+
+.address-check {
+  flex-shrink: 0;
+  width: 56rpx;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 8rpx;
+}
+
+.check-circle {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 2rpx solid #C7C7CC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.check-circle.checked {
+  border-color: var(--color-accent, #B8956A);
+  background: var(--color-accent, #B8956A);
+}
+
+.check-icon {
+  width: 18rpx;
+  height: 12rpx;
+  border-left: 3rpx solid #FFFFFF;
+  border-bottom: 3rpx solid #FFFFFF;
+  transform: rotate(-45deg) translate(2rpx, -2rpx);
+}
+
+.address-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.address-detail {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--color-primary);
+  line-height: 1.5;
+}
+
+.address-meta {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 12rpx;
+}
+
+.address-name {
+  font-size: 26rpx;
+  color: var(--color-secondary);
+}
+
+.address-phone {
+  font-size: 26rpx;
+  color: var(--color-secondary);
+  font-family: 'SF Mono', 'Menlo', monospace;
+}
+
+.address-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2rpx 12rpx;
+  font-size: 20rpx;
+  color: var(--color-accent, #B8956A);
+  border: 1rpx solid var(--color-accent, #B8956A);
+  border-radius: 6rpx;
+  margin-left: 4rpx;
+}
+
+.address-actions {
+  flex-shrink: 0;
+  padding-left: 24rpx;
+}
+
+.edit-btn {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-edit {
+  width: 28rpx;
+  height: 28rpx;
+  border: 2rpx solid #C7C7CC;
+  border-radius: 4rpx;
+  position: relative;
+}
+
+.icon-edit::after {
+  content: '';
+  position: absolute;
+  top: -6rpx;
+  right: -6rpx;
+  width: 12rpx;
+  height: 12rpx;
+  border-right: 2rpx solid #C7C7CC;
+  border-top: 2rpx solid #C7C7CC;
+}
+
+.empty-state {
+  padding: 120rpx 0;
+  text-align: center;
+}
+
+.empty-state text {
+  font-size: 28rpx;
+  color: var(--color-secondary);
+  font-weight: 300;
+}
+
+/* ====== Bottom Add / Confirm ====== */
+
+.confirm-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24rpx 32rpx;
+  background: #FFFFFF;
+  border-top: 1rpx solid var(--color-border);
+}
+
+.btn-confirm {
+  width: 100%;
+  text-align: center;
+}
+
+.btn-confirm text {
+  color: #FFFFFF;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.add-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24rpx 32rpx;
+  background: #FFFFFF;
+  border-top: 1rpx solid var(--color-border);
+}
+
+/* ====== Editor ====== */
+
+.editor {
+  padding: 0 32rpx;
+  background: #FFFFFF;
+  min-height: 100%;
+}
+
+.editor-field {
+  display: flex;
+  align-items: center;
+  padding: 32rpx 0;
+}
+
+.editor-field-detail {
+  align-items: flex-start;
+}
+
+.editor-label {
+  width: 160rpx;
+  font-size: 30rpx;
+  font-weight: 500;
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.editor-input {
+  flex: 1;
+  font-size: 30rpx;
+  color: var(--color-primary);
+}
+
+.editor-textarea {
+  flex: 1;
+  font-size: 30rpx;
+  color: var(--color-primary);
+  min-height: 80rpx;
+}
+
+.editor-value {
+  font-size: 30rpx;
+  color: var(--color-primary);
+}
+
+.editor-placeholder {
+  font-size: 30rpx;
+  color: #C7C7CC;
+}
+
+.editor-line {
+  height: 1rpx;
+  background: var(--color-border);
+}
+
+.editor-actions {
+  padding: 60rpx 0 40rpx;
+}
+
+.cancel-btn {
+  margin-top: 24rpx;
+  text-align: center;
+  padding: 20rpx;
+}
+
+.cancel-btn text {
+  font-size: 28rpx;
+  color: var(--color-secondary);
+}

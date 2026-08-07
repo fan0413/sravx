@@ -1,0 +1,83 @@
+<view class="container">
+  <!-- 地址列表 -->
+  <view wx:if="{{!showEditor}}" class="address-list">
+    <view wx:for="{{addressList}}" wx:key="detail" class="address-card {{isSelectMode ? 'selectable' : ''}} {{selectedId === item.id ? 'selected' : ''}}">
+      <!-- 选择模式：勾选圆圈 -->
+      <view wx:if="{{isSelectMode}}" class="address-check" bindtap="onSelect" data-index="{{index}}">
+        <view class="check-circle {{selectedId === item.id ? 'checked' : ''}}">
+          <view wx:if="{{selectedId === item.id}}" class="check-icon"></view>
+        </view>
+      </view>
+      <view class="address-content" bindtap="{{isSelectMode ? 'onSelect' : 'onEdit'}}" data-index="{{index}}">
+        <text class="address-detail ellipsis-2">{{item.province}}{{item.city}}{{item.district}}{{item.detail}}</text>
+        <view class="address-meta">
+          <text class="address-name">{{item.name}}</text>
+          <text class="address-phone">{{item.phone}}</text>
+          <view wx:if="{{item.tag}}" class="address-tag">{{item.tag}}</view>
+        </view>
+      </view>
+      <view wx:if="{{!isSelectMode}}" class="address-actions">
+        <view class="edit-btn" bindtap="onEdit" data-index="{{index}}">
+          <view class="icon-edit"></view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{addressList.length === 0}}" class="empty-state">
+      <text>暂无收货地址</text>
+    </view>
+
+    <!-- 底部按钮 -->
+    <view wx:if="{{from === 'detail'}}" class="confirm-area safe-bottom">
+      <view class="btn-primary btn-add" bindtap="onAddNew">
+        <text>新增地址</text>
+      </view>
+    </view>
+
+    <view wx:else class="add-area safe-bottom">
+      <view class="btn-primary" bindtap="onAddNew">
+        <text>新增收货地址</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 编辑/新增表单 -->
+  <view wx:if="{{showEditor}}" class="editor">
+    <view class="editor-field">
+      <text class="editor-label">收货人</text>
+      <input class="editor-input" placeholder="请输入姓名" value="{{form.name}}" bindinput="onInputName" />
+    </view>
+    <view class="editor-line"></view>
+
+    <view class="editor-field">
+      <text class="editor-label">手机号</text>
+      <input class="editor-input" type="number" placeholder="请输入手机号" value="{{form.phone}}" bindinput="onInputPhone" maxlength="11" />
+    </view>
+    <view class="editor-line"></view>
+
+    <view class="editor-field">
+      <text class="editor-label">所在地区</text>
+      <picker mode="region" value="{{form.region}}" bindchange="onRegionChange">
+        <text class="{{regionText ? 'editor-value' : 'editor-placeholder'}}">
+          {{regionText || '请选择省/市/区'}}
+        </text>
+      </picker>
+    </view>
+    <view class="editor-line"></view>
+
+    <view class="editor-field editor-field-detail">
+      <text class="editor-label">详细地址</text>
+      <textarea class="editor-textarea" placeholder="街道、楼栋、门牌号等" value="{{form.detail}}" bindinput="onInputDetail" maxlength="100" auto-height />
+    </view>
+    <view class="editor-line"></view>
+
+    <view class="editor-actions safe-bottom">
+      <view class="btn-primary" bindtap="onSave">
+        <text>保存地址</text>
+      </view>
+      <view class="cancel-btn" bindtap="onCancelEdit">
+        <text>取消</text>
+      </view>
+    </view>
+  </view>
+</view>

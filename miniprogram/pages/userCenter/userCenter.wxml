@@ -1,0 +1,117 @@
+<view class="container" style="padding-top: {{scrollPaddingTop}}rpx;">
+
+  <view class="profile-card">
+    <!-- 用户信息头部 -->
+    <view class="user-header">
+      <view class="avatar-wrap">
+        <image class="avatar" src="{{userInfo.avatar || '/images/logo.png'}}" mode="aspectFill" />
+      </view>
+      <view class="user-meta">
+        <view class="user-name-row" bindtap="onUserNameTap" hover-class="tap-fade">
+          <text class="user-name">{{userInfo.username || 'Sravx 用户'}}</text>
+          <view class="edit-icon"></view>
+        </view>
+        <view class="member-badge {{levelClass}}" bindtap="onMemberTap">
+          <text>{{memberLevel}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 资产卡片 -->
+    <view class="asset-card">
+      <view class="asset-item" bindtap="onPointsTap">
+        <text class="asset-num">{{points}}</text>
+        <text class="asset-label">积分</text>
+      </view>
+      <view class="asset-divider"></view>
+      <view class="asset-item" bindtap="onCouponsTap">
+        <text class="asset-num">{{coupons}}</text>
+        <text class="asset-label">优惠券</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 我的剪刀预览 -->
+  <view class="section">
+    <view class="section-head" bindtap="onScissorsTap">
+      <text class="section-title">我的剪刀</text>
+      <view class="section-right">
+        <text class="section-count">{{scissors.length}}把剪刀</text>
+        <view class="arrow-right"></view>
+      </view>
+    </view>
+
+    <view wx:if="{{scissors.length > 0}}" class="scissors-preview">
+      <view
+        wx:for="{{scissors}}"
+        wx:key="sn"
+        wx:if="{{index < 2}}"
+        class="preview-card"
+        bindtap="onScissorsTap"
+      >
+        <view class="preview-surface">
+          <image class="preview-bg" src="{{item.card_image || item.image}}" mode="aspectFill" lazy-load />
+          <view class="preview-overlay"></view>
+          <view class="preview-body">
+            <text class="preview-name ellipsis">{{item.name}}</text>
+            <text class="preview-model">{{item.model || '--'}}</text>
+          </view>
+        </view>
+        <view class="preview-info">
+          <view class="preview-row">
+            <text class="preview-label">SN编码</text>
+            <text class="preview-sn">{{item.sn}}</text>
+          </view>
+          <view class="preview-row">
+            <text class="preview-label warranty-label {{item.warranty.type}}">{{item.warranty.label}}</text>
+            <text class="preview-value {{item.warranty.type}}">{{item.warranty.text}}</text>
+          </view>
+        </view>
+      </view>
+      <view wx:if="{{scissors.length > 2}}" class="preview-more" bindtap="onScissorsTap">
+        <text>查看全部 {{scissors.length}} 把剪刀</text>
+        <view class="arrow-right"></view>
+      </view>
+    </view>
+
+    <view wx:else class="scissors-empty" bindtap="onScissorsTap">
+      <text>暂无绑定剪刀，点击添加</text>
+    </view>
+  </view>
+
+  <!-- 功能菜单 -->
+  <view class="section menu-section">
+    <view
+      wx:for="{{menuItems}}"
+      wx:key="id"
+      class="menu-item"
+      data-url="{{item.url}}"
+      bindtap="onMenuTap"
+    >
+      <view class="menu-icon-wrap">
+        <view wx:if="{{item.icon === 'gift'}}" class="menu-icon">
+          <view class="icon-gift"></view>
+        </view>
+        <view wx:elif="{{item.icon === 'location'}}" class="menu-icon">
+          <view class="icon-pin"></view>
+        </view>
+        <view wx:elif="{{item.icon === 'consult'}}" class="menu-icon">
+          <view class="icon-chat"></view>
+        </view>
+      </view>
+      <text class="menu-text">{{item.text}}</text>
+      <view class="arrow-right"></view>
+    </view>
+    <button class="menu-item contact-btn" open-type="contact" session-from="center">
+      <view class="menu-icon-wrap">
+        <view class="menu-icon">
+          <view class="icon-headset"></view>
+        </view>
+      </view>
+      <text class="menu-text">在线客服</text>
+      <view class="arrow-right"></view>
+    </button>
+  </view>
+
+  <view style="height: 240rpx;"></view>
+</view>

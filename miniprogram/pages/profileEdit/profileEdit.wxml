@@ -1,0 +1,62 @@
+<view class="container">
+  <view class="profile-head">
+    <image class="avatar" src="{{avatar || '/images/logo.png'}}" mode="aspectFill" />
+    <text class="head-title">个人资料</text>
+  </view>
+
+  <view class="form-section">
+    <view class="field">
+      <text class="field-label">用户名</text>
+      <input
+        class="field-input"
+        placeholder="请输入用户名"
+        placeholder-class="field-placeholder"
+        value="{{form.username}}"
+        bindinput="onNameInput"
+        maxlength="20"
+      />
+    </view>
+    <view class="field-line"></view>
+
+    <view class="field">
+      <text class="field-label">性别</text>
+      <view class="gender-group">
+        <view
+          wx:for="{{genderOptions}}"
+          wx:key="*this"
+          class="gender-item {{form.gender === item ? 'gender-active' : ''}}"
+          data-value="{{item}}"
+          bindtap="onGenderTap"
+        >
+          <text>{{item}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="field-line"></view>
+
+    <view class="field">
+      <text class="field-label">生日</text>
+      <picker mode="date" start="1940-01-01" end="{{birthdayEnd}}" value="{{form.birthday}}" bindchange="onBirthdayChange">
+        <text class="{{form.birthday ? 'field-value' : 'field-placeholder'}}">
+          {{form.birthday || '请选择出生日期'}}
+        </text>
+      </picker>
+    </view>
+    <view class="field-line"></view>
+
+    <view class="field">
+      <text class="field-label">职业</text>
+      <picker range="{{occupationOptions}}" value="{{occupationIndex}}" bindchange="onOccupationChange">
+        <text class="{{form.occupation ? 'field-value' : 'field-placeholder'}}">
+          {{form.occupation || '请选择职业'}}
+        </text>
+      </picker>
+    </view>
+  </view>
+
+  <view class="save-area safe-bottom">
+    <view class="save-btn {{saving ? 'save-disabled' : ''}}" bindtap="onSave">
+      {{saving ? '保存中' : '保存'}}
+    </view>
+  </view>
+</view>

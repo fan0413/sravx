@@ -1,0 +1,63 @@
+<view class="shop-container">
+  <scroll-view scroll-y class="sidebar" enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{categories.length === 0 && !loading}}" class="empty-sidebar">
+      <text>暂无分类</text>
+    </view>
+    <view
+      wx:for="{{categories}}"
+      wx:key="id"
+      class="sidebar-item {{activeCategory === index ? 'sidebar-active' : ''}}"
+      data-index="{{index}}"
+      bindtap="onCategoryTap"
+    >
+      <view wx:if="{{activeCategory === index}}" class="sidebar-indicator"></view>
+      <text>{{item.name}}</text>
+    </view>
+  </scroll-view>
+
+  <scroll-view
+    scroll-y
+    class="product-area"
+    scroll-into-view="{{scrollToView}}"
+    scroll-with-animation
+    bindscroll="onProductScroll"
+    enhanced
+    show-scrollbar="{{false}}"
+  >
+    <view wx:if="{{loading}}" class="loading-state">
+      <text>加载中...</text>
+    </view>
+
+    <view wx:elif="{{sections.length === 0}}" class="empty-state">
+      <text>暂无商品</text>
+    </view>
+
+    <block wx:if="{{!loading && sections.length > 0}}" wx:for="{{sections}}" wx:key="id">
+      <view id="{{item.anchorId}}" class="section-anchor">
+        <text class="section-title">{{item.name}}</text>
+      </view>
+
+      <view wx:if="{{item.products.length === 0}}" class="section-empty">
+        <text>暂无商品</text>
+      </view>
+
+      <view class="area-grid">
+        <view
+          wx:for="{{item.products}}"
+          wx:for-item="product"
+          wx:key="id"
+          class="shop-product-card"
+          bindtap="onProductTap"
+          data-id="{{product.id}}"
+        >
+          <view class="shop-product-img-wrap">
+            <image class="shop-product-img" src="{{product.image}}" mode="aspectFill" lazy-load />
+          </view>
+          <text class="shop-product-name">{{product.displayName}}</text>
+        </view>
+      </view>
+    </block>
+
+    <view style="height: 240rpx;"></view>
+  </scroll-view>
+</view>

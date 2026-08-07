@@ -1,0 +1,173 @@
+.page {
+  min-height: 100vh;
+  background: #f5f5f7;
+  padding: 20rpx 20rpx 180rpx;
+  box-sizing: border-box;
+}
+
+.state-block {
+  padding: 120rpx 40rpx;
+  text-align: center;
+}
+
+.state-text {
+  font-size: 28rpx;
+  color: #86868b;
+}
+
+.retry {
+  margin: 40rpx auto 0;
+  max-width: 320rpx;
+  line-height: 72rpx;
+  border-radius: 36rpx;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.order-meta .sub {
+  margin-top: 12rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin-bottom: 20rpx;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.between {
+  justify-content: space-between;
+}
+
+.title {
+  font-size: 26rpx;
+  color: #1d1d1f;
+  font-weight: 600;
+}
+
+.status {
+  font-size: 26rpx;
+  color: #b8956a;
+  font-weight: 600;
+}
+
+.sub {
+  font-size: 22rpx;
+  color: #8e8e93;
+}
+
+.goods-item {
+  display: flex;
+}
+
+.goods-image {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 12rpx;
+  background: #f0f0f0;
+  flex-shrink: 0;
+}
+
+.goods-main {
+  margin-left: 20rpx;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.goods-name {
+  font-size: 28rpx;
+  color: #1d1d1f;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.goods-address {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #999;
+  line-height: 1.4;
+}
+
+.goods-spec {
+  font-size: 22rpx;
+  color: #8e8e93;
+}
+
+.goods-price {
+  font-size: 24rpx;
+  color: #1d1d1f;
+  font-weight: 600;
+}
+
+.line {
+  font-size: 24rpx;
+  color: #1d1d1f;
+  margin-bottom: 10rpx;
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.pay {
+  color: #b8956a;
+  font-weight: 700;
+}
+
+.bottom {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #fff;
+  border-top: 1rpx solid #f0f0f0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+}
+
+.btn {
+  flex: 1;
+  text-align: center;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  line-height: 76rpx;
+}
+
+.btn.ghost {
+  border: 1rpx solid #dcdcdc;
+  color: #666;
+  background: #fff;
+}
+
+.btn.primary {
+  color: #fff;
+  background: #b8956a;
+}
+
+.copy-sm {
+  font-size: 22rpx;
+  color: #b8956a;
+  margin-left: 12rpx;
+  padding: 4rpx 12rpx;
+  border: 1rpx solid #b8956a;
+  border-radius: 6rpx;
+}
+
+.contact-btn-small {
+  flex: none;
+  max-width: 160rpx;
+}

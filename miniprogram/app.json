@@ -1,0 +1,61 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/shop/shop",
+    "pages/search/search",
+    "pages/couponManage/couponManage",
+    "pages/productDetail/productDetail",
+    "pages/confirmOrder/confirmOrder",
+    "pages/orderList/orderList",
+    "pages/orderDetail/orderDetail",
+    "pages/orderLogistics/orderLogistics",
+    "pages/orderAfterSale/orderAfterSale",
+    "pages/pointsMall/pointsMall",
+    "pages/pointsProductDetail/pointsProductDetail",
+    "pages/pointsOrderDetail/pointsOrderDetail",
+    "pages/userCenter/userCenter",
+    "pages/profileEdit/profileEdit",
+    "pages/giftCardRedeem/giftCardRedeem",
+    "pages/membership/membership",
+    "pages/addressManage/addressManage",
+    "pages/myScissors/myScissors",
+    "pages/cooperation/cooperation",
+    "pages/splash/splash",
+    "pages/register/register"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTitleText": "Sravx",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F5F5F7",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "custom": true,
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "color": "#86868B",
+    "selectedColor": "#1D1D1F",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/shop/shop",
+        "text": "商城"
+      },
+      {
+        "pagePath": "pages/orderList/orderList",
+        "text": "订单"
+      },
+      {
+        "pagePath": "pages/userCenter/userCenter",
+        "text": "我的"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
+}

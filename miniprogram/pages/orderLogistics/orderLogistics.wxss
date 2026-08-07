@@ -1,0 +1,75 @@
+.page {
+  min-height: 100vh;
+  background: #f5f5f7;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+
+.loading-wrap {
+  display: flex;
+  justify-content: center;
+  padding-top: 200rpx;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #86868b;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+}
+
+.title {
+  font-size: 30rpx;
+  color: #1d1d1f;
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.between {
+  justify-content: space-between;
+}
+
+.mt-16 { margin-top: 16rpx; }
+.mt-12 { margin-top: 12rpx; }
+
+.label {
+  font-size: 26rpx;
+  color: #8e8e93;
+}
+
+.val {
+  font-size: 26rpx;
+  color: #1d1d1f;
+  font-weight: 500;
+}
+
+.copy-btn {
+  font-size: 24rpx;
+  color: #b8956a;
+  margin-left: 16rpx;
+  padding: 6rpx 16rpx;
+  border: 1rpx solid #b8956a;
+  border-radius: 8rpx;
+}
+
+.hint-wrap {
+  margin-top: 16rpx;
+}
+
+.hint {
+  font-size: 24rpx;
+  color: #86868b;
+  line-height: 1.6;
+  display: block;
+  margin-bottom: 8rpx;
+}

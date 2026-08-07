@@ -1,0 +1,77 @@
+<view class="container">
+  <view class="search-bar" style="padding-top: {{navBarTop}}rpx; padding-right: {{capsuleRight}}rpx;">
+    <view class="search-inner" style="height: {{navBarHeight}}rpx;" bindtap="onSearchTap">
+      <view class="search-icon">
+        <view class="search-circle"></view>
+        <view class="search-handle"></view>
+      </view>
+      <text class="search-placeholder">搜索 Sravx 产品</text>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="main-scroll" style="padding-top: {{scrollPaddingTop}}rpx;" enhanced show-scrollbar="{{false}}">
+    <view class="swiper-wrap">
+      <swiper
+        class="banner-swiper"
+        autoplay
+        circular
+        interval="{{4000}}"
+        duration="{{500}}"
+        bindchange="onSwiperChange"
+      >
+        <swiper-item wx:for="{{banners}}" wx:key="id">
+          <view class="banner-item">
+            <image class="banner-img" src="{{item.image}}" mode="aspectFill" />
+            <view class="banner-overlay">
+              <text class="banner-title">{{item.title}}</text>
+            </view>
+          </view>
+        </swiper-item>
+      </swiper>
+      <view class="swiper-dots">
+        <view
+          wx:for="{{banners}}"
+          wx:key="id"
+          class="dot {{swiperCurrent === index ? 'dot-active' : ''}}"
+        ></view>
+      </view>
+    </view>
+
+    <view class="section-header">
+      <text class="section-title">精选产品</text>
+      <text class="section-more" bindtap="onSearchTap">查看全部</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-state">
+      <text>加载中...</text>
+    </view>
+
+    <view wx:elif="{{products.length === 0}}" class="empty-state">
+      <text>暂无商品</text>
+    </view>
+
+    <view wx:else class="product-grid">
+      <view
+        wx:for="{{products}}"
+        wx:key="id"
+        class="product-card"
+        bindtap="onProductTap"
+        data-id="{{item.id}}"
+      >
+        <view class="product-img-wrap">
+          <image class="product-img" src="{{item.image || item.cover_image}}" mode="aspectFill" lazy-load />
+          <view wx:if="{{item.tag}}" class="product-tag">
+            <text>{{item.tag}}</text>
+          </view>
+        </view>
+        <view class="product-info">
+          <text class="product-name ellipsis-2">{{item.short_name}}</text>
+          <text class="product-desc ellipsis">{{item.desc}}</text>
+          <text class="product-price">¥{{item.price}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view style="height: 240rpx;"></view>
+  </scroll-view>
+</view>

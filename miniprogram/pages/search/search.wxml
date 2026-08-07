@@ -1,0 +1,81 @@
+<view class="container">
+  <!-- 搜索栏 -->
+  <view class="search-box">
+    <view class="search-field">
+      <view class="search-icon-wrap">
+        <view class="search-circle"></view>
+        <view class="search-handle"></view>
+      </view>
+      <input
+        class="search-input"
+        placeholder="输入商品名称搜索"
+        placeholder-style="color:#86868B;font-size:28rpx;"
+        value="{{keyword}}"
+        bindinput="onInput"
+        focus="{{focus}}"
+        maxlength="50"
+        confirm-type="search"
+      />
+      <view wx:if="{{keyword}}" class="clear-btn" bindtap="onClear">
+        <text class="clear-icon">✕</text>
+      </view>
+    </view>
+    <view class="cancel-btn" bindtap="onClear">
+      <text>取消</text>
+    </view>
+  </view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-state">
+    <text>搜索中...</text>
+  </view>
+
+  <!-- 搜索结果 -->
+  <view wx:elif="{{loaded && products.length > 0}}" class="results-grid">
+    <view
+      wx:for="{{products}}"
+      wx:key="id"
+      class="product-card"
+      bindtap="onProductTap"
+      data-id="{{item.id}}"
+    >
+      <view class="product-img-wrap">
+        <image
+          wx:if="{{item.cover_image}}"
+          class="product-img"
+          src="{{item.cover_image}}"
+          mode="aspectFill"
+          lazy-load
+        />
+        <image
+          wx:elif="{{item.images && item.images.length > 0}}"
+          class="product-img"
+          src="{{item.images[0]}}"
+          mode="aspectFill"
+          lazy-load
+        />
+        <view wx:else class="product-no-img">
+          <text>暂无图片</text>
+        </view>
+      </view>
+      <view class="product-info">
+        <text class="product-name ellipsis">{{item.name}}</text>
+        <text class="product-short ellipsis">{{item.short_name || item.name}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 无结果 -->
+  <view wx:elif="{{loaded && products.length === 0 && keyword}}" class="empty-state">
+    <view class="empty-icon">🔍</view>
+    <text class="empty-title">未找到相关商品</text>
+    <text class="empty-desc">试试其他关键词</text>
+  </view>
+
+  <!-- 初始状态 -->
+  <view wx:else class="init-state">
+    <view class="init-icon">🔍</view>
+    <text class="init-title">搜索 Sravx 产品</text>
+    <text class="init-desc">输入商品名称或简称快速查找</text>
+  </view>
+</view>

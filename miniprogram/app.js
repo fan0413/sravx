@@ -1,0 +1,95 @@
+App({
+  globalData: {
+    userInfo: null,
+    isRegistered: false,
+    isLoggedIn: false,
+    cloudEnvId: 'cloud1-8gk3bptqefbf01d6',
+    hasPhoneAuth: false,
+    userProfileUpdated: false
+  },
+
+  onLaunch() {
+    if (!wx.cloud) {
+      console.error('Please use base library 2.2.3 or above to enable cloud capabilities')
+    } else {
+      wx.cloud.init({
+        env: this.globalData.cloudEnvId,
+        traceUser: true
+      })
+    }
+    this.checkLogin()
+    this.refreshLoginState()
+  },
+
+  checkLogin() {
+    try {
+      const userInfo = wx.getStorageSync('userInfo')
+      const isRegistered = wx.getStorageSync('isRegistered')
+      if (userInfo && isRegistered) {
+        this.globalData.userInfo = userInfo
+        this.globalData.isRegistered = !!(userInfo.openid || userInfo.phone)
+        this.globalData.isLoggedIn = !!(userInfo.openid || userInfo.phone)
+        this.globalData.hasPhoneAuth = !!(userInfo && userInfo.phone)
+      }
+    } catch (e) {
+      console.error('Read login state failed:', e)
+    }
+  },
+
+  setUserInfo(info) {
+    this.globalData.userInfo = info
+    this.globalData.isRegistered = !!(info && (info.openid || info.phone))
+    this.globalData.isLoggedIn = !!(info && (info.openid || info.phone))
+    this.globalData.hasPhoneAuth = !!(info && info.phone)
+    wx.setStorageSync('userInfo', info)
+    wx.setStorageSync('isRegistered', !!(info && (info.openid || info.phone)))
+  },
+
+  refreshLoginState() {
+    if (!wx.cloud) return Promise.resolve(null)
+    const cachedUser = this.globalData.userInfo || {}
+
+    return wx.cloud.callFunction({
+      name: 'login',
+      data: {}
+    }).then((res) => {
+      const result = res && res.result
+      if (!result || !result.success || !result.data) {
+        throw new Error((result && result.error) || 'login failed')
+      }
+
+      const loginUser = result.data
+      const merged = {
+        ...cachedUser,
+        openid: loginUser.openid,
+        unionid: loginUser.unionid || cachedUser.unionid,
+        userId: loginUser.userId || cachedUser.userId,
+        phone: loginUser.phone || cachedUser.phone,
+        isNewUser: loginUser.isNewUser,
+        needsProfileSetup: loginUser.needsProfileSetup,
+        memberLevel: loginUser.memberLevel,
+        points: loginUser.points,
+        totalPoints: loginUser.totalPoints
+      }
+      this.setUserInfo(merged)
+      return merged
+    }).catch((err) => {
+      console.warn('Refresh login state failed:', err)
+      return null
+    })
+  },
+
+  hasPhoneAuthorized() {
+    const userInfo = this.globalData.userInfo || {}
+    return !!userInfo.phone
+  },
+
+  logout() {
+    this.globalData.userInfo = null
+    this.globalData.isRegistered = false
+    this.globalData.isLoggedIn = false
+    this.globalData.hasPhoneAuth = false
+    wx.removeStorageSync('userInfo')
+    wx.removeStorageSync('isRegistered')
+  }
+});

@@ -1,0 +1,177 @@
+<view class="container">
+  <!-- 自定义导航栏 -->
+  <view class="nav-bar" style="height: {{navBarHeight}}rpx;">
+    <view class="nav-back" bindtap="onBack">
+      <view class="back-arrow"></view>
+    </view>
+    <text class="nav-title">确认订单</text>
+  </view>
+
+  <scroll-view scroll-y class="order-scroll" style="padding-top: {{navBarHeight}}rpx;" enhanced show-scrollbar="{{false}}">
+    
+    <!-- 收货地址 -->
+    <view class="section-address" bindtap="onAddressTap">
+      <view class="address-icon-wrap">
+        <view class="address-icon">
+          <view class="address-icon-line"></view>
+          <view class="address-icon-line"></view>
+          <view class="address-icon-line"></view>
+        </view>
+      </view>
+      <view class="address-content">
+        <block wx:if="{{address}}">
+          <view class="address-top">
+            <text class="address-name">{{address.name}}</text>
+            <text class="address-phone">{{address.phone}}</text>
+          </view>
+          <text class="address-detail">{{address.province}}{{address.city}}{{address.district}}{{address.detail}}</text>
+        </block>
+        <text wx:else class="address-placeholder">请添加收货地址</text>
+      </view>
+      <view class="address-arrow"></view>
+    </view>
+
+    <!-- 商品信息 - 华为风格 -->
+    <view class="section-product">
+      <view class="product-card">
+        <view class="product-main">
+          <image class="product-image" src="{{product.cover_image || '/images/logo.png'}}" mode="aspectFill" />
+          <view class="product-info">
+            <text class="product-name">{{product.name}}</text>
+            <text class="product-spec">{{product.selectedColor ? ((isPointsOrder ? '' : '颜色：') + product.selectedColor) : (product.spec || '默认规格')}}</text>
+            <text class="product-price">{{isPointsOrder ? product.price + ' 积分' : '¥' + product.price}}</text>
+            <view class="qty-stepper">
+              <view class="qty-btn {{(product.quantity || 1) <= 1 ? 'disabled' : ''}}" bindtap="onDecreaseQty">
+                <text>-</text>
+              </view>
+              <view class="qty-value">
+                <text>{{product.quantity || 1}}</text>
+              </view>
+              <view class="qty-btn" bindtap="onIncreaseQty">
+                <text>+</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 优惠券 -->
+    <view class="section-coupon" bindtap="onCouponTap" wx:if="{{!isPointsOrder && product.allow_coupon !== 0}}">
+      <view class="section-label">
+        <text class="label-text">优惠券</text>
+      </view>
+      <view class="section-value">
+        <block wx:if="{{selectedCoupon}}">
+          <view class="coupon-selected">
+            <view class="coupon-tag">
+              <text class="coupon-tag-text">减¥{{selectedCoupon.value}}</text>
+            </view>
+            <text class="coupon-name">{{selectedCoupon.name}}</text>
+            <view class="remove-btn" catchtap="onRemoveCoupon">
+              <text>×</text>
+            </view>
+          </view>
+        </block>
+        <text wx:elif="{{coupons.length > 0}}" class="value-text">
+          {{coupons.length}}张可用
+        </text>
+        <text wx:else class="value-text placeholder">暂无可用</text>
+      </view>
+      <view class="section-arrow"></view>
+    </view>
+
+    <view class="section-coupon disabled" wx:if="{{!isPointsOrder && product.allow_coupon === 0}}">
+      <view class="section-label">
+        <text class="label-text">优惠券</text>
+      </view>
+      <view class="section-value">
+        <text class="value-text coupon-disabled-tip">此商品无法使用优惠券</text>
+      </view>
+    </view>
+
+    <!-- 订单备注 -->
+    <view class="section-remark">
+      <view class="section-label">
+        <text class="label-text">订单备注</text>
+      </view>
+      <input 
+        class="remark-input" 
+        placeholder="选填，可备注特殊需求" 
+        value="{{remark}}"
+        bindinput="onRemarkInput"
+        maxlength="100"
+      />
+    </view>
+
+    <!-- 金额明细 -->
+    <view class="section-summary">
+      <view class="summary-row">
+        <text class="summary-label">商品金额</text>
+        <text class="summary-value">{{isPointsOrder ? orderAmount + ' 积分' : '¥' + orderAmount}}</text>
+      </view>
+      <view class="summary-row" wx:if="{{isPointsOrder && cashAmount !== '0.00'}}">
+        <text class="summary-label">现金补差</text>
+        <text class="summary-value">¥{{cashAmount}}</text>
+      </view>
+      <view class="summary-row" wx:if="{{!isPointsOrder && couponDiscount > 0}}">
+        <text class="summary-label">优惠券</text>
+        <text class="summary-value discount">-¥{{couponDiscount}}</text>
+      </view>
+      <view class="summary-row" wx:if="{{!isPointsOrder}}">
+        <text class="summary-label">运费</text>
+        <text class="summary-value">¥0.00</text>
+      </view>
+    </view>
+
+    <view style="height: 180rpx;"></view>
+  </scroll-view>
+
+  <view wx:if="{{couponPopupVisible}}" class="coupon-popup-mask" bindtap="onCouponMaskTap">
+    <view class="coupon-popup-panel" catchtap="onCouponPanelTap">
+      <view class="coupon-popup-head">
+        <text class="coupon-popup-title">选择优惠券</text>
+        <text class="coupon-popup-sub">共{{coupons.length}}张可用</text>
+      </view>
+      <scroll-view scroll-y class="coupon-popup-list" enhanced show-scrollbar="{{false}}">
+        <view
+          wx:for="{{coupons}}"
+          wx:key="id"
+          class="popup-coupon-card {{pendingSelectedCoupon && pendingSelectedCoupon.id === item.id ? 'selected' : ''}}"
+          data-index="{{index}}"
+          bindtap="onCouponItemTap"
+        >
+          <view class="popup-coupon-left">
+            <text class="popup-coupon-type">满减券</text>
+            <text class="popup-coupon-value">¥{{item.value}}</text>
+            <text class="popup-coupon-min">满{{item.min_amount}}可用</text>
+          </view>
+          <view class="popup-coupon-right">
+            <text class="popup-coupon-name">{{item.name}}</text>
+            <text class="popup-coupon-desc">{{item.popupDesc}}</text>
+            <text class="popup-coupon-date">{{item.popupDate}}</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="coupon-popup-actions">
+        <view class="popup-btn ghost" bindtap="onCouponClear">
+          <text>不使用</text>
+        </view>
+        <view class="popup-btn solid" bindtap="onCouponConfirm">
+          <text>确认使用</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部支付栏 -->
+  <view class="bottom-bar safe-bottom">
+    <view class="payment-info">
+      <text class="payment-label">合计</text>
+      <text class="payment-amount">{{isPointsOrder ? (cashAmount !== '0.00' ? finalAmount + ' 积分 + ¥' + cashAmount : finalAmount + ' 积分') : '¥' + finalAmount}}</text>
+    </view>
+    <view class="submit-btn" bindtap="onSubmitOrder">
+      <text>{{isPointsOrder && cashAmount !== '0.00' ? '提交并支付' : '提交订单'}}</text>
+    </view>
+  </view>
+</view>

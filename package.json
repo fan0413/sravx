@@ -1,0 +1,20 @@
+{
+  "name": "sravx-miniprogram",
+  "version": "1.0.0",
+  "description": "Sravx 专业剪刀品牌微信小程序",
+  "private": true,
+  "scripts": {
+    "mcp:tencentcloud": "node scripts/start-cloudbase-mcp.js",
+    "mcp:tencentcloud:check": "node scripts/start-cloudbase-mcp.js --help",
+    "test:orderlist:unit": "node scripts/tests/order_list_filter.unit.js",
+    "test:orderlist:e2e": "node scripts/tests/order_list_e2e.js",
+    "test:scissors:unit": "node scripts/tests/scissors_card_logic.unit.js"
+  },
+  "devDependencies": {
+    "@cloudbase/cli": "^3.2.2",
+    "@cloudbase/cloudbase-mcp": "^2.18.0"
+  },
+  "dependencies": {
+    "@cloudbase/node-sdk": "^3.18.1"
+  }
+}

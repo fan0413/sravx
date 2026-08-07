@@ -1,0 +1,99 @@
+<view class="container bg-{{currentLevelInfo.cls}}" style="padding-top: {{scrollPaddingTop}}rpx;">
+  <!-- 置顶卡片 -->
+  <view class="card-section">
+    <view class="member-card {{currentLevelInfo.cls}}">
+      <view class="card-texture"></view>
+      <view class="card-top">
+        <view class="card-user-row">
+          <view class="card-user-meta">
+            <text class="card-username">{{username}}</text>
+            <text class="card-level-name">{{currentLevelInfo.name}}</text>
+          </view>
+        </view>
+        <text class="card-vip">VIP</text>
+      </view>
+      <view class="card-bottom">
+        <view class="card-points-col">
+          <text class="card-points-label">累积积分</text>
+          <view class="card-points-row">
+            <text class="card-points-star">★</text>
+            <text class="card-points-num">{{totalPoints}}</text>
+          </view>
+          <text wx:if="{{nextLevelNeed > 0}}" class="card-next-level">距下一等级还需 {{nextLevelNeed}} 积分</text>
+          <text wx:else class="card-next-level">已达最高等级</text>
+        </view>
+        <view class="card-right-meta">
+          <text class="card-available-label">可用积分</text>
+          <text class="card-available-num">{{points}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 可滚动内容 -->
+  <scroll-view scroll-y class="scroll-body" enhanced show-scrollbar="{{false}}">
+    <!-- 等级切换预览 -->
+    <view class="level-pills-wrap">
+      <text class="level-preview-label">权益预览</text>
+      <scroll-view scroll-x class="level-pills" enhanced show-scrollbar="{{false}}">
+        <view
+          wx:for="{{levels}}"
+          wx:key="id"
+          class="level-pill {{previewLevelId === item.id ? 'pill-active' : ''}}"
+          data-id="{{item.id}}"
+          bindtap="onPreviewLevel"
+        >
+          <text>{{item.name}}</text>
+        </view>
+      </scroll-view>
+      <view wx:if="{{previewLevelId !== currentLevel}}" class="level-reset" bindtap="onResetPreview">
+        <text>回到我的等级</text>
+      </view>
+    </view>
+
+    <!-- 权益对比表 -->
+    <view class="benefits-section">
+      <view class="benefits-table">
+        <!-- 表头 -->
+        <view class="table-head">
+          <view class="head-cell name-cell">权益项目</view>
+          <view
+            wx:for="{{levels}}"
+            wx:key="id"
+            class="head-cell level-cell {{previewLevelId === item.id ? 'active-col' : ''}}"
+          >
+            <text>{{item.name}}</text>
+          </view>
+        </view>
+
+        <!-- 表体 -->
+        <block wx:for="{{benefits}}" wx:key="category">
+          <view class="table-cat-row">
+            <text class="cat-text">{{item.category}}</text>
+          </view>
+          <view
+            wx:for="{{item.items}}"
+            wx:for-item="benefit"
+            wx:key="name"
+            class="table-row"
+          >
+            <view class="row-name-cell">
+              <text>{{benefit.name}}</text>
+            </view>
+            <view
+              wx:for="{{levels}}"
+              wx:for-item="lv"
+              wx:key="id"
+              class="row-level-cell {{previewLevelId === lv.id ? 'active-col' : ''}}"
+            >
+              <text wx:if="{{lv.id >= benefit.minLevel}}" class="check-mark">✓</text>
+              <text wx:else class="minus-mark">–</text>
+            </view>
+          </view>
+        </block>
+      </view>
+    </view>
+
+    <view style="height: 80rpx;"></view>
+  </scroll-view>
+</view>

@@ -1,0 +1,43 @@
+<view class="tab-bar">
+  <view
+    wx:for="{{list}}"
+    wx:key="pagePath"
+    class="tab-item {{active === index ? 'active' : ''}}"
+    data-index="{{index}}"
+    bindtap="switchTab"
+  >
+    <view wx:if="{{item.icon === 'home'}}" class="icon-wrap">
+      <view class="icon-home {{active === index ? 'icon-active' : ''}}">
+        <view class="home-outline"></view>
+        <view class="home-door"></view>
+      </view>
+    </view>
+
+    <view wx:elif="{{item.icon === 'shop'}}" class="icon-wrap">
+      <view class="icon-shop {{active === index ? 'icon-active' : ''}}">
+        <view class="shop-grid">
+          <view class="shop-dot"></view>
+          <view class="shop-dot"></view>
+          <view class="shop-dot"></view>
+          <view class="shop-dot"></view>
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{item.icon === 'order'}}" class="icon-wrap">
+      <view class="icon-order {{active === index ? 'icon-active' : ''}}">
+        <view class="order-bag"></view>
+        <view class="order-flap"></view>
+      </view>
+    </view>
+
+    <view wx:elif="{{item.icon === 'user'}}" class="icon-wrap">
+      <view class="icon-user {{active === index ? 'icon-active' : ''}}">
+        <view class="user-head"></view>
+        <view class="user-body"></view>
+      </view>
+    </view>
+
+    <text class="tab-label {{active === index ? 'label-active' : ''}}">{{item.text}}</text>
+  </view>
+</view>

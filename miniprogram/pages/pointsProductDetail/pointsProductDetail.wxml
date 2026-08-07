@@ -1,0 +1,155 @@
+<view class="container">
+  <view class="nav-bar" style="height: {{navBarHeight}}rpx;">
+    <view class="nav-back" bindtap="onBack">
+      <view class="back-arrow"></view>
+    </view>
+  </view>
+
+  <scroll-view scroll-y class="detail-scroll" style="padding-top: {{navBarHeight}}rpx;" enhanced show-scrollbar="{{false}}">
+    <view class="gallery">
+      <swiper class="gallery-swiper" autoplay="{{false}}" circular bindchange="onSwiperChange">
+        <swiper-item wx:for="{{images}}" wx:key="*this">
+          <image class="gallery-img" src="{{item}}" mode="aspectFill" data-index="{{index}}" bindtap="onPreviewGalleryImage" />
+        </swiper-item>
+      </swiper>
+      <view class="gallery-counter">
+        <text>{{swiperCurrent + 1}}/{{images.length}}</text>
+      </view>
+    </view>
+
+    <view class="info-section">
+      <view class="price-row">
+        <text class="price points-price">{{product.points_price}}</text>
+        <text class="price-unit">积分</text>
+        <text wx:if="{{product.cash_price > 0}}" class="price-cash">+ ¥{{product.cash_price}}</text>
+      </view>
+      <view class="member-limit-row">
+        <text class="member-limit-label">兑换等级：</text>
+        <text class="member-limit-value">{{minMemberLevelName}}及以上</text>
+        <text wx:if="{{canRedeem === false}}" class="member-limit-warn">当前等级不足</text>
+      </view>
+      <text class="product-title">{{product.name}}</text>
+      <text class="product-subtitle">{{product.desc}}</text>
+    </view>
+
+    <view class="divider-thick"></view>
+
+    <view class="action-section">
+      <view class="action-row" bindtap="onSpecTap">
+        <text class="action-label">已选</text>
+        <text class="action-value ellipsis">{{selectedColor || selectedSpec || '默认规格'}}</text>
+        <view class="action-arrow"></view>
+      </view>
+    </view>
+
+    <view class="divider-thick"></view>
+
+    <view class="spec-section">
+      <view class="spec-header">
+        <text class="spec-title">主要参数</text>
+      </view>
+      <view class="spec-table">
+        <view class="spec-row">
+          <text class="spec-label">核心材质</text>
+          <text class="spec-value">{{mainParams.coreMaterial}}</text>
+        </view>
+        <view class="spec-row">
+          <text class="spec-label">手柄材质</text>
+          <text class="spec-value">{{mainParams.handleMaterial}}</text>
+        </view>
+        <view class="spec-row">
+          <text class="spec-label">尺寸</text>
+          <text class="spec-value">{{mainParams.size}}</text>
+        </view>
+        <view class="spec-row">
+          <text class="spec-label">重量</text>
+          <text class="spec-value">{{mainParams.weight}}</text>
+        </view>
+        <view class="spec-row">
+          <text class="spec-label">保修期</text>
+          <text class="spec-value">{{mainParams.warrantyPeriod}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view wx:if="{{detailImages.length > 0}}" class="divider-thick"></view>
+    <view wx:if="{{detailImages.length > 0}}" class="detail-image-section">
+      <view class="detail-image-header">
+        <text class="detail-image-title">详情展示</text>
+      </view>
+      <view class="detail-image-list">
+        <image wx:for="{{detailImages}}" wx:key="*this" class="detail-image-item" src="{{item}}" mode="aspectFill" lazy-load />
+      </view>
+    </view>
+
+    <view style="height: 200rpx;"></view>
+  </scroll-view>
+
+  <view wx:if="{{colorPopupVisible}}" class="color-popup-mask" bindtap="onColorMaskTap">
+    <view class="color-popup-panel" catchtap="onColorPanelTap">
+      <view class="color-popup-head taobao-head">
+        <image class="sku-cover" src="{{product.cover_image || (images[0] || '/images/logo.png')}}" mode="aspectFill" />
+        <view class="sku-info">
+          <text class="sku-price points-sku-price">{{product.points_price}} 积分</text>
+          <text wx:if="{{product.cash_price > 0}}" class="sku-price points-sku-price">+ ¥{{product.cash_price}}</text>
+          <text class="sku-selected">已选：{{pendingSelectedColor || selectedColor || '请选择商品规格'}}</text>
+          <view class="qty-stepper">
+            <view class="qty-btn {{pendingQuantity <= 1 ? 'disabled' : ''}}" bindtap="onDecreasePendingQty"><text>-</text></view>
+            <view class="qty-value"><text>{{pendingQuantity}}</text></view>
+            <view class="qty-btn" bindtap="onIncreasePendingQty"><text>+</text></view>
+          </view>
+        </view>
+        <view class="sku-close" bindtap="onColorMaskTap">×</view>
+      </view>
+      <view class="sku-section">
+        <text class="sku-section-title">商品规格</text>
+        <view class="sku-option-wrap">
+          <view wx:for="{{colorOptions}}" wx:key="name" class="sku-option {{(pendingSelectedColor || selectedColor) === item.name ? 'selected' : ''}}" data-index="{{index}}" bindtap="onColorOptionTap">
+            <view class="sku-option-main">
+              <image class="sku-option-image" src="{{item.image}}" mode="aspectFill" />
+              <text class="sku-option-text">{{item.name}}</text>
+              <text class="sku-option-price">{{item.pointsText}} 积分</text>
+              <text wx:if="{{item.cashText > 0}}" class="sku-option-price">+ ¥{{item.cashText}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="sku-footer">
+        <view class="sku-confirm-btn" bindtap="onRedeemFromPopup">
+          <text>立即兑换</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="bottom-bar safe-bottom">
+    <view class="bottom-left">
+      <view class="bottom-icon-btn" bindtap="onGoHome">
+        <view class="icon-home-sm">
+          <view class="home-outline-sm"></view>
+          <view class="home-door-sm"></view>
+        </view>
+        <text>首页</text>
+      </view>
+      <button class="bottom-icon-btn contact-btn" open-type="contact" session-from="points_{{product.id}}">
+        <view class="icon-phone-sm">
+          <view class="phone-body"></view>
+        </view>
+        <text>客服</text>
+      </button>
+      <button class="bottom-icon-btn share-btn" open-type="share">
+        <view class="icon-share-sm">
+          <view class="share-dot share-dot-top"></view>
+          <view class="share-dot share-dot-left"></view>
+          <view class="share-dot share-dot-right"></view>
+          <view class="share-line share-line-a"></view>
+          <view class="share-line share-line-b"></view>
+        </view>
+        <text>分享</text>
+      </button>
+    </view>
+    <view class="buy-btn points-buy-btn {{canRedeem === false ? 'disabled' : ''}}" bindtap="onRedeemNow">
+      <text>{{canRedeem === false ? '会员等级不足' : '立即兑换'}}</text>
+    </view>
+  </view>
+</view>

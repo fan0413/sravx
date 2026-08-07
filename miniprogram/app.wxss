@@ -1,0 +1,151 @@
+
+
+
+
+
+
+
+
+
+/* ========== Sravx Global Styles — Apple Minimalism ========== */
+
+page {
+  --color-primary: #1D1D1F;
+  --color-secondary: #86868B;
+  --color-accent: #B8956A;
+  --color-accent-dark: #A07850;
+  --color-bg: #FFFFFF;
+  --color-bg-secondary: #F5F5F7;
+  --color-border: #E5E5EA;
+  --color-success: #34C759;
+  --color-danger: #FF3B30;
+
+  --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Source Han Sans CN', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  --radius-s: 8rpx;
+  --radius-m: 16rpx;
+  --radius-l: 24rpx;
+  --radius-xl: 48rpx;
+  --shadow-card: 0 2rpx 16rpx rgba(0, 0, 0, 0.04);
+  --shadow-float: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
+
+  height: 100%;
+  font-family: var(--font-family);
+  font-size: 28rpx;
+  color: var(--color-primary);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========== Reset & Utilities ========== */
+
+view, text, image, scroll-view, swiper, swiper-item, navigator, button, input, textarea, picker {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  line-height: inherit;
+}
+
+button::after {
+  border: none;
+}
+
+.contact-btn {
+  box-sizing: border-box;
+  min-width: auto;
+  min-height: auto;
+  width: auto;
+}
+
+.contact-btn::after {
+  display: none;
+}
+
+.container {
+  min-height: 100%;
+  background-color: var(--color-bg);
+}
+
+.flex-row { display: flex; flex-direction: row; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-center { display: flex; align-items: center; justify-content: center; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-1 { flex: 1; }
+.flex-wrap { flex-wrap: wrap; }
+
+.text-primary { color: var(--color-primary); }
+.text-secondary { color: var(--color-secondary); }
+.text-accent { color: var(--color-accent); }
+
+.text-bold { font-weight: 600; }
+.text-light { font-weight: 300; }
+
+.text-xs { font-size: 20rpx; }
+.text-sm { font-size: 24rpx; }
+.text-base { font-size: 28rpx; }
+.text-lg { font-size: 32rpx; }
+.text-xl { font-size: 36rpx; }
+.text-2xl { font-size: 44rpx; }
+.text-3xl { font-size: 56rpx; }
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ellipsis-2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ========== Common Components ========== */
+
+.btn-primary {
+  width: 100%;
+  height: 96rpx;
+  background-color: var(--color-accent);
+  color: #FFFFFF;
+  font-size: 32rpx;
+  font-weight: 500;
+  letter-spacing: 2rpx;
+  border-radius: var(--radius-xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:active {
+  opacity: 0.85;
+}
+
+.divider {
+  width: 100%;
+  height: 1rpx;
+  background-color: var(--color-border);
+}
+
+.card {
+  background-color: var(--color-bg);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 20rpx);
+}
+
+.page-padding {
+  padding: 0 32rpx;
+}

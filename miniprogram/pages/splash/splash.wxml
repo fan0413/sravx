@@ -1,0 +1,12 @@
+<view class="splash">
+  <!-- 跳过按钮 -->
+  <view class="skip-btn" bindtap="onSkip">
+    <text>跳过 {{countdown}}</text>
+  </view>
+
+  <!-- Logo 居中 -->
+  <view class="logo-wrap">
+    <image class="logo" src="/images/logo.png" mode="aspectFit" />
+  </view>
+
+</view>

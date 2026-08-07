@@ -1,0 +1,52 @@
+node_modules/
+miniprogram_npm/
+.DS_Store
+*.log
+assets/
+
+# 本地环境变量
+.env
+.env.local
+.env.*.local
+
+# 微信支付证书/密钥（任何情况下都不能进仓库）
+1/
+**/apiclient_*.pem
+**/apiclient_*.p12
+**/apiclient_*.key
+*.pem
+*.p12
+*.key
+
+# 临时脚本、帧提取、视频
+tmp_*.js
+test-cloudfunction.js
+temp_images/
+video_frames/
+*.mp4
+
+# Dockerfile 备份之类
+*.zip
+
+# 配置指南里如果带真实密钥，请单独列到 private
+CONFIG-GUIDE.md
+.workbuddy/
+
+# Local editor/agent metadata
+.codebuddy/
+
+# Local MCP and IDE-private configuration
+mcp.json
+project.private.config.json
+tmp_mcp_*.txt
+
+# Generated/deployment scratch data and local backups
+temp_cf/
+temp_sync_backup/
+scripts/temp_*.js
+
+# Payment environment values must stay local
+cloudrun/payment-api/WECHAT-MP-API-ENV.txt
+
+temp_images
+scripts/mcp_deploy.js

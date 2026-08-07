@@ -1,0 +1,33 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="loading-tip">优惠券加载中...</view>
+  <view class="coupon-list">
+    <view class="coupon-card {{item.status}}" wx:for="{{couponCards}}" wx:key="id">
+      <view class="card-left">
+        <text class="type">{{item.typeText}}</text>
+        <text class="value">{{item.valueText}}</text>
+        <text class="condition">{{item.conditionText}}</text>
+      </view>
+      <view class="card-right">
+        <view class="line-1">
+          <text class="name">{{item.title}}</text>
+          <text class="status-badge {{item.status}}">{{item.statusText}}</text>
+        </view>
+        <text class="meta">券编号：{{item.couponCode}}</text>
+        <text class="meta note-text">{{item.descriptionText}}</text>
+        <text class="meta">{{item.timeText}}</text>
+        <view class="action-row">
+          <button
+            class="primary-btn {{item.status !== 'unused' ? 'disabled' : ''}}"
+            bindtap="onUseCoupon"
+          >
+            {{item.buttonText}}
+          </button>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{couponCards.length === 0}}" class="empty-box">
+      <text class="empty-title">暂无优惠券</text>
+      <text class="empty-desc">当前没有可展示的优惠券</text>
+    </view>
+  </view>
+</view>

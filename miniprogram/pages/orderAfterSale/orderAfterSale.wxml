@@ -1,0 +1,37 @@
+<view class="page">
+  <view wx:if="{{orderId}}" class="tip">订单 {{orderId}} · 退款申请提交后进入管理员审批，审批通过后执行退款</view>
+
+  <view class="card">
+    <view class="row between">
+      <text class="type">{{typeText}}</text>
+      <text class="status">提交申请</text>
+    </view>
+    <textarea
+      class="reason-input"
+      placeholder="请输入退款原因（选填）"
+      value="{{reason}}"
+      maxlength="200"
+      bindinput="onReasonInput"
+    />
+    <view class="submit-btn {{submitting ? 'disabled' : ''}}" bindtap="onSubmit">
+      {{submitting ? '提交中...' : '提交申请'}}
+    </view>
+  </view>
+
+  <view class="tip">历史申请记录</view>
+  <view wx:if="{{loading}}" class="tip">加载中...</view>
+  <block wx:elif="{{records.length > 0}}">
+    <view wx:for="{{records}}" wx:key="id" class="card">
+      <view class="row between">
+        <text class="type">{{item.type}}</text>
+        <text class="status">{{item.status}}</text>
+      </view>
+      <text class="reason">原因：{{item.reason}}</text>
+      <view class="row between">
+        <text class="time">{{item.createdAt}}</text>
+        <text class="amount">¥{{item.amount}}</text>
+      </view>
+    </view>
+  </block>
+  <view wx:else class="tip">暂无申请记录</view>
+</view>

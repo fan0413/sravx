@@ -1,0 +1,79 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="state-block">
+    <text class="state-text">加载中...</text>
+  </view>
+
+  <view wx:elif="{{loadError}}" class="state-block">
+    <text class="state-text">{{loadError}}</text>
+    <view class="btn primary retry" bindtap="onRetry">重试</view>
+  </view>
+
+  <block wx:else>
+    <view class="card order-meta">
+      <view class="row between">
+        <text class="title">订单号 {{order.orderNo}}</text>
+        <text class="status">{{order.statusText}}</text>
+      </view>
+      <text class="sub">下单时间 {{order.createdAt}}</text>
+    </view>
+
+    <view class="card">
+      <view class="section-title">商品信息</view>
+      <view wx:for="{{goods}}" wx:key="id" class="goods-item">
+        <image class="goods-image" src="{{item.image}}" mode="aspectFill" />
+        <view class="goods-main">
+          <text class="goods-name">{{item.name}}</text>
+          <view class="row between">
+            <text class="goods-spec">{{item.spec}}</text>
+            <text class="goods-price">¥{{item.price}} ×{{item.quantity}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">收货信息</view>
+      <text class="line">{{order.consignee}} {{order.phone}}</text>
+      <text class="line">{{order.address}}</text>
+    </view>
+
+    <view class="card">
+      <view class="row between">
+        <text class="line">商品总额</text>
+        <text class="line">¥{{order.totalAmount}}</text>
+      </view>
+      <view class="row between">
+        <text class="line strong">实付款</text>
+        <text class="line pay">¥{{order.payAmount}}</text>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{order.logisticsCompany && order.logisticsNo}}">
+      <text class="section-title">物流信息</text>
+      <view class="row between">
+        <text class="line">快递公司</text>
+        <text class="line">{{order.logisticsCompany}}</text>
+      </view>
+      <view class="row between">
+        <text class="line">运单号</text>
+        <view class="row">
+          <text class="line">{{order.logisticsNo}}</text>
+          <text class="copy-sm" bindtap="onCopyLogisticsNo">复制</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="bottom safe-bottom">
+      <button class="btn ghost contact-btn-small" open-type="contact" session-from="order_{{order.orderNo}}">联系客服</button>
+      <view wx:if="{{order.status === 'pending_payment'}}" class="btn ghost" bindtap="onCancelOrder">取消订单</view>
+      <view wx:if="{{order.status === 'pending_payment'}}" class="btn primary" bindtap="onPayTap">去支付</view>
+      <view wx:if="{{order.status === 'shipped'}}" class="btn ghost" bindtap="onApplyRefund">申请退款</view>
+      <view wx:if="{{order.status === 'shipped'}}" class="btn ghost" bindtap="onGoLogistics">查看物流</view>
+      <view wx:if="{{order.status === 'shipped'}}" class="btn primary" bindtap="onConfirmReceive">确认收货</view>
+      <view wx:if="{{order.status === 'paid'}}" class="btn ghost" bindtap="onApplyRefund">申请退款</view>
+      <view wx:if="{{order.status === 'refunding'}}" class="btn ghost">退款处理中</view>
+      <view wx:if="{{order.status === 'completed'}}" class="btn ghost" bindtap="onApplyAfterSale">申请售后</view>
+      <view wx:if="{{order.status === 'completed'}}" class="btn primary" bindtap="onGoLogistics">查看物流</view>
+    </view>
+  </block>
+</view>

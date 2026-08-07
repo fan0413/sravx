@@ -1,0 +1,88 @@
+<view class="container">
+  <!-- 自定义导航栏占位 -->
+  <view class="nav-placeholder"></view>
+
+  <!-- 标题 -->
+  <view class="header">
+    <text class="title">加入 Sravx</text>
+    <text class="subtitle">完善您的信息以获得个性化体验</text>
+  </view>
+
+  <!-- 表单 -->
+  <view class="form">
+    <!-- 用户名 -->
+    <view class="field">
+      <text class="field-label">用户名</text>
+      <input
+        class="field-input"
+        placeholder="支持中英文"
+        placeholder-class="field-placeholder"
+        value="{{username}}"
+        bindinput="onInputUsername"
+        maxlength="20"
+      />
+    </view>
+    <view class="field-line"></view>
+
+    <!-- 性别 -->
+    <view class="field">
+      <text class="field-label">性别</text>
+      <view class="gender-group">
+        <view
+          class="gender-item {{gender === '男' ? 'gender-active' : ''}}"
+          bindtap="onSelectGender"
+          data-value="男"
+        >
+          <text>男</text>
+        </view>
+        <view
+          class="gender-item {{gender === '女' ? 'gender-active' : ''}}"
+          bindtap="onSelectGender"
+          data-value="女"
+        >
+          <text>女</text>
+        </view>
+      </view>
+    </view>
+    <view class="field-line"></view>
+
+    <!-- 生日 -->
+    <view class="field">
+      <text class="field-label">生日</text>
+      <picker mode="date" start="1940-01-01" end="2015-12-31" value="{{birthday}}" bindchange="onBirthdayChange">
+        <text class="{{birthday ? 'field-value' : 'field-placeholder'}}">
+          {{birthday || '请选择出生日期'}}
+        </text>
+      </picker>
+    </view>
+    <view class="field-line"></view>
+
+    <!-- 职业 -->
+    <view class="field">
+      <text class="field-label">职业</text>
+      <picker range="{{occupationOptions}}" value="{{occupationIndex}}" bindchange="onOccupationChange">
+        <text class="{{occupation ? 'field-value' : 'field-placeholder'}}">
+          {{occupation || '请选择您的职业'}}
+        </text>
+      </picker>
+    </view>
+    <view class="field-line"></view>
+  </view>
+
+  <!-- 提交按钮：填完信息后显示，点击触发手机号授权，授权完成进入首页 -->
+  <view class="submit-area safe-bottom">
+    <button
+      wx:if="{{!hasPhone}}"
+      class="btn-primary btn-phone-start {{canSubmit ? '' : 'btn-disabled'}}"
+      plain
+      hover-class="none"
+      open-type="{{canSubmit ? 'getPhoneNumber' : ''}}"
+      bindgetphonenumber="onGetPhoneNumber"
+    >
+      <text>开始使用</text>
+    </button>
+    <view wx:else class="btn-primary" bindtap="onSubmit">
+      <text>开始使用</text>
+    </view>
+  </view>
+</view>

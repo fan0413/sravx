@@ -1,0 +1,177 @@
+@import "../productDetail/productDetail.wxss";
+
+.points-price {
+  color: #b98f4a;
+}
+
+.price-unit {
+  font-size: 24rpx;
+  color: #b98f4a;
+  margin-left: 8rpx;
+}
+
+.price-cash {
+  margin-left: 12rpx;
+  font-size: 28rpx;
+  color: #b98f4a;
+  font-weight: 600;
+}
+
+.member-limit-row {
+  display: flex;
+  align-items: center;
+  margin-top: 10rpx;
+}
+
+.member-limit-label {
+  font-size: 22rpx;
+  color: #8a8a90;
+}
+
+.member-limit-value {
+  font-size: 22rpx;
+  color: #b98f4a;
+  margin-right: 10rpx;
+}
+
+.member-limit-warn {
+  font-size: 22rpx;
+  color: #c95a5a;
+}
+
+.points-sku-price {
+  color: #b98f4a;
+}
+
+.points-buy-btn {
+  background: linear-gradient(90deg, #cba55a 0%, #a77c2f 100%);
+}
+
+.points-buy-btn.disabled {
+  background: #c7c7cc;
+}
+
+.action-section {
+  background: #FFFFFF;
+  margin-bottom: 16rpx;
+}
+
+.action-row {
+  display: flex;
+  align-items: center;
+  padding: 32rpx;
+  background: #FFFFFF;
+  position: relative;
+}
+
+.action-row:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 32rpx;
+  right: 0;
+  bottom: 0;
+  height: 1rpx;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.action-label {
+  font-size: 28rpx;
+  color: var(--color-secondary);
+  width: 140rpx;
+  flex-shrink: 0;
+}
+
+.action-value {
+  flex: 1;
+  font-size: 28rpx;
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+.section-address {
+  display: flex;
+  align-items: center;
+  padding: 32rpx;
+  background: #FFFFFF;
+  margin-bottom: 16rpx;
+}
+
+.address-icon-wrap {
+  width: 56rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+}
+
+.address-icon {
+  width: 36rpx;
+  height: 36rpx;
+  border: 3rpx solid #D4B28C; /* 使用主色调 */
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4rpx;
+  padding: 6rpx;
+}
+
+.address-icon-line {
+  width: 16rpx;
+  height: 2rpx;
+  background: #D4B28C;
+  border-radius: 1rpx;
+}
+
+.address-content {
+  flex: 1;
+}
+
+.address-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.address-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333333;
+  margin-right: 16rpx;
+}
+
+.address-phone {
+  font-size: 28rpx;
+  color: #999999;
+}
+
+.address-detail {
+  font-size: 26rpx;
+  color: #666666;
+  line-height: 1.4;
+}
+
+.address-placeholder {
+  font-size: 28rpx;
+  color: #C7C7CC;
+}
+
+.address-arrow {
+  width: 14rpx;
+  height: 14rpx;
+  border-right: 2rpx solid #C7C7CC;
+  border-bottom: 2rpx solid #C7C7CC;
+  transform: rotate(-45deg);
+  margin-left: 16rpx;
+}
+
+.action-arrow {
+  width: 14rpx;
+  height: 14rpx;
+  border-right: 3rpx solid #C7C7CC;
+  border-bottom: 3rpx solid #C7C7CC;
+  transform: rotate(-45deg);
+  margin-left: 16rpx;
+}

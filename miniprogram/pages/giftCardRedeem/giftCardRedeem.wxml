@@ -1,0 +1,110 @@
+<view class="page">
+  <view class="gift-card">
+    <view class="card-shine"></view>
+    <view class="card-head">
+      <view>
+        <text class="card-kicker">Sravx Gift Card</text>
+        <text class="card-title">礼品卡兑换</text>
+      </view>
+      <text class="card-mark">GIFT</text>
+    </view>
+    <view class="card-bottom">
+      <text class="card-code">{{previewCode}}</text>
+      <text class="card-note">兑换后权益将自动发放至当前账号</text>
+    </view>
+  </view>
+
+  <view class="redeem-panel">
+    <text class="panel-title">输入兑换码</text>
+    <view class="input-wrap {{cardCode ? 'has-value' : ''}}">
+      <input
+        class="code-input"
+        value="{{cardCode}}"
+        placeholder="请输入礼品卡兑换码"
+        placeholder-style="color:#C7C7CC;"
+        maxlength="32"
+        bindinput="onCodeInput"
+        confirm-type="done"
+        bindconfirm="onRedeem"
+      />
+      <view wx:if="{{cardCode}}" class="clear-btn" bindtap="onClearCode">
+        <text>×</text>
+      </view>
+    </view>
+
+    <view class="quick-actions">
+      <view class="quick-btn" bindtap="onPasteCode">
+        <view class="quick-icon paste-icon"></view>
+        <text>粘贴</text>
+      </view>
+      <view class="quick-btn" bindtap="onScanCode">
+        <view class="quick-icon scan-icon"></view>
+        <text>扫码</text>
+      </view>
+    </view>
+
+    <button
+      class="redeem-btn {{canRedeem && !redeeming ? '' : 'disabled'}}"
+      loading="{{redeeming}}"
+      bindtap="onRedeem"
+    >
+      {{redeeming ? '兑换中...' : '立即兑换'}}
+    </button>
+  </view>
+
+  <view wx:if="{{result}}" class="result-card {{result.type}}">
+    <text class="result-title">{{result.title}}</text>
+    <text class="result-desc">{{result.desc}}</text>
+    <view wx:if="{{result.nextAction === 'select_address'}}" class="address-box" bindtap="onAddressTap">
+      <view wx:if="{{selectedAddress}}" class="address-main">
+        <text class="address-detail ellipsis-2">{{selectedAddress.province}}{{selectedAddress.city}}{{selectedAddress.district}}{{selectedAddress.detail}}</text>
+        <text class="address-meta">{{selectedAddress.name}} {{selectedAddress.phone}}</text>
+      </view>
+      <text wx:else class="address-placeholder">请选择收货地址</text>
+      <view class="arrow-right"></view>
+    </view>
+    <button
+      wx:if="{{result.actionText}}"
+      class="result-action"
+      loading="{{confirmingAddress}}"
+      bindtap="onResultAction"
+    >
+      {{result.nextAction === 'select_address' ? (selectedAddress ? '确认地址并生成订单' : '选择收货地址') : result.actionText}}
+    </button>
+  </view>
+
+  <view class="rules-section">
+    <text class="section-title">兑换说明</text>
+    <view wx:for="{{rules}}" wx:key="index" class="rule-row">
+      <text class="rule-index">{{index + 1}}</text>
+      <text class="rule-text">{{item}}</text>
+    </view>
+  </view>
+
+  <view class="records-section">
+    <view class="section-head">
+      <text class="section-title">最近记录</text>
+      <text wx:if="{{records.length > 0}}" class="section-count">{{records.length}} 条</text>
+    </view>
+    <view wx:if="{{records.length > 0}}" class="record-list">
+      <view wx:for="{{records}}" wx:key="id" class="record-item" data-index="{{index}}" bindtap="onRecordTap">
+        <view class="record-main">
+          <text class="record-title">{{item.title}}</text>
+          <text class="record-time">{{item.timeText}}</text>
+        </view>
+        <view class="record-side">
+          <text class="record-value">{{item.valueText}}</text>
+          <text wx:if="{{item.nextAction === 'select_address'}}" class="record-action-text">去处理</text>
+        </view>
+      </view>
+    </view>
+    <view wx:else class="empty-record">
+      <text>暂无兑换记录</text>
+    </view>
+  </view>
+
+  <view class="contact-row">
+    <text>兑换遇到问题？</text>
+    <button class="contact-link contact-btn" open-type="contact" session-from="gift-card">联系客服</button>
+  </view>
+</view>
