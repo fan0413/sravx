@@ -1,5 +1,4 @@
 import process from 'node:process';
-import readline from 'node:readline/promises';
 
 function argumentValue(name) {
   const position = process.argv.indexOf(name);
@@ -25,23 +24,48 @@ if (!apply) {
   process.exit(0);
 }
 
+async function readHiddenLine(label) {
+  if (!process.stdin.isTTY || !process.stdout.isTTY || typeof process.stdin.setRawMode !== 'function') throw new Error('A terminal is required for --prompt-password.');
+  const input = process.stdin;
+  const wasRaw = input.isRaw;
+  process.stdout.write(label);
+  input.setRawMode(true);
+  input.resume();
+  input.setEncoding('utf8');
+  return new Promise((resolve, reject) => {
+    let value = '';
+    const finish = (cause, result) => {
+      input.off('data', onData);
+      input.setRawMode(Boolean(wasRaw));
+      process.stdout.write('\n');
+      if (cause) reject(cause); else resolve(result);
+    };
+    const onData = (chunk) => {
+      for (const character of chunk) {
+        if (character === '\u0003') return finish(new Error('Password input cancelled.'));
+        if (character === '\r' || character === '\n') return finish(null, value);
+        if (character === '\u007f' || character === '\b') {
+          if (value.length) {
+            value = value.slice(0, -1);
+            process.stdout.write('\b \b');
+          }
+          continue;
+        }
+        if (character >= ' ') {
+          value += character;
+          process.stdout.write('*');
+        }
+      }
+    };
+    input.on('data', onData);
+  });
+}
+
 async function readHiddenPassword() {
-  if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error('A terminal is required for --prompt-password.');
-  const terminal = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-  const originalWrite = terminal._writeToOutput.bind(terminal);
-  terminal._writeToOutput = (text) => {
-    if (text !== '\n' && text !== '\r\n') originalWrite('*');
-  };
-  try {
-    const first = await terminal.question('Administrator password: ');
-    originalWrite('\n');
-    const second = await terminal.question('Confirm password: ');
-    originalWrite('\n');
-    if (first !== second) throw new Error('Passwords do not match.');
-    return first;
-  } finally {
-    terminal.close();
-  }
+  const first = await readHiddenLine('Administrator password: ');
+  const second = await readHiddenLine('Confirm password: ');
+  if (first !== second) throw new Error('Passwords do not match.');
+  return first;
 }
 
 const password = promptPassword ? await readHiddenPassword() : requiredEnvironment('ADMIN_BOOTSTRAP_PASSWORD');
