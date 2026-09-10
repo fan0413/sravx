@@ -1,4 +1,5 @@
 import { callCloudFunction, getTempFileUrlMap, uploadFileToCloud } from "../lib/cloudbase";
+import { targetAdminModeEnabled, targetAdminRequest } from "../lib/target-admin-auth";
 import type {
   BannerRow,
   CategoryRow,
@@ -441,6 +442,7 @@ export async function fetchProducts(query: ProductQuery): Promise<ProductRow[]> 
 }
 
 export async function fetchAdminProducts(query: ProductQuery): Promise<AdminProductListResult> {
+  if (targetAdminModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), categoryId: query.categoryId, status: query.status, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminProductListResult>(`/api/v1/admin/products?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<AdminProductListResult>>("admin-product", {
     action: "list",
     keyword: (query.keyword || "").trim(),
@@ -894,6 +896,7 @@ function normalizeAdminCategory(item: CloudCategory): CategoryRow {
 }
 
 export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<AdminCategoryListResult> {
+  if (targetAdminModeEnabled()) { const p = new URLSearchParams(); if (query.keyword?.trim()) p.set("keyword", query.keyword.trim()); if (query.is_show !== undefined && query.is_show !== "") p.set("isShow", String(query.is_show)); return targetAdminRequest<AdminCategoryListResult>(`/api/v1/admin/categories?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<{ list: CloudCategory[]; total: number }>>(
     "admin-category",
     {
@@ -1695,6 +1698,7 @@ export interface AdminBannerInput {
 }
 
 export async function fetchAdminBanners(query: AdminBannerQuery = {}): Promise<AdminBannerListResult> {
+  if (targetAdminModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), position: query.position?.trim(), isActive: query.is_active, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminBannerListResult>(`/api/v1/admin/banners?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<AdminBannerListResult>>("admin-banner", {
     action: "list",
     keyword: (query.keyword || "").trim(),
@@ -2043,3 +2047,5 @@ export async function sfHealth(): Promise<SfHealthResult> {
   });
   return unwrapCloudResponse(result, "顺丰配置检查失败");
 }
+
+
