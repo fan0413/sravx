@@ -4,6 +4,9 @@ App({
     isRegistered: false,
     isLoggedIn: false,
     cloudEnvId: 'cloud1-8gk3bptqefbf01d6',
+    // Read-only API migration remains disabled until the new HTTPS endpoint is
+    // accepted in the mini program's request-domain configuration.
+    readOnlyApiMigration: { enabled: false, baseUrl: '' },
     hasPhoneAuth: false,
     userProfileUpdated: false
   },

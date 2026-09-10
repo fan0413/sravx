@@ -13,6 +13,37 @@ const app = getApp()
  */
 const PAYMENT_API_BASE = 'https://payment-api-248775-6-1419382340.sh.run.tcloudbase.com'
 
+function getReadOnlyApiBase() {
+  const config = app && app.globalData && app.globalData.readOnlyApiMigration
+  if (!config || config.enabled !== true || typeof config.baseUrl !== 'string') return null
+  const baseUrl = config.baseUrl.trim().replace(/\/$/, '')
+  return /^https:\/\//.test(baseUrl) ? baseUrl : null
+}
+
+function requestReadOnlyApi(path) {
+  const baseUrl = getReadOnlyApiBase()
+  if (!baseUrl) return null
+  return new Promise((resolve, reject) => {
+    wx.request({
+      url: `${baseUrl}${path}`,
+      method: 'GET',
+      header: { Accept: 'application/json' },
+      success: (res) => {
+        const body = res.data
+        if (res.statusCode >= 200 && res.statusCode < 300 && body && body.success) return resolve(body.data)
+        const detail = body && body.error
+        reject({ message: (detail && detail.message) || '目录服务暂不可用', code: (detail && detail.code) || 'CATALOG_API_ERROR', statusCode: res.statusCode })
+      },
+      fail: (err) => reject({ message: err.errMsg || '目录服务网络错误', code: 'CATALOG_API_NETWORK_ERROR' })
+    })
+  })
+}
+
+function migratedRead(path, legacyRequest) {
+  const request = requestReadOnlyApi(path)
+  return request || legacyRequest()
+}
+
 /**
  * 获取全局 openid
  */
@@ -233,7 +264,7 @@ function getMemberLevel() {
  * 获取首页数据
  */
 function getHomeProducts() {
-  return callFunction('product', { action: 'home' })
+  return migratedRead('/api/v1/catalog/home', () => callFunction('product', { action: 'home' }))
 }
 
 /**
@@ -241,7 +272,8 @@ function getHomeProducts() {
  * @param {Object} params - { categoryId, page, pageSize, keyword }
  */
 function getProductList(params = {}) {
-  return callFunction('product', { action: 'list', ...params })
+  const query = Object.entries(params).filter(([, value]) => value !== undefined && value !== null && value !== '').map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`).join('&')
+  return migratedRead(`/api/v1/catalog/products${query ? `?${query}` : ''}`, () => callFunction('product', { action: 'list', ...params }))
 }
 
 /**
@@ -249,7 +281,7 @@ function getProductList(params = {}) {
  * @param {number} id - 商品ID
  */
 function getProductDetail(id) {
-  return callFunction('product', { action: 'detail', id })
+  return migratedRead(`/api/v1/catalog/products/${encodeURIComponent(id)}`, () => callFunction('product', { action: 'detail', id }))
 }
 
 /**
@@ -257,6 +289,8 @@ function getProductDetail(id) {
  * @param {number} categoryId - 分类ID（0=全部）
  */
 function getPointsProducts(categoryId = 0) {
+  const target = requestReadOnlyApi(`/api/v1/catalog/points-products?categoryId=${encodeURIComponent(Number(categoryId) || 0)}`)
+  if (target) return target
   return callFunction('product', { action: 'pointsList', categoryId: Number(categoryId) || 0 }, false)
     .catch((err) => {
       if (isUnknownActionError(err)) {
@@ -277,6 +311,8 @@ function isUnknownActionError(err) {
  * @param {number} id - 积分商品ID（points_products.id）
  */
 function getPointsProductDetail(id) {
+  const target = requestReadOnlyApi(`/api/v1/catalog/points-products/${encodeURIComponent(id)}`)
+  if (target) return target
   return callFunction('product', { action: 'pointsDetail', id }, false)
     .catch((err) => {
       if (isUnknownActionError(err)) {
@@ -292,14 +328,14 @@ function getPointsProductDetail(id) {
  * 获取分类列表
  */
 function getCategoryList() {
-  return callFunction('category', { action: 'list' })
+  return migratedRead('/api/v1/catalog/categories', () => callFunction('category', { action: 'list' }))
 }
 
 /**
  * 获取分类树形结构
  */
 function getCategoryTree() {
-  return callFunction('category', { action: 'tree' })
+  return migratedRead('/api/v1/catalog/categories', () => callFunction('category', { action: 'tree' }))
 }
 
 // ==================== 轮播图模块 ====================
@@ -309,7 +345,7 @@ function getCategoryTree() {
  * @param {string} position - 位置，如 'home'
  */
 function getBanners(position = 'home') {
-  return callFunction('banner', { position })
+  return migratedRead(`/api/v1/catalog/banners?position=${encodeURIComponent(position)}`, () => callFunction('banner', { position }))
 }
 
 // ==================== 支付模块（云函数代理到 CloudRun payment-api）====================
