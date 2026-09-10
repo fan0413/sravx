@@ -147,6 +147,48 @@ test('administrator requests use the independent session repository', async (t) 
   assert.equal(response.status, 401);
 });
 
+test('media upload intent requires a current catalog editor and persists only a controlled intent', async (t) => {
+  let stored;
+  const server = createServer({
+    sessionSecret: secret,
+    adminSessionRepository: { active: async () => true },
+    adminRepository: { hasRole: async ({ adminAccountId, roleCode }) => adminAccountId === 7 && roleCode === 'catalog_editor' },
+    mediaIntentRepository: { create: async (value) => { stored = value; } }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/media/upload-intents`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ mediaType: 'product', contentType: 'image/jpeg', byteSize: 42, sha256: 'c'.repeat(64) })
+  });
+  assert.equal(response.status, 201);
+  assert.equal(stored.adminAccountId, 7);
+  assert.match(stored.intent.objectKey, /^catalog\/products\/.+\.jpg$/);
+  assert.equal((await response.json()).data.contentSha256, 'c'.repeat(64));
+});
+
+test('media upload intent rejects an administrator without the catalog role', async (t) => {
+  const server = createServer({
+    sessionSecret: secret,
+    adminSessionRepository: { active: async () => true },
+    adminRepository: { hasRole: async () => false },
+    mediaIntentRepository: { create: async () => { throw new Error('must not persist'); } }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const token = issueSession({ subject: 8, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/media/upload-intents`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ mediaType: 'product', contentType: 'image/jpeg', byteSize: 42, sha256: 'c'.repeat(64) })
+  });
+  assert.equal(response.status, 403);
+});
+
 test('profile route uses only the signed session subject', async (t) => {
   let requestedUserId;
   const userRepository = { getUserProfile: async (userId) => {
