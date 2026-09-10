@@ -1,0 +1,17 @@
+{
+  "name": "sravx-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local-only migration API skeleton. It must not be deployed until the migration gates pass.",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "mysql2": "3.24.4"
+  }
+}
