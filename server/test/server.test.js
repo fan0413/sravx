@@ -192,23 +192,21 @@ test('user repository resolves an existing active user with bound SQL parameters
     release: () => calls.push('release'),
     execute: async (sql, values) => {
       calls.push({ sql, values });
-      if (sql.startsWith('SELECT')) return [[{ id: 11, status: 'active' }]];
+      if (sql.includes('FROM user_identities')) return [[]];
+      if (sql.includes('FROM users')) return [[{ id: 11, status: 'active' }]];
       return [{ affectedRows: 1 }];
     }
   };
   const repository = createMysqlUserRepository({ getConnection: async () => connection });
   const user = await repository.resolveUser({ openid: 'trusted-openid', unionid: 'trusted-unionid' });
   assert.deepEqual(user, { id: 11, role: 'customer' });
-  assert.deepEqual(calls[1].values, ['trusted-openid']);
-  assert.match(calls[1].sql, /WHERE openid = \?/);
-  assert.deepEqual(calls[2].values, [11]);
-  assert.deepEqual(calls, [
-    'begin',
-    calls[1],
-    calls[2],
-    'commit',
-    'release'
-  ]);
+  assert.deepEqual(calls[1].values, ['wechat_unionid', 'trusted-unionid', 'wechat_miniprogram_openid', 'trusted-openid']);
+  assert.match(calls[1].sql, /FROM user_identities/);
+  assert.deepEqual(calls[2].values, ['trusted-openid', 'trusted-unionid']);
+  assert.match(calls[2].sql, /WHERE openid = \? OR/);
+  assert.deepEqual(calls[3].values, [11, 'wechat_unionid', 'trusted-unionid']);
+  assert.deepEqual(calls[4].values, [11, 'wechat_miniprogram_openid', 'trusted-openid']);
+  assert.deepEqual(calls[5].values, [11]);
 });
 
 test('user repository creates a new user with the mandatory identity columns', async () => {
@@ -227,9 +225,9 @@ test('user repository creates a new user with the mandatory identity columns', a
   const repository = createMysqlUserRepository({ getConnection: async () => connection });
   const user = await repository.resolveUser({ openid: 'trusted-openid' });
   assert.deepEqual(user, { id: 19, role: 'customer' });
-  assert.match(calls[2].sql, /openid, unionid, _openid, status, last_login_at/);
-  assert.deepEqual(calls[2].values, ['trusted-openid', null, 'trusted-openid']);
-  assert.deepEqual(calls, ['begin', calls[1], calls[2], 'commit', 'release']);
+  assert.match(calls[3].sql, /openid, unionid, _openid, status, last_login_at/);
+  assert.deepEqual(calls[3].values, ['trusted-openid', null, 'trusted-openid']);
+  assert.deepEqual(calls[4].values, [19, 'wechat_miniprogram_openid', 'trusted-openid']);
 });
 
 test('catalog repository binds filters and caps pagination without writing', async () => {
