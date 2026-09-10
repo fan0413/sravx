@@ -18,6 +18,17 @@ export function createCosUploadSigner({ secretId, secretKey, bucket, region, cre
           resolve(data.Url);
         });
       });
+    },
+    async verifyObject(intent) {
+      if (!intent?.objectKey || !intent?.contentType || !Number.isInteger(intent.byteSize)) throw new Error('A valid upload intent is required.');
+      const data = await new Promise((resolve, reject) => {
+        client.headObject({ Bucket, Region, Key: intent.objectKey }, (cause, result) => cause ? reject(cause) : resolve(result));
+      });
+      const headers = data?.headers || {};
+      const byteSize = Number(headers['content-length']);
+      const contentType = String(headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase();
+      if (byteSize !== intent.byteSize || contentType !== intent.contentType) throw new Error('Uploaded object metadata did not match its intent.');
+      return true;
     }
   });
 }

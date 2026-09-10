@@ -192,6 +192,42 @@ test('media upload intent rejects an administrator without the catalog role', as
   assert.equal(response.status, 403);
 });
 
+test('media confirmation verifies the object before changing the intent state', async (t) => {
+  let confirmed;
+  const intent = { id: '5c2973d3-8344-4d56-83c6-6ee73af60d05', objectKey: 'catalog/products/test.jpg', contentType: 'image/jpeg', byteSize: 42, expiresAt: new Date(Date.now() + 60_000) };
+  const server = createServer({
+    sessionSecret: secret,
+    adminSessionRepository: { active: async () => true },
+    adminRepository: { hasRole: async () => true },
+    mediaSigner: { verifyObject: async (value) => assert.equal(value, intent) },
+    mediaIntentRepository: { getPending: async () => intent, confirm: async ({ id }) => { confirmed = id; return true; } }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/media/upload-intents/${intent.id}/confirm`, { method: 'POST', headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.equal(confirmed, intent.id);
+});
+
+test('media confirmation leaves the intent pending when object verification fails', async (t) => {
+  const intent = { id: 'ca171ea2-89c0-49d9-86a2-b7ce9c7b11dc', objectKey: 'catalog/products/test.jpg', contentType: 'image/jpeg', byteSize: 42, expiresAt: new Date(Date.now() + 60_000) };
+  const server = createServer({
+    sessionSecret: secret,
+    adminSessionRepository: { active: async () => true },
+    adminRepository: { hasRole: async () => true },
+    mediaSigner: { verifyObject: async () => { throw new Error('COS mismatch'); } },
+    mediaIntentRepository: { getPending: async () => intent, confirm: async () => { throw new Error('must not confirm'); } }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/media/upload-intents/${intent.id}/confirm`, { method: 'POST', headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 409);
+});
+
 test('COS signer only signs the server-generated key and content type', async () => {
   let request;
   const signer = createCosUploadSigner({

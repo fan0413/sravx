@@ -181,6 +181,30 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
           return send(response, result.status, result.body);
         }
       }
+      const confirmation = /^\/api\/v1\/admin\/media\/upload-intents\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/confirm$/i.exec(url.pathname);
+      if (request.method === 'POST' && confirmation) {
+        if (!adminRepository || typeof adminRepository.hasRole !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getPending !== 'function' || typeof mediaIntentRepository.confirm !== 'function' || !mediaSigner || typeof mediaSigner.verifyObject !== 'function') {
+          const result = error('ADMIN_MEDIA_NOT_READY', '后台媒体服务尚未配置', 503);
+          return send(response, result.status, result.body);
+        }
+        if (!await adminRepository.hasRole({ adminAccountId: session.subject, roleCode: 'catalog_editor' })) {
+          const result = error('FORBIDDEN', '需要目录编辑权限', 403);
+          return send(response, result.status, result.body);
+        }
+        const intent = await mediaIntentRepository.getPending({ adminAccountId: session.subject, id: confirmation[1] });
+        if (!intent) {
+          const result = error('MEDIA_INTENT_NOT_FOUND', '上传意图不存在、已过期或已确认', 404);
+          return send(response, result.status, result.body);
+        }
+        try {
+          await mediaSigner.verifyObject(intent);
+          if (!await mediaIntentRepository.confirm({ adminAccountId: session.subject, id: intent.id })) throw new Error('Upload intent was no longer pending.');
+          return send(response, 200, { success: true, data: { id: intent.id, status: 'confirmed' } });
+        } catch {
+          const result = error('MEDIA_OBJECT_NOT_VERIFIED', '图片对象未通过服务端核验', 409);
+          return send(response, result.status, result.body);
+        }
+      }
       const result = error('NOT_IMPLEMENTED', '管理端接口尚未实现', 501);
       return send(response, result.status, result.body);
     }
