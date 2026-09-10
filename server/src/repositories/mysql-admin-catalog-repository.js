@@ -133,6 +133,25 @@ export function createMysqlAdminCatalogRepository(pool) {
         );
         await connection.commit(); return { id };
       } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
+    },
+    async updateProduct(id, input) {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        const [result] = await connection.execute(
+          `UPDATE products SET name=?, short_name=?, \`desc\`=?, price=?, category_id=?, cover_image=COALESCE(?,cover_image), stock=?, warranty_months=?, has_spec=?, is_on_sale=?, is_recommend=?, allow_coupon=?, shipping_type=?, ship_deadline_days=?, shipping_promise=?, shipping_delay_reason=?, shipping_note=?, sort_order=? WHERE id=? AND deleted_at IS NULL`,
+          [input.name, input.shortName, input.description, input.price, input.categoryId, input.coverImage, input.stock, input.warrantyMonths, input.hasSpec, input.isOnSale, input.isRecommend, input.allowCoupon, input.shippingType, input.shipDeadlineDays, input.shippingPromise, input.shippingDelayReason, input.shippingNote, input.sortOrder, id]
+        );
+        if (result.affectedRows !== 1) { await connection.rollback(); return false; }
+        const [coverRows] = await connection.execute('SELECT cover_image AS coverImage FROM products WHERE id = ? LIMIT 1', [id]);
+        await connection.execute('DELETE FROM product_specs WHERE product_id = ?', [id]);
+        for (const spec of input.specs) await connection.execute(`INSERT INTO product_specs (product_id,name,sku,shipping_type,ship_deadline_days,shipping_promise,shipping_delay_reason,shipping_note,card_image,price,sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?)`, [id,spec.name,spec.sku,spec.shippingType,spec.shipDeadlineDays,spec.shippingPromise,spec.shippingDelayReason,spec.shippingNote,coverRows[0]?.coverImage || '',spec.price,spec.sortOrder]);
+        await connection.commit(); return true;
+      } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
+    },
+    async deleteProduct(id) {
+      const [result] = await pool.execute('UPDATE products SET deleted_at = UTC_TIMESTAMP(), is_on_sale = 0 WHERE id = ? AND deleted_at IS NULL', [id]);
+      return result.affectedRows === 1;
     }
   });
 }

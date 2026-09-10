@@ -305,6 +305,17 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         } catch { const result = error('INVALID_REQUEST', '商品、规格、履约信息或关联图片无效', 400); return send(response, result.status, result.body); }
       }
       const productDetail = /^\/api\/v1\/admin\/products\/(\d+)$/.exec(url.pathname);
+      if (productDetail && request.method === 'PUT') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.updateProduct !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try { const input = productInput(await readJsonBody(request), { existing: true }); let coverImage = null; if (input.coverImageIntentId) { const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id: input.coverImageIntentId }); if (!media || !media.objectKey.startsWith('catalog/products/')) throw new Error('Unverified media.'); coverImage = media.objectKey; } if (!await adminCatalogRepository.updateProduct(Number(productDetail[1]), { ...input, coverImage })) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); } return send(response, 200, { success: true, data: { id: Number(productDetail[1]) } }); } catch { const result = error('INVALID_REQUEST', '商品、规格、履约信息或关联图片无效', 400); return send(response, result.status, result.body); }
+      }
+      if (productDetail && request.method === 'DELETE') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.deleteProduct !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        if (!await adminCatalogRepository.deleteProduct(Number(productDetail[1]))) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data: { id: Number(productDetail[1]) } });
+      }
       if (request.method === 'GET' && productDetail) {
         if (!adminCatalogRepository || typeof adminCatalogRepository.getProduct !== 'function') {
           const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
