@@ -30,7 +30,7 @@ function error(code, message, status) {
   return { status, body: { success: false, error: { code, message } } };
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, mediaIntentRepository = null, mediaSigner = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
     const authenticatedSession = async () => {
@@ -161,15 +161,54 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         const result = error('FORBIDDEN', '需要管理员权限', 403);
         return send(response, result.status, result.body);
       }
+      const requireCatalogEditor = async () => {
+        if (!adminRepository || typeof adminRepository.hasRole !== 'function' || !await adminRepository.hasRole({ adminAccountId: session.subject, roleCode: 'catalog_editor' })) {
+          const result = error('FORBIDDEN', '需要目录编辑权限', 403);
+          send(response, result.status, result.body);
+          return false;
+        }
+        return true;
+      };
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/categories') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.listCategories !== 'function') {
+          const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
+        }
+        if (!await requireCatalogEditor()) return;
+        const isShow = url.searchParams.get('isShow');
+        return send(response, 200, { success: true, data: await adminCatalogRepository.listCategories({ keyword: url.searchParams.get('keyword') || '', isShow: isShow === null || isShow === '' ? undefined : Number(isShow), page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/banners') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.listBanners !== 'function') {
+          const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
+        }
+        if (!await requireCatalogEditor()) return;
+        const isActive = url.searchParams.get('isActive');
+        return send(response, 200, { success: true, data: await adminCatalogRepository.listBanners({ keyword: url.searchParams.get('keyword') || '', position: url.searchParams.get('position') || '', isActive: isActive === null || isActive === '' ? undefined : Number(isActive), page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/products') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.listProducts !== 'function') {
+          const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
+        }
+        if (!await requireCatalogEditor()) return;
+        const status = url.searchParams.get('status');
+        return send(response, 200, { success: true, data: await adminCatalogRepository.listProducts({ keyword: url.searchParams.get('keyword') || '', categoryId: url.searchParams.get('categoryId'), status: status === null || status === '' ? undefined : Number(status), lowStock: url.searchParams.get('lowStock'), sku: url.searchParams.get('sku') || '', shippingType: url.searchParams.get('shippingType') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      const productDetail = /^\/api\/v1\/admin\/products\/(\d+)$/.exec(url.pathname);
+      if (request.method === 'GET' && productDetail) {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.getProduct !== 'function') {
+          const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
+        }
+        if (!await requireCatalogEditor()) return;
+        const product = await adminCatalogRepository.getProduct(productDetail[1]);
+        if (!product) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data: product });
+      }
       if (request.method === 'POST' && url.pathname === '/api/v1/admin/media/upload-intents') {
         if (!adminRepository || typeof adminRepository.hasRole !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.create !== 'function' || !mediaSigner || typeof mediaSigner.issuePutUrl !== 'function') {
           const result = error('ADMIN_MEDIA_NOT_READY', '后台媒体服务尚未配置', 503);
           return send(response, result.status, result.body);
         }
-        if (!await adminRepository.hasRole({ adminAccountId: session.subject, roleCode: 'catalog_editor' })) {
-          const result = error('FORBIDDEN', '需要目录编辑权限', 403);
-          return send(response, result.status, result.body);
-        }
+        if (!await requireCatalogEditor()) return;
         try {
           const intent = createUploadIntent(await readJsonBody(request));
           const uploadUrl = await mediaSigner.issuePutUrl(intent);
@@ -187,10 +226,7 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
           const result = error('ADMIN_MEDIA_NOT_READY', '后台媒体服务尚未配置', 503);
           return send(response, result.status, result.body);
         }
-        if (!await adminRepository.hasRole({ adminAccountId: session.subject, roleCode: 'catalog_editor' })) {
-          const result = error('FORBIDDEN', '需要目录编辑权限', 403);
-          return send(response, result.status, result.body);
-        }
+        if (!await requireCatalogEditor()) return;
         const intent = await mediaIntentRepository.getPending({ adminAccountId: session.subject, id: confirmation[1] });
         if (!intent) {
           const result = error('MEDIA_INTENT_NOT_FOUND', '上传意图不存在、已过期或已确认', 404);

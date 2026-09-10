@@ -8,6 +8,7 @@ import { createMysqlSessionRepository } from './repositories/mysql-session-repos
 import { createMysqlAdminRepository } from './repositories/mysql-admin-repository.js';
 import { createMysqlAdminSessionRepository } from './repositories/mysql-admin-session-repository.js';
 import { createMysqlMediaIntentRepository } from './repositories/mysql-media-intent-repository.js';
+import { createMysqlAdminCatalogRepository } from './repositories/mysql-admin-catalog-repository.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
 import { createServer } from './server.js';
@@ -58,6 +59,7 @@ export async function createRuntimeServer(environment = process.env) {
   const adminRepository = createMysqlAdminRepository(pool);
   const adminSessionRepository = createMysqlAdminSessionRepository(pool);
   const mediaIntentRepository = createMysqlMediaIntentRepository(pool);
+  const adminCatalogRepository = createMysqlAdminCatalogRepository(pool);
   const mediaSigner = await createOptionalCosSigner(environment);
   const loginService = createLoginService({
     codeExchange,
@@ -70,5 +72,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, userRepository, catalogRepository, addressRepository, sessionRepository, adminSessionRepository, adminRepository, mediaIntentRepository, mediaSigner });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, userRepository, catalogRepository, addressRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, mediaIntentRepository, mediaSigner });
 }

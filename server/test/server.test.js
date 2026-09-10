@@ -7,6 +7,7 @@ import { createWechatCodeExchange } from '../src/auth/wechat-code-exchange.js';
 import { createWechatIdentityRequester } from '../src/auth/wechat-identity-requester.js';
 import { createMysqlUserRepository } from '../src/repositories/mysql-user-repository.js';
 import { createMysqlCatalogRepository } from '../src/repositories/mysql-catalog-repository.js';
+import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-admin-catalog-repository.js';
 import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
@@ -66,7 +67,7 @@ test('admin routes accept only an admin session before reporting unimplemented',
   const { server, baseUrl } = await start();
   t.after(() => server.close());
   const adminToken = issueSession({ subject: 9, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
-  const response = await fetch(`${baseUrl}/api/v1/admin/products`, { headers: { authorization: `Bearer ${adminToken}` } });
+  const response = await fetch(`${baseUrl}/api/v1/admin/unknown`, { headers: { authorization: `Bearer ${adminToken}` } });
   assert.equal(response.status, 501);
   assert.equal((await response.json()).error.code, 'NOT_IMPLEMENTED');
 });
@@ -487,4 +488,28 @@ test('media intent repository persists only a server-generated intent', async ()
   assert.equal(await repository.create({ adminAccountId: 8, intent }), intent);
   assert.match(query.sql, /^INSERT INTO media_upload_intents/);
   assert.deepEqual(query.values.slice(0, 2), ['intent-2', 8]);
+});
+
+
+test('administrator catalog list endpoints require catalog editor and return repository output', async (t) => {
+  const repository = { listCategories: async (query) => ({ list: [{ id: 1, name: '剪刀' }], total: 1, query }), listBanners: async () => ({ list: [], total: 0 }), listProducts: async () => ({ list: [], total: 0 }), getProduct: async (id) => ({ id: Number(id), specs: [] }) };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async ({ adminAccountId, roleCode }) => adminAccountId === 7 && roleCode === 'catalog_editor' }, adminCatalogRepository: repository });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories?keyword=%E5%89%AA%E5%88%80&page=2`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.data.total, 1);
+  assert.equal(body.data.query.keyword, '剪刀');
+  assert.equal(body.data.query.page, '2');
+});
+
+test('administrator catalog repository uses bound filters and keeps deleted rows out', async () => {
+  const calls = [];
+  const repository = createMysqlAdminCatalogRepository({ execute: async (sql, values = []) => { calls.push({ sql, values }); return sql.includes('COUNT(*)') ? [[{ total: 0 }]] : [[]]; } });
+  assert.deepEqual(await repository.listProducts({ keyword: '剪刀', categoryId: '3', status: 1, sku: 'SKU', page: 2, pageSize: 999 }), { list: [], total: 0 });
+  assert.match(calls[0].sql, /p\.deleted_at IS NULL/);
+  assert.match(calls[0].sql, /p\.category_id = \?/);
+  assert.match(calls[0].sql, /ps\.sku LIKE \?/);
+  assert.deepEqual(calls[0].values.slice(-2), [100, 100]);
 });
