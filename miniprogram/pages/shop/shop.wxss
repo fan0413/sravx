@@ -1,7 +1,7 @@
 .shop-container {
   display: flex;
   height: 100%;
-  background: #FFFFFF;
+  background: #F5F5F7;
 }
 
 /* ====== Sidebar ====== */
@@ -9,7 +9,7 @@
 .sidebar {
   width: 156rpx;
   height: 100%;
-  background: var(--color-bg-secondary);
+  background: #ECEDEF;
   flex-shrink: 0;
 }
 
@@ -25,7 +25,7 @@
 }
 
 .sidebar-active {
-  background: #FFFFFF;
+  background: rgba(255, 255, 255, 0.92);
   color: var(--color-primary);
   font-weight: 600;
 }
@@ -46,13 +46,13 @@
 .product-area {
   flex: 1;
   height: 100%;
-  background: #FFFFFF;
+  background: #F5F5F7;
 }
 
 /* ====== Section Anchor & Title ====== */
 
 .section-anchor {
-  padding: 28rpx 20rpx 16rpx;
+  padding: 36rpx 24rpx 18rpx;
 }
 
 .section-title {
@@ -67,7 +67,7 @@
 .area-grid {
   display: flex;
   flex-wrap: wrap;
-  padding: 0 12rpx 14rpx;
+  padding: 0 16rpx 18rpx;
 }
 
 .shop-product-card {
@@ -75,9 +75,9 @@
   margin: 0 0.75% 18rpx;
   padding-bottom: 4rpx;
   background: #fff;
-  border-radius: 12rpx;
+  border-radius: 20rpx;
   overflow: hidden;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+  box-shadow: 0 8rpx 22rpx rgba(29, 29, 31, 0.06);
 }
 
 .shop-product-card:active {
@@ -121,10 +121,10 @@
   display: block;
   font-size: 22rpx;
   font-weight: 500;
-  color: #000000;
+  color: var(--color-primary);
   line-height: 1.4;
   text-align: center;
-  padding: 6rpx 8rpx 4rpx;
+  padding: 12rpx 10rpx 12rpx;
   min-height: 58rpx;
   overflow: hidden;
   text-overflow: ellipsis;

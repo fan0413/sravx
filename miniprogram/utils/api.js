@@ -646,6 +646,26 @@ function getWarrantyInfo(sn) {
 }
 
 /**
+ * 获取某把已绑定剪刀的售后记录与卖家留言（需要登录）
+ * @param {number} bindingId 用户剪刀绑定记录 ID
+ */
+function getScissorsAfterSale(bindingId) {
+  return callFunction('scissors', { action: 'afterSaleDetail', bindingId }, true)
+}
+
+/**
+ * 提交剪刀维修或置换申请（需要登录）
+ * @param {Object} params - { bindingId, serviceType, description }
+ */
+function applyScissorsAfterSale(params) {
+  return callFunction('scissors', { action: 'afterSaleApply', ...params }, true)
+}
+
+function submitScissorsAfterSaleShipping(params) {
+  return callFunction('scissors', { action: 'afterSaleShip', ...params }, true)
+}
+
+/**
  * 提交合作咨询
  */
 function submitCooperation(formData) {
@@ -722,6 +742,9 @@ module.exports = {
   bindScissors,
   unbindScissors,
   getWarrantyInfo,
+  getScissorsAfterSale,
+  applyScissorsAfterSale,
+  submitScissorsAfterSaleShipping,
 
   // 合作咨询
   submitCooperation

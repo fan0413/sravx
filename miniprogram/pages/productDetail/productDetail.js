@@ -169,14 +169,16 @@ Page({
       return [{
         name: '默认规格',
         image: fallbackImage || '/images/logo.png',
-        priceText: basePrice.toFixed(2)
+        priceText: basePrice.toFixed(2),
+        sku: ''
       }]
     }
 
     return specs.map(spec => ({
       name: spec.name,
       image: spec.image || fallbackImage || '/images/logo.png',
-      priceText: (spec.price > 0 ? spec.price : basePrice).toFixed(2)
+      priceText: (spec.price > 0 ? spec.price : basePrice).toFixed(2),
+      sku: String(spec.sku || '')
     }))
   },
 

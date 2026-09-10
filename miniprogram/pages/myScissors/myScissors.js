@@ -66,10 +66,11 @@ Page({
 
   onCardTap(e) {
     const item = e.currentTarget.dataset.item
-    const image = item && (item.card_image || item.image)
-    if (!image) return
-    const urls = [image].filter(Boolean)
-    wx.previewImage({ current: urls[0], urls })
+    const bindingId = Number(item && item.id)
+    if (!bindingId) return
+    wx.navigateTo({
+      url: `/pages/scissorsAfterSale/scissorsAfterSale?bindingId=${bindingId}`
+    })
   },
 
   onShowBindModal() {

@@ -107,63 +107,76 @@
 .member-badge {
   display: inline-flex;
   align-items: center;
-  padding: 8rpx 20rpx;
-  border-radius: 100rpx;
+  min-height: 44rpx;
+  padding: 0 14rpx 0 10rpx;
+  border: 1rpx solid transparent;
+  border-radius: 12rpx;
   align-self: flex-start;
+  box-shadow: none;
 }
 
-.member-badge text {
-  font-size: 22rpx;
-  color: #FFFFFF;
-  font-weight: 500;
-  letter-spacing: 0;
+.member-badge-mark {
+  width: 12rpx;
+  height: 12rpx;
+  margin-right: 8rpx;
+  border: 2rpx solid currentColor;
+  border-radius: 50%;
+  position: relative;
 }
 
 .level-normal {
-  background: linear-gradient(135deg, #9CA3AF, #6B7280);
+  background: #F1F1F3;
+  border-color: #D8D8DC;
+  color: #6E6E73;
 }
 
 .level-silver {
-  background: linear-gradient(135deg, #C0C0C0, #A8A8A8);
-  box-shadow: 0 2rpx 12rpx rgba(192,192,192,0.35);
+  background: #E3E3E6;
+  border-color: #CDCDD2;
+  color: #4E4E54;
 }
 
 .level-gold {
-  background: linear-gradient(135deg, #F5A623, #D48806);
-  box-shadow: 0 2rpx 16rpx rgba(245,166,35,0.4);
-}
-
-.level-gold text {
-  color: #FFF8E1;
-  text-shadow: 0 1rpx 2rpx rgba(212,136,6,0.3);
+  background: #EEE9DF;
+  border-color: #D6C7AF;
+  color: #746248;
 }
 
 .level-diamond {
-  background: linear-gradient(135deg, #7B68EE, #9370DB);
-  box-shadow: 0 2rpx 20rpx rgba(123,104,238,0.45);
-}
-
-.level-diamond text {
-  color: #F0E6FF;
-  text-shadow: 0 1rpx 3rpx rgba(123,104,238,0.4);
+  background: #3B3D42;
+  border-color: #56585D;
+  color: #F0EFEA;
 }
 
 .level-black-diamond {
-  background: linear-gradient(135deg, #2D2D2D, #4A4A4A);
-  box-shadow: 0 2rpx 20rpx rgba(0,0,0,0.35);
-}
-
-.level-black-diamond text {
-  color: #F5F5F5;
+  background: #1D1D1F;
+  border-color: #9A8566;
+  color: #F3EBDD;
+  box-shadow: 0 6rpx 16rpx rgba(29, 29, 31, 0.16);
 }
 
 .level-supreme {
-  background: linear-gradient(135deg, #8B5CF6, #EC4899);
-  box-shadow: 0 2rpx 20rpx rgba(236,72,153,0.35);
+  background: #111112;
+  border-color: #C8AE7D;
+  color: #F6ECD8;
+  box-shadow: 0 6rpx 18rpx rgba(29, 29, 31, 0.2);
 }
 
-.level-supreme text {
-  color: #FFF1FA;
+.member-badge-label {
+  font-size: 16rpx;
+  font-weight: 600;
+  letter-spacing: 1.8rpx;
+  color: currentColor;
+}
+
+.member-badge-level {
+  margin-left: 8rpx;
+  padding-left: 8rpx;
+  border-left: 1rpx solid currentColor;
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 0.5rpx;
+  color: currentColor;
 }
 
 /* ====== Asset Card ====== */

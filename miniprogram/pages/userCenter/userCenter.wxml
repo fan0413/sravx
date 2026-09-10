@@ -12,7 +12,9 @@
           <view class="edit-icon"></view>
         </view>
         <view class="member-badge {{levelClass}}" bindtap="onMemberTap">
-          <text>{{memberLevel}}</text>
+          <view class="member-badge-mark"></view>
+          <text class="member-badge-label">MEMBER</text>
+          <text class="member-badge-level">{{memberLevel}}</text>
         </view>
       </view>
     </view>

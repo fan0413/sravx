@@ -1,6 +1,6 @@
 .container {
   height: 100%;
-  background: #FFFFFF;
+  background: #F5F5F7;
 }
 
 /* ====== Search Bar (Frosted Glass) ====== */
@@ -69,20 +69,20 @@
 /* ====== Swiper ====== */
 
 .swiper-wrap {
-  padding: 0 32rpx;
+  padding: 8rpx 24rpx 0;
   position: relative;
 }
 
 .banner-swiper {
-  width: 686rpx;
-  height: 386rpx;
-  border-radius: 24rpx;
+  width: 702rpx;
+  height: 430rpx;
+  border-radius: 32rpx;
   overflow: hidden;
 }
 
 .banner-item {
-  width: 686rpx;
-  height: 386rpx;
+  width: 702rpx;
+  height: 430rpx;
   position: relative;
 }
 
@@ -135,7 +135,17 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 48rpx 32rpx 24rpx;
+  padding: 64rpx 32rpx 28rpx;
+}
+
+.section-kicker {
+  display: block;
+  margin-bottom: 10rpx;
+  font-size: 18rpx;
+  line-height: 1;
+  letter-spacing: 3rpx;
+  color: var(--color-accent);
+  font-weight: 600;
 }
 
 .section-title {
@@ -156,15 +166,15 @@
 .product-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16rpx;
+  gap: 20rpx;
   padding: 0 24rpx;
 }
 
 .product-card {
   background: var(--color-bg);
-  border-radius: 20rpx;
+  border-radius: 28rpx;
   overflow: hidden;
-  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+  box-shadow: 0 12rpx 28rpx rgba(29, 29, 31, 0.06);
   transition: transform 0.2s ease;
 }
 
@@ -176,7 +186,7 @@
   width: 100%;
   aspect-ratio: 1 / 1;
   position: relative;
-  background: var(--color-bg-secondary);
+  background: #ECEDEF;
 }
 
 .product-img {
@@ -200,7 +210,7 @@
 }
 
 .product-info {
-  padding: 20rpx;
+  padding: 22rpx 20rpx 24rpx;
 }
 
 .product-name {

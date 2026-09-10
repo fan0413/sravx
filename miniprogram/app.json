@@ -19,6 +19,7 @@
     "pages/membership/membership",
     "pages/addressManage/addressManage",
     "pages/myScissors/myScissors",
+    "pages/scissorsAfterSale/scissorsAfterSale",
     "pages/cooperation/cooperation",
     "pages/splash/splash",
     "pages/register/register"

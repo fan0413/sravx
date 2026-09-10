@@ -38,7 +38,10 @@
     </view>
 
     <view class="section-header">
-      <text class="section-title">精选产品</text>
+      <view>
+        <text class="section-kicker">CURATED FOR GROOMERS</text>
+        <text class="section-title">精选产品</text>
+      </view>
       <text class="section-more" bindtap="onSearchTap">查看全部</text>
     </view>
 

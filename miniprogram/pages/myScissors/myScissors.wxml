@@ -50,7 +50,7 @@
       <view class="sn-input-wrap">
         <input
           class="sn-input"
-          placeholder="例如: SP20260101001"
+          placeholder="例如：以SVB、SVP、SVM开头的SN码"
           placeholder-style="color:#C7C7CC;font-size:28rpx;line-height:88rpx;"
           value="{{snInput}}"
           bindinput="onSnInput"

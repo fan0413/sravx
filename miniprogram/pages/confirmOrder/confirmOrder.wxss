@@ -12,7 +12,9 @@
   left: 0;
   right: 0;
   z-index: 100;
-  background: #FFFFFF;
+  background: rgba(245, 245, 247, 0.88);
+  backdrop-filter: saturate(160%) blur(32rpx);
+  -webkit-backdrop-filter: saturate(160%) blur(32rpx);
   display: flex;
   align-items: flex-end;
   padding: 0 24rpx 12rpx;
@@ -58,7 +60,9 @@
   align-items: center;
   padding: 32rpx;
   background: #FFFFFF;
-  margin-bottom: 16rpx;
+  margin: 20rpx 20rpx 16rpx;
+  border-radius: 28rpx;
+  box-shadow: 0 8rpx 24rpx rgba(29, 29, 31, 0.05);
 }
 
 .address-icon-wrap {
@@ -137,12 +141,13 @@
 .section-product {
   background: #FFFFFF;
   padding: 24rpx 32rpx;
-  margin-bottom: 16rpx;
+  margin: 0 20rpx 16rpx;
+  border-radius: 28rpx;
 }
 
 .product-card {
-  background: #FAFAFA;
-  border-radius: 16rpx;
+  background: #F5F5F7;
+  border-radius: 20rpx;
   padding: 24rpx;
 }
 
@@ -237,7 +242,8 @@
   align-items: center;
   padding: 28rpx 32rpx;
   background: #FFFFFF;
-  margin-bottom: 16rpx;
+  margin: 0 20rpx 16rpx;
+  border-radius: 28rpx;
 }
 
 .section-coupon.disabled {
@@ -286,7 +292,7 @@
 }
 
 .coupon-tag {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: #EEE9DF;
   border-radius: 8rpx;
   padding: 6rpx 12rpx;
   flex-shrink: 0;
@@ -294,7 +300,7 @@
 
 .coupon-tag-text {
   font-size: 20rpx;
-  color: #FFFFFF;
+  color: var(--color-accent-dark);
   font-weight: 600;
 }
 
@@ -341,7 +347,8 @@
   align-items: center;
   padding: 28rpx 32rpx;
   background: #FFFFFF;
-  margin-bottom: 16rpx;
+  margin: 0 20rpx 16rpx;
+  border-radius: 28rpx;
 }
 
 .remark-input {
@@ -360,7 +367,8 @@
 .section-summary {
   background: #FFFFFF;
   padding: 24rpx 32rpx;
-  margin-bottom: 16rpx;
+  margin: 0 20rpx 16rpx;
+  border-radius: 28rpx;
 }
 
 .summary-row {
@@ -423,12 +431,12 @@
 .submit-btn {
   width: 220rpx;
   height: 84rpx;
-  background: linear-gradient(135deg, var(--color-accent) 0%, #E63946 100%);
+  background: var(--color-primary);
   border-radius: 42rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8rpx 24rpx rgba(225, 57, 70, 0.3);
+  box-shadow: 0 10rpx 28rpx rgba(29, 29, 31, 0.18);
 }
 
 .submit-btn:active {
@@ -504,13 +512,13 @@
 }
 
 .popup-coupon-card.selected {
-  border-color: #1d4ed8;
+  border-color: var(--color-accent);
   box-shadow: 0 4rpx 14rpx rgba(29, 78, 216, 0.12);
 }
 
 .popup-coupon-left {
   width: 150rpx;
-  background: linear-gradient(180deg, #2563eb, #1d4ed8);
+  background: var(--color-accent);
   color: #ffffff;
   display: flex;
   flex-direction: column;
