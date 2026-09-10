@@ -1,12 +1,23 @@
 import process from 'node:process';
+import { readFile } from 'node:fs/promises';
 
 function argumentValue(name) {
   const position = process.argv.indexOf(name);
   return position >= 0 ? process.argv[position + 1] : null;
 }
 
-function requiredEnvironment(name) {
-  const value = process.env[name];
+async function loadEnvironmentFile(path) {
+  const contents = await readFile(path, 'utf8');
+  const values = Object.create(null);
+  for (const line of contents.split(/\r?\n/)) {
+    const match = /^([A-Z0-9_]+)=(.*)$/.exec(line);
+    if (match) values[match[1]] = match[2];
+  }
+  return values;
+}
+
+function requiredEnvironment(environment, name) {
+  const value = environment[name];
   if (typeof value !== 'string' || value.trim() === '') throw new Error(`${name} must be set.`);
   return value;
 }
@@ -15,6 +26,7 @@ const apply = process.argv.includes('--apply');
 const promptPassword = process.argv.includes('--prompt-password');
 const username = argumentValue('--username');
 const roleCode = argumentValue('--role') || 'catalog_editor';
+const environmentFile = argumentValue('--env-file') || '/home/deploy/.config/sravx/mysql.env';
 
 if (!username || !/^[A-Za-z0-9_.-]{3,64}$/.test(username)) throw new Error('Username must contain 3-64 letters, numbers, dots, underscores, or hyphens.');
 if (!/^[a-z_]{3,64}$/.test(roleCode)) throw new Error('Role code is invalid.');
@@ -68,17 +80,19 @@ async function readHiddenPassword() {
   return first;
 }
 
-const password = promptPassword ? await readHiddenPassword() : requiredEnvironment('ADMIN_BOOTSTRAP_PASSWORD');
+const password = promptPassword ? await readHiddenPassword() : requiredEnvironment(process.env, 'ADMIN_BOOTSTRAP_PASSWORD');
 if (password.length < 12) throw new Error('ADMIN_BOOTSTRAP_PASSWORD must be at least 12 characters.');
 
 const { default: mysql } = await import('mysql2/promise');
 const { hashPassword } = await import('../src/security/password.js');
+const fileEnvironment = await loadEnvironmentFile(environmentFile);
+const environment = { ...fileEnvironment, ...process.env };
 const connection = await mysql.createConnection({
-  host: requiredEnvironment('MYSQL_HOST'),
-  port: Number(requiredEnvironment('MYSQL_PORT')),
-  user: requiredEnvironment('MYSQL_APP_USER'),
-  password: requiredEnvironment('MYSQL_APP_PASSWORD'),
-  database: requiredEnvironment('MYSQL_DATABASE')
+  host: requiredEnvironment(environment, 'MYSQL_HOST'),
+  port: Number(requiredEnvironment(environment, 'MYSQL_PORT')),
+  user: requiredEnvironment(environment, 'MYSQL_APP_USER'),
+  password: requiredEnvironment(environment, 'MYSQL_APP_PASSWORD'),
+  database: requiredEnvironment(environment, 'MYSQL_DATABASE')
 });
 
 try {
