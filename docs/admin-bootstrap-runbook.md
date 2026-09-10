@@ -17,6 +17,12 @@
 node /opt/sravx-api/scripts/bootstrap-admin.mjs --username <管理员账号>
 ```
 
-负责人确认后，使用受控环境变量注入密码并显式追加 `--apply`。工具拒绝覆盖现有同名账号；成功后仅输出成功状态，不输出密码或哈希。
+负责人确认后，在服务器 SSH 终端执行以下命令；密码会以隐藏输入方式要求输入两次，不进入聊天、命令历史或 Git：
+
+```bash
+sudo -u deploy node /opt/sravx-api/scripts/bootstrap-admin.mjs --username <管理员账号> --apply --prompt-password
+```
+
+工具拒绝覆盖现有同名账号；成功后仅输出成功状态，不输出密码或哈希。只有不具备交互终端的受控自动化场景才使用 `ADMIN_BOOTSTRAP_PASSWORD` 环境变量。
 
 创建完成后，使用后台登录接口验证该账号可获得独立管理员会话；随后在受控审计证据中记录账号已创建和角色已授予的结论，不记录账号名、密码、哈希或会话令牌。

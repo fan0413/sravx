@@ -1,4 +1,5 @@
 import process from 'node:process';
+import readline from 'node:readline/promises';
 
 function argumentValue(name) {
   const position = process.argv.indexOf(name);
@@ -12,6 +13,7 @@ function requiredEnvironment(name) {
 }
 
 const apply = process.argv.includes('--apply');
+const promptPassword = process.argv.includes('--prompt-password');
 const username = argumentValue('--username');
 const roleCode = argumentValue('--role') || 'catalog_editor';
 
@@ -23,7 +25,26 @@ if (!apply) {
   process.exit(0);
 }
 
-const password = requiredEnvironment('ADMIN_BOOTSTRAP_PASSWORD');
+async function readHiddenPassword() {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) throw new Error('A terminal is required for --prompt-password.');
+  const terminal = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  const originalWrite = terminal._writeToOutput.bind(terminal);
+  terminal._writeToOutput = (text) => {
+    if (text !== '\n' && text !== '\r\n') originalWrite('*');
+  };
+  try {
+    const first = await terminal.question('Administrator password: ');
+    originalWrite('\n');
+    const second = await terminal.question('Confirm password: ');
+    originalWrite('\n');
+    if (first !== second) throw new Error('Passwords do not match.');
+    return first;
+  } finally {
+    terminal.close();
+  }
+}
+
+const password = promptPassword ? await readHiddenPassword() : requiredEnvironment('ADMIN_BOOTSTRAP_PASSWORD');
 if (password.length < 12) throw new Error('ADMIN_BOOTSTRAP_PASSWORD must be at least 12 characters.');
 
 const { default: mysql } = await import('mysql2/promise');
