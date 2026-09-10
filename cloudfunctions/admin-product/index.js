@@ -62,6 +62,7 @@ function normalizeSpecConfigs(rawSpecs) {
         name,
         image: normalizeString(item?.image || "", 500),
         price: toNumber(item?.price, 0),
+        sku: normalizeString(item?.sku || "", 64),
         sort_order: toNumber(item?.sort_order, index + 1) || index + 1
       };
     })
@@ -72,7 +73,7 @@ async function writeSpecs(connection, productId, specs) {
   await connection.execute("DELETE FROM product_specs WHERE product_id = ?", [productId]);
   if (specs.length === 0) return;
   for (const [i, spec] of specs.entries()) {
-    const sku = `P${String(productId).padStart(4, '0')}-${String(i + 1).padStart(2, '0')}`;
+    const sku = spec.sku || `P${String(productId).padStart(4, '0')}-${String(i + 1).padStart(2, '0')}`;
     await connection.execute(
       `INSERT INTO product_specs (product_id, name, image, price, sort_order, sku)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -143,7 +144,7 @@ exports.main = async (event) => {
       }
 
       const [specRows] = await connection.execute(
-        "SELECT id, name, image, price, sort_order FROM product_specs WHERE product_id = ? ORDER BY sort_order ASC, id ASC",
+        "SELECT id, name, image, price, sort_order, sku FROM product_specs WHERE product_id = ? ORDER BY sort_order ASC, id ASC",
         [id]
       );
 
@@ -153,6 +154,7 @@ exports.main = async (event) => {
         name: spec.name,
         image: spec.image || null,
         price: Number(spec.price) || 0,
+        sku: spec.sku || "",
         sort_order: spec.sort_order
       }));
       return { success: true, data: product };
@@ -182,6 +184,10 @@ exports.main = async (event) => {
       const weight = parseWeight(fixedParams["重量(g)"]);
       const warrantyPeriod = fixedParams["质保周期"] || null;
       const specConfigs = normalizeSpecConfigs(params.specs);
+      const customSkus = specConfigs.map((item) => item.sku).filter(Boolean);
+      if (new Set(customSkus).size !== customSkus.length) {
+        return { success: false, error: "SKU 不能重复" };
+      }
       const hasSpec = specConfigs.length > 0 ? 1 : 0;
 
       const [result] = await connection.execute(
@@ -231,6 +237,10 @@ exports.main = async (event) => {
       const weight = parseWeight(fixedParams["重量(g)"]);
       const warrantyPeriod = fixedParams["质保周期"] || null;
       const specConfigs = normalizeSpecConfigs(params.specs);
+      const customSkus = specConfigs.map((item) => item.sku).filter(Boolean);
+      if (new Set(customSkus).size !== customSkus.length) {
+        return { success: false, error: "SKU 不能重复" };
+      }
       const hasSpec = specConfigs.length > 0 ? 1 : 0;
 
       await connection.beginTransaction();

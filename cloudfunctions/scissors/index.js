@@ -2,6 +2,7 @@
  * 剪刀云函数 - 使用 MySQL 数据库
  */
 const cloud = require('wx-server-sdk')
+const tcb = require('@cloudbase/node-sdk')
 const mysql = require('mysql2/promise')
 const {
   columnExpr,
@@ -14,6 +15,7 @@ const {
 cloud.init({
   env: process.env.ENV_ID || 'cloud1-8gk3bptqefbf01d6'
 })
+const authApp = tcb.init({ env: process.env.ENV_ID || 'cloud1-8gk3bptqefbf01d6' })
 
 const dbConfig = {
   host: process.env.DB_HOST || 'sh-cynosdbmysql-grp-qs403jue.sql.tencentcdb.com',
@@ -197,12 +199,80 @@ function resolveActivationDate(createdAt) {
   return now > autoStartAt ? autoStartAt : now
 }
 
+const AFTER_SALE_OPEN_STATUSES = ['submitted', 'awaiting_shipment', 'shipped', 'received', 'inspecting', 'repairing', 'replacement_pending', 'awaiting_user', 'returning']
+const AFTER_SALE_ALL_STATUSES = [...AFTER_SALE_OPEN_STATUSES, 'completed', 'rejected', 'cancelled']
+
+function cleanAfterSaleText(value, maxLength) {
+  return String(value || '').trim().replace(/[\r\n]{3,}/g, '\n\n').slice(0, maxLength)
+}
+
+function createAfterSaleRequestNo() {
+  const now = new Date()
+  const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+  return `AS${date}${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+}
+
+async function getAfterSaleRecords(connection, bindingId) {
+  const [records] = await connection.query(
+    `SELECT id, request_no, service_type, issue_description, status, seller_message,
+            seller_message_at, replacement_sn, created_at, updated_at,
+            recipient_name, recipient_phone, recipient_address_text,
+            service_contact, service_phone, service_address_text,
+            return_carrier, return_tracking_no, return_shipped_at, return_freight_amount,
+            outbound_carrier, outbound_tracking_no, outbound_shipped_at,
+            freight_coupon_status, freight_coupon_note
+       FROM scissors_after_sales
+      WHERE user_scissors_id = ?
+      ORDER BY created_at DESC`,
+    [bindingId]
+  )
+  if (!records || records.length === 0) return []
+  const ids = records.map(row => row.id)
+  const placeholders = ids.map(() => '?').join(',')
+  const [messages] = await connection.query(
+    `SELECT id, after_sale_id, sender_role, content, created_at
+       FROM scissors_after_sale_messages
+      WHERE after_sale_id IN (${placeholders}) AND visible_to_user = 1
+      ORDER BY created_at ASC`,
+    ids
+  )
+  const grouped = {}
+  ;(messages || []).forEach(message => {
+    if (!grouped[message.after_sale_id]) grouped[message.after_sale_id] = []
+    grouped[message.after_sale_id].push(message)
+  })
+  return records.map(record => ({ ...record, messages: grouped[record.id] || [] }))
+}
+
+function getAfterSaleAdminUid() {
+  try {
+    const identity = authApp.auth().getUserInfo()
+    return identity.uid || identity.customUserId || identity.openId || ''
+  } catch (error) {
+    console.warn('读取售后管理员身份失败:', error.message)
+    return ''
+  }
+}
+
+function requireAfterSaleAdmin(openid) {
+  const admins = String(process.env.ADMIN_OPENIDS || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+  const adminUids = String(process.env.ADMIN_UIDS || '')
+    .split(',')
+    .map(item => item.trim())
+    .filter(Boolean)
+  const uid = getAfterSaleAdminUid()
+  if (!admins.includes(openid) && !adminUids.includes(uid)) throw new Error('无管理员权限')
+}
+
 exports.main = async (event, context) => {
   const { action, ...params } = event
   const wxContext = cloud.getWXContext()
   const openid = wxContext.OPENID
 
-  const needAuth = ['list', 'bind', 'unbind', 'warranty']
+  const needAuth = ['list', 'bind', 'unbind', 'warranty', 'afterSaleDetail', 'afterSaleApply', 'afterSaleShip']
   if (needAuth.includes(action) && !openid) {
     return { success: false, error: '需要登录' }
   }
@@ -480,6 +550,248 @@ exports.main = async (event, context) => {
           sku: row.matched_spec_sku || row.sku_snapshot || '',
           card_image: resolveCardImage(row)
         }
+      }
+    }
+
+    if (action === 'afterSaleDetail') {
+      const bindingId = Number(params.bindingId)
+      if (!bindingId) return { success: false, error: '剪刀信息无效' }
+      const [rows] = await connection.query(
+        `SELECT us.id, us.scissors_id, us.sn, us.name, us.model, us.image, us.warranty_expire,
+                p.name AS product_name, p.cover_image
+           FROM user_scissors us
+           LEFT JOIN scissors s ON s.id = us.scissors_id AND s.deleted_at IS NULL
+           LEFT JOIN products p ON p.id = s.product_id
+          WHERE us.id = ? AND us._openid = ?
+          LIMIT 1`,
+        [bindingId, openid]
+      )
+      if (!rows || !rows[0]) return { success: false, error: '无权查看该剪刀的售后信息' }
+      const d = rows[0]
+      const image = d.image || d.cover_image || ''
+      const urlMap = await resolveCloudUrls([image])
+      return {
+        success: true,
+        data: {
+          scissors: {
+            id: d.id,
+            sn: d.sn,
+            name: d.product_name || d.name,
+            model: d.model,
+            image: urlMap[image] || image,
+            warranty_expire: d.warranty_expire
+          },
+          records: await getAfterSaleRecords(connection, bindingId)
+        }
+      }
+    }
+
+    if (action === 'afterSaleApply') {
+      const bindingId = Number(params.bindingId)
+      const recipientAddressId = Number(params.recipientAddressId)
+      const serviceType = params.serviceType
+      const description = cleanAfterSaleText(params.description, 500)
+      if (!bindingId || !recipientAddressId || !['repair', 'replacement'].includes(serviceType)) {
+        return { success: false, error: '售后类型或剪刀信息无效' }
+      }
+      if (description.length < 5) return { success: false, error: '请至少说明 5 个字的问题' }
+
+      await connection.beginTransaction()
+      try {
+        const [bindings] = await connection.query(
+          'SELECT id, user_id, scissors_id, sn FROM user_scissors WHERE id = ? AND _openid = ? LIMIT 1 FOR UPDATE',
+          [bindingId, openid]
+        )
+        if (!bindings || !bindings[0]) throw new Error('无权为该剪刀申请售后')
+        const binding = bindings[0]
+        const [addressRows] = await connection.query(
+          `SELECT id, name, contact, phone, province, city, district, detail
+             FROM addresses WHERE id = ? AND openid = ? LIMIT 1 FOR UPDATE`,
+          [recipientAddressId, openid]
+        )
+        if (!addressRows || !addressRows[0]) throw new Error('请选择有效的收货地址')
+        const address = addressRows[0]
+        const recipientName = address.name || address.contact || ''
+        const recipientAddress = [address.province, address.city, address.district, address.detail].filter(Boolean).join('')
+        if (!recipientName || !address.phone || !recipientAddress) throw new Error('收货地址信息不完整')
+        const placeholders = AFTER_SALE_OPEN_STATUSES.map(() => '?').join(',')
+        const [openRequests] = await connection.query(
+          `SELECT id FROM scissors_after_sales
+            WHERE user_scissors_id = ? AND status IN (${placeholders})
+            LIMIT 1 FOR UPDATE`,
+          [bindingId, ...AFTER_SALE_OPEN_STATUSES]
+        )
+        if (openRequests && openRequests.length > 0) throw new Error('该剪刀已有处理中售后申请')
+        const requestNo = createAfterSaleRequestNo()
+        const [result] = await connection.query(
+          `INSERT INTO scissors_after_sales
+            (request_no, user_id, openid, _openid, user_scissors_id, scissors_id, sn, service_type, issue_description, status,
+             recipient_name, recipient_phone, recipient_address_text)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'submitted', ?, ?, ?)`,
+          [requestNo, binding.user_id, openid, openid, bindingId, binding.scissors_id, binding.sn, serviceType, description,
+            recipientName, address.phone, recipientAddress]
+        )
+        await connection.query(
+          `INSERT INTO scissors_after_sale_messages
+            (after_sale_id, sender_role, sender_id, content, visible_to_user)
+           VALUES (?, 'user', ?, ?, 1)`,
+          [result.insertId, binding.user_id, description]
+        )
+        await connection.commit()
+        return { success: true, data: { id: result.insertId, requestNo } }
+      } catch (error) {
+        await connection.rollback()
+        throw error
+      }
+    }
+
+    if (action === 'afterSaleShip') {
+      const requestId = Number(params.requestId)
+      const carrier = cleanAfterSaleText(params.carrier, 50)
+      const trackingNo = cleanAfterSaleText(params.trackingNo, 64)
+      const freightAmount = Number(params.freightAmount)
+      if (!requestId || !carrier || !trackingNo || Number.isNaN(freightAmount) || freightAmount < 0) {
+        return { success: false, error: '请填写快递公司、单号与实际运费' }
+      }
+      const [result] = await connection.query(
+        `UPDATE scissors_after_sales
+            SET return_carrier = ?, return_tracking_no = ?, return_shipped_at = NOW(),
+                return_freight_amount = ?, status = 'shipped', updated_at = NOW()
+          WHERE id = ? AND _openid = ? AND status = 'awaiting_shipment'`,
+        [carrier, trackingNo, freightAmount, requestId, openid]
+      )
+      if (!result.affectedRows) return { success: false, error: '当前售后单暂不可填写寄回物流' }
+      await connection.query(
+        `INSERT INTO scissors_after_sale_messages
+          (after_sale_id, sender_role, content, visible_to_user)
+         VALUES (?, 'user', ?, 1)`,
+        [requestId, `已寄回：${carrier} ${trackingNo}`]
+      )
+      return { success: true, data: { id: requestId } }
+    }
+
+    // 管理端预留：需通过 ADMIN_OPENIDS 显式授权后才可调用。
+    if (['afterSaleAdminList', 'afterSaleAdminUpdate', 'afterSaleAdminReply', 'afterSaleServiceAddressList', 'afterSaleServiceAddressSave'].includes(action)) {
+      requireAfterSaleAdmin(openid)
+    }
+
+    if (action === 'afterSaleAdminList') {
+      const status = params.status
+      const keyword = cleanAfterSaleText(params.keyword, 64)
+      const serviceType = params.serviceType
+      const values = []
+      let where = 'WHERE 1 = 1'
+      if (status && AFTER_SALE_ALL_STATUSES.includes(status)) {
+        where += ' AND asa.status = ?'
+        values.push(status)
+      }
+      if (keyword) {
+        where += ' AND (asa.request_no LIKE ? OR asa.sn LIKE ?)'
+        values.push(`%${keyword}%`, `%${keyword}%`)
+      }
+      if (['repair', 'replacement'].includes(serviceType)) {
+        where += ' AND asa.service_type = ?'
+        values.push(serviceType)
+      }
+      const [rows] = await connection.query(
+        `SELECT asa.*, u.username, u.phone
+           FROM scissors_after_sales asa LEFT JOIN users u ON u.id = asa.user_id
+           ${where} ORDER BY asa.created_at DESC LIMIT 100`,
+        values
+      )
+      return { success: true, data: rows || [] }
+    }
+
+    if (action === 'afterSaleServiceAddressList') {
+      const [rows] = await connection.query(
+        `SELECT id, label, contact, phone, province, city, district, detail, is_enabled, sort_order
+           FROM after_sale_service_addresses ORDER BY is_enabled DESC, sort_order ASC, id DESC`
+      )
+      return { success: true, data: rows || [] }
+    }
+
+    if (action === 'afterSaleServiceAddressSave') {
+      const payload = params.address || {}
+      const id = Number(payload.id)
+      const label = cleanAfterSaleText(payload.label, 50)
+      const contact = cleanAfterSaleText(payload.contact, 50)
+      const phone = cleanAfterSaleText(payload.phone, 20)
+      const province = cleanAfterSaleText(payload.province, 50)
+      const city = cleanAfterSaleText(payload.city, 50)
+      const district = cleanAfterSaleText(payload.district, 50)
+      const detail = cleanAfterSaleText(payload.detail, 200)
+      if (!label || !contact || !phone || !detail) return { success: false, error: '售后收件地址信息不完整' }
+      if (id) {
+        await connection.query(
+          `UPDATE after_sale_service_addresses
+              SET label=?, contact=?, phone=?, province=?, city=?, district=?, detail=?,
+                  is_enabled=?, sort_order=?, updated_at=NOW() WHERE id=?`,
+          [label, contact, phone, province, city, district, detail, payload.is_enabled === false ? 0 : 1, Number(payload.sort_order) || 0, id]
+        )
+        return { success: true, data: { id } }
+      }
+      const [result] = await connection.query(
+        `INSERT INTO after_sale_service_addresses
+          (label, contact, phone, province, city, district, detail, is_enabled, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [label, contact, phone, province, city, district, detail, payload.is_enabled === false ? 0 : 1, Number(payload.sort_order) || 0]
+      )
+      return { success: true, data: { id: result.insertId } }
+    }
+
+    if (action === 'afterSaleAdminUpdate') {
+      const id = Number(params.id)
+      const status = params.status
+      const serviceAddressId = Number(params.serviceAddressId)
+      if (!id || !AFTER_SALE_ALL_STATUSES.includes(status)) return { success: false, error: '售后状态无效' }
+      let service = null
+      if (serviceAddressId) {
+        const [addresses] = await connection.query(
+          `SELECT id, contact, phone, province, city, district, detail
+             FROM after_sale_service_addresses WHERE id = ? AND is_enabled = 1 LIMIT 1`,
+          [serviceAddressId]
+        )
+        service = addresses && addresses[0]
+        if (!service) return { success: false, error: '售后收件地址不可用' }
+      }
+      const serviceAddressText = service ? [service.province, service.city, service.district, service.detail].filter(Boolean).join('') : null
+      const [result] = await connection.query(
+        `UPDATE scissors_after_sales
+            SET status=?, service_address_id=?, service_contact=?, service_phone=?, service_address_text=?,
+                replacement_sn=NULLIF(?, ''), outbound_carrier=NULLIF(?, ''), outbound_tracking_no=NULLIF(?, ''),
+                outbound_shipped_at=CASE WHEN ? <> '' THEN NOW() ELSE outbound_shipped_at END,
+                freight_coupon_status=?, freight_coupon_note=NULLIF(?, ''), handled_by_name=?, updated_at=NOW()
+          WHERE id=?`,
+        [status, service ? service.id : null, service ? service.contact : null, service ? service.phone : null, serviceAddressText,
+          cleanAfterSaleText(params.replacementSn, 32), cleanAfterSaleText(params.outboundCarrier, 50), cleanAfterSaleText(params.outboundTrackingNo, 64),
+          cleanAfterSaleText(params.outboundTrackingNo, 64), ['none', 'pending', 'issued', 'failed'].includes(params.freightCouponStatus) ? params.freightCouponStatus : 'none',
+          cleanAfterSaleText(params.freightCouponNote, 255), process.env.ADMIN_DISPLAY_NAME || '售后专员', id]
+      )
+      if (!result.affectedRows) return { success: false, error: '售后单不存在' }
+      return { success: true, data: { id, status } }
+    }
+
+    if (action === 'afterSaleAdminReply') {
+      const id = Number(params.id)
+      const content = cleanAfterSaleText(params.content, 1000)
+      if (!id || !content) return { success: false, error: '请输入卖家留言' }
+      await connection.beginTransaction()
+      try {
+        const [rows] = await connection.query('SELECT id FROM scissors_after_sales WHERE id = ? LIMIT 1 FOR UPDATE', [id])
+        if (!rows || !rows[0]) throw new Error('售后单不存在')
+        await connection.query(
+          `INSERT INTO scissors_after_sale_messages (after_sale_id, sender_role, content, visible_to_user)
+           VALUES (?, 'seller', ?, 1)`, [id, content]
+        )
+        await connection.query(
+          `UPDATE scissors_after_sales SET seller_message=?, seller_message_at=NOW(), handled_by_name=?, updated_at=NOW() WHERE id=?`,
+          [content, process.env.ADMIN_DISPLAY_NAME || '售后专员', id]
+        )
+        await connection.commit()
+        return { success: true, data: { id } }
+      } catch (error) {
+        await connection.rollback()
+        throw error
       }
     }
 

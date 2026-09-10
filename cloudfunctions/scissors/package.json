@@ -4,6 +4,7 @@
   "description": "Scissors cloud function",
   "main": "index.js",
   "dependencies": {
+    "@cloudbase/node-sdk": "^3.16.0",
     "mysql2": "^3.6.0",
     "wx-server-sdk": "latest"
   }
