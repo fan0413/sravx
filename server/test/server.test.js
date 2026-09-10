@@ -89,6 +89,25 @@ test('login endpoint accepts only the configured service and hides upstream fail
   assert.doesNotMatch(JSON.stringify(failedBody), /provider detail/);
 });
 
+test('logout revokes only the authenticated session', async (t) => {
+  let revoked;
+  const server = createServer({
+    sessionSecret: secret,
+    sessionRepository: {
+      active: async () => true,
+      revoke: async (session) => { revoked = session; return true; }
+    }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const token = issueSession({ subject: 52, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/auth/session`, { method: 'DELETE', headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.equal(revoked.userId, 52);
+  assert.match(revoked.sessionId, /^[A-Za-z0-9_-]+$/);
+});
+
 test('profile route uses only the signed session subject', async (t) => {
   let requestedUserId;
   const userRepository = { getUserProfile: async (userId) => {

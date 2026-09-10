@@ -60,6 +60,20 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       }
     }
 
+    if (request.method === 'DELETE' && url.pathname === '/api/v1/auth/session') {
+      const session = await authenticatedSession();
+      if (!session) {
+        const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401);
+        return send(response, result.status, result.body);
+      }
+      if (!sessionRepository || typeof sessionRepository.revoke !== 'function') {
+        const result = error('AUTH_NOT_READY', '登录服务尚未配置', 503);
+        return send(response, result.status, result.body);
+      }
+      await sessionRepository.revoke({ userId: session.subject, sessionId: session.sessionId });
+      return send(response, 200, { success: true, data: { revoked: true } });
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/v1/me') {
       const session = await authenticatedSession();
       if (!session) {
