@@ -269,6 +269,23 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
           const result = error('INVALID_REQUEST', '轮播图内容或关联图片无效', 400); return send(response, result.status, result.body);
         }
       }
+      const bannerId = /^\/api\/v1\/admin\/banners\/(\d+)$/.exec(url.pathname);
+      if (bannerId && request.method === 'PUT') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.updateBanner !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const input = bannerInput(await readJsonBody(request), { existing: true });
+          const resolve = async (id) => { if (!id) return null; const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id }); if (!media || !media.objectKey.startsWith('catalog/banners/')) throw new Error('Unverified media.'); return media.objectKey; };
+          if (!await adminCatalogRepository.updateBanner(Number(bannerId[1]), { ...input, image: await resolve(input.imageIntentId), mobileImage: await resolve(input.mobileImageIntentId) })) { const result = error('NOT_FOUND', '轮播图不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: Number(bannerId[1]) } });
+        } catch { const result = error('INVALID_REQUEST', '轮播图内容或关联图片无效', 400); return send(response, result.status, result.body); }
+      }
+      if (bannerId && request.method === 'DELETE') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.deleteBanner !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        if (!await adminCatalogRepository.deleteBanner(Number(bannerId[1]))) { const result = error('NOT_FOUND', '轮播图不存在', 404); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data: { id: Number(bannerId[1]) } });
+      }
       if (request.method === 'GET' && url.pathname === '/api/v1/admin/products') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.listProducts !== 'function') {
           const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);

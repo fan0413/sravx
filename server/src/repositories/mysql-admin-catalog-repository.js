@@ -104,6 +104,18 @@ export function createMysqlAdminCatalogRepository(pool) {
       );
       return { id: Number(result.insertId) };
     },
+    async updateBanner(id, input) {
+      const [result] = await pool.execute(
+        `UPDATE banners SET title = ?, subtitle = ?, image = COALESCE(?, image), mobile_image = COALESCE(?, mobile_image), link_type = ?, link_value = ?, link_param = ?, position = ?, sort_order = ?, is_active = ?, start_time = ?, end_time = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [input.title, input.subtitle, input.image, input.mobileImage, input.linkType, input.linkValue, input.linkParam === null ? null : JSON.stringify(input.linkParam), input.position, input.sortOrder, input.isActive, input.startTime, input.endTime, id]
+      );
+      return result.affectedRows === 1;
+    },
+    async deleteBanner(id) {
+      const [result] = await pool.execute('UPDATE banners SET deleted_at = UTC_TIMESTAMP(), is_active = 0 WHERE id = ? AND deleted_at IS NULL', [id]);
+      return result.affectedRows === 1;
+    },
     async createProduct(input) {
       const connection = await pool.getConnection();
       try {

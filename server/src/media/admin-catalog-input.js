@@ -35,14 +35,14 @@ export function categoryInput(payload) {
   };
 }
 
-export function bannerInput(payload) {
+export function bannerInput(payload, { existing = false } = {}) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid banner payload.');
   const linkType = text(payload.linkType, 20, 'linkType', { required: true });
   if (!['product', 'category', 'web', 'miniprogram', 'none'].includes(linkType)) throw new Error('Invalid linkType.');
   return {
     title: text(payload.title, 100, 'title', { required: true }),
     subtitle: text(payload.subtitle, 200, 'subtitle'),
-    imageIntentId: text(payload.imageIntentId, 36, 'imageIntentId', { required: true }),
+    imageIntentId: text(payload.imageIntentId, 36, 'imageIntentId', { required: !existing }),
     mobileImageIntentId: text(payload.mobileImageIntentId, 36, 'mobileImageIntentId'),
     linkType,
     linkValue: text(payload.linkValue, 255, 'linkValue'),
