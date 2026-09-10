@@ -85,6 +85,24 @@ export function createMysqlAdminCatalogRepository(pool) {
         [input.title, input.subtitle, input.image, input.mobileImage, input.linkType, input.linkValue, input.linkParam === null ? null : JSON.stringify(input.linkParam), input.position, input.sortOrder, input.isActive, input.startTime, input.endTime]
       );
       return { id: Number(result.insertId) };
+    },
+    async createProduct(input) {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        const [result] = await connection.execute(
+          `INSERT INTO products (name, short_name, \`desc\`, price, category_id, cover_image, stock, reserved_stock, sales_count, warranty_months, has_spec, is_on_sale, is_recommend, allow_coupon, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [input.name, input.shortName, input.description, input.price, input.categoryId, input.coverImage, input.stock, input.warrantyMonths, input.hasSpec, input.isOnSale, input.isRecommend, input.allowCoupon, input.shippingType, input.shipDeadlineDays, input.shippingPromise, input.shippingDelayReason, input.shippingNote, input.sortOrder]
+        );
+        const id = Number(result.insertId);
+        for (const spec of input.specs) await connection.execute(
+          `INSERT INTO product_specs (product_id, name, sku, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, card_image, price, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, spec.name, spec.sku, spec.shippingType, spec.shipDeadlineDays, spec.shippingPromise, spec.shippingDelayReason, spec.shippingNote, input.coverImage, spec.price, spec.sortOrder]
+        );
+        await connection.commit(); return { id };
+      } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
     }
   });
 }

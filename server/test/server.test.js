@@ -15,7 +15,7 @@ import { issueSession } from '../src/security/session.js';
 import { createUploadIntent } from '../src/media/upload-policy.js';
 import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
 import { createCosUploadSigner } from '../src/media/cos-upload-signer.js';
-import { bannerInput, categoryInput } from '../src/media/admin-catalog-input.js';
+import { bannerInput, categoryInput, productInput } from '../src/media/admin-catalog-input.js';
 import { hashPassword, verifyPassword } from '../src/security/password.js';
 import { createAdminLoginService } from '../src/auth/admin-login-service.js';
 
@@ -553,3 +553,4 @@ test('administrator session introspection returns only the signed session identi
   assert.equal(response.status, 200);
   assert.deepEqual((await response.json()).data.administrator, { id: 7, roles: ['catalog_editor'] });
 });
+

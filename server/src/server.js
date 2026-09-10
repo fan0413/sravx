@@ -3,7 +3,7 @@ import { EmptyCatalogRepository } from './repositories/catalog-repository.js';
 import { catalogResponse } from './routes/catalog.js';
 import { getBearerToken, validateSigningSecret, verifySession } from './security/session.js';
 import { createUploadIntent } from './media/upload-policy.js';
-import { bannerInput, categoryInput } from './media/admin-catalog-input.js';
+import { bannerInput, categoryInput, productInput } from './media/admin-catalog-input.js';
 
 const JSON_HEADERS = Object.freeze({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
 
@@ -257,6 +257,16 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         if (!await requireCatalogEditor()) return;
         const status = url.searchParams.get('status');
         return send(response, 200, { success: true, data: await adminCatalogRepository.listProducts({ keyword: url.searchParams.get('keyword') || '', categoryId: url.searchParams.get('categoryId'), status: status === null || status === '' ? undefined : Number(status), lowStock: url.searchParams.get('lowStock'), sku: url.searchParams.get('sku') || '', shippingType: url.searchParams.get('shippingType') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/v1/admin/products') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.createProduct !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const input = productInput(await readJsonBody(request));
+          const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id: input.coverImageIntentId });
+          if (!media || !media.objectKey.startsWith('catalog/products/')) throw new Error('Unverified media.');
+          return send(response, 201, { success: true, data: await adminCatalogRepository.createProduct({ ...input, coverImage: media.objectKey }) });
+        } catch { const result = error('INVALID_REQUEST', '商品、规格、履约信息或关联图片无效', 400); return send(response, result.status, result.body); }
       }
       const productDetail = /^\/api\/v1\/admin\/products\/(\d+)$/.exec(url.pathname);
       if (request.method === 'GET' && productDetail) {
