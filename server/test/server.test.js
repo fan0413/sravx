@@ -11,6 +11,8 @@ import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
 import { issueSession } from '../src/security/session.js';
+import { createUploadIntent } from '../src/media/upload-policy.js';
+import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
 
 const secret = 'test-only-session-secret-which-is-long-enough-123456';
 
@@ -338,4 +340,20 @@ test('address repository joins users by the server-side user id', async () => {
   assert.match(query.sql, /INNER JOIN users u ON u\.openid = a\.openid/);
   assert.deepEqual(query.values, [5]);
   assert.match(query.sql.trim(), /^SELECT\b/i);
+});
+
+test('media intent policy generates only controlled catalog keys', () => {
+  const intent = createUploadIntent({ mediaType: 'product', contentType: 'image/webp', byteSize: 42, sha256: 'a'.repeat(64) }, new Date('2026-09-10T00:00:00Z'), 'intent-1');
+  assert.deepEqual(intent, { id: 'intent-1', objectKey: 'catalog/products/intent-1.webp', contentType: 'image/webp', byteSize: 42, contentSha256: 'a'.repeat(64), expiresAt: new Date('2026-09-10T00:10:00Z') });
+  assert.throws(() => createUploadIntent({ mediaType: 'product', contentType: 'image/gif', byteSize: 42, sha256: 'a'.repeat(64) }), /Unsupported/);
+  assert.throws(() => createUploadIntent({ mediaType: 'banner', contentType: 'image/png', byteSize: 0, sha256: 'a'.repeat(64) }), /size/);
+});
+
+test('media intent repository persists only a server-generated intent', async () => {
+  let query;
+  const repository = createMysqlMediaIntentRepository({ execute: async (sql, values) => { query = { sql, values }; return [{ affectedRows: 1 }]; } });
+  const intent = createUploadIntent({ mediaType: 'banner', contentType: 'image/png', byteSize: 42, sha256: 'b'.repeat(64) }, new Date('2026-09-10T00:00:00Z'), 'intent-2');
+  assert.equal(await repository.create({ adminAccountId: 8, intent }), intent);
+  assert.match(query.sql, /^INSERT INTO media_upload_intents/);
+  assert.deepEqual(query.values.slice(0, 2), ['intent-2', 8]);
 });
