@@ -531,3 +531,16 @@ test('category creation stores only a current admin confirmed category image key
   const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: '剪刀', imageIntentId: '12345678-1234-1234-1234-123456789012' }) });
   assert.equal(response.status, 201); assert.equal(stored.image, 'catalog/categories/a.png');
 });
+
+test('readiness distinguishes an unavailable dependency from process liveness', async (t) => {
+  const ready = createServer({ sessionSecret: secret, healthCheck: async () => {} });
+  ready.listen(0, '127.0.0.1'); await once(ready, 'listening'); t.after(() => ready.close());
+  const readyResponse = await fetch(`http://127.0.0.1:${ready.address().port}/readyz`);
+  assert.equal(readyResponse.status, 200);
+  assert.equal((await readyResponse.json()).data.status, 'ready');
+  const unavailable = createServer({ sessionSecret: secret, healthCheck: async () => { throw new Error('database unavailable'); } });
+  unavailable.listen(0, '127.0.0.1'); await once(unavailable, 'listening'); t.after(() => unavailable.close());
+  const unavailableResponse = await fetch(`http://127.0.0.1:${unavailable.address().port}/readyz`);
+  assert.equal(unavailableResponse.status, 503);
+  assert.equal((await unavailableResponse.json()).error.code, 'NOT_READY');
+});

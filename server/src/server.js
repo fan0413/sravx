@@ -31,7 +31,7 @@ function error(code, message, status) {
   return { status, body: { success: false, error: { code, message } } };
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
     const authenticatedSession = async () => {
@@ -46,6 +46,19 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
     const url = new URL(request.url || '/', 'http://localhost');
     if (request.method === 'GET' && url.pathname === '/health') {
       return send(response, 200, { success: true, data: { status: 'ok', mode: 'local-skeleton' } });
+    }
+    if (request.method === 'GET' && url.pathname === '/readyz') {
+      if (typeof healthCheck !== 'function') {
+        const result = error('NOT_READY', '服务就绪检查尚未配置', 503);
+        return send(response, result.status, result.body);
+      }
+      try {
+        await healthCheck();
+        return send(response, 200, { success: true, data: { status: 'ready' } });
+      } catch {
+        const result = error('NOT_READY', '服务暂不可用', 503);
+        return send(response, result.status, result.body);
+      }
     }
 
     if (request.method === 'POST' && url.pathname === '/api/v1/auth/wechat/session') {
