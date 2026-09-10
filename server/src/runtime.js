@@ -9,12 +9,28 @@ import { createMysqlAdminRepository } from './repositories/mysql-admin-repositor
 import { createMysqlAdminSessionRepository } from './repositories/mysql-admin-session-repository.js';
 import { createMysqlMediaIntentRepository } from './repositories/mysql-media-intent-repository.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
+import { createCosUploadSigner } from './media/cos-upload-signer.js';
 import { createServer } from './server.js';
 
 function required(environment, name) {
   const value = environment[name];
   if (typeof value !== 'string' || value.trim() === '') throw new Error(`${name} must be configured.`);
   return value;
+}
+
+async function createOptionalCosSigner(environment) {
+  const names = ['COS_SECRET_ID', 'COS_SECRET_KEY', 'COS_BUCKET', 'COS_REGION'];
+  const values = names.map((name) => environment[name]);
+  if (values.every((value) => typeof value !== 'string' || value.trim() === '')) return null;
+  for (const name of names) required(environment, name);
+  const { default: COS } = await import('cos-nodejs-sdk-v5');
+  return createCosUploadSigner({
+    secretId: environment.COS_SECRET_ID,
+    secretKey: environment.COS_SECRET_KEY,
+    bucket: environment.COS_BUCKET,
+    region: environment.COS_REGION,
+    createClient: (options) => new COS(options)
+  });
 }
 
 export async function createRuntimeServer(environment = process.env) {
@@ -42,6 +58,7 @@ export async function createRuntimeServer(environment = process.env) {
   const adminRepository = createMysqlAdminRepository(pool);
   const adminSessionRepository = createMysqlAdminSessionRepository(pool);
   const mediaIntentRepository = createMysqlMediaIntentRepository(pool);
+  const mediaSigner = await createOptionalCosSigner(environment);
   const loginService = createLoginService({
     codeExchange,
     resolveUser: userRepository.resolveUser,
@@ -53,5 +70,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, userRepository, catalogRepository, addressRepository, sessionRepository, adminSessionRepository, adminRepository, mediaIntentRepository });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, userRepository, catalogRepository, addressRepository, sessionRepository, adminSessionRepository, adminRepository, mediaIntentRepository, mediaSigner });
 }

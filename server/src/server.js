@@ -30,7 +30,7 @@ function error(code, message, status) {
   return { status, body: { success: false, error: { code, message } } };
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, mediaIntentRepository = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, mediaIntentRepository = null, mediaSigner = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
     const authenticatedSession = async () => {
@@ -162,7 +162,7 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         return send(response, result.status, result.body);
       }
       if (request.method === 'POST' && url.pathname === '/api/v1/admin/media/upload-intents') {
-        if (!adminRepository || typeof adminRepository.hasRole !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.create !== 'function') {
+        if (!adminRepository || typeof adminRepository.hasRole !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.create !== 'function' || !mediaSigner || typeof mediaSigner.issuePutUrl !== 'function') {
           const result = error('ADMIN_MEDIA_NOT_READY', '后台媒体服务尚未配置', 503);
           return send(response, result.status, result.body);
         }
@@ -172,8 +172,9 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         }
         try {
           const intent = createUploadIntent(await readJsonBody(request));
+          const uploadUrl = await mediaSigner.issuePutUrl(intent);
           await mediaIntentRepository.create({ adminAccountId: session.subject, intent });
-          return send(response, 201, { success: true, data: { ...intent, expiresAt: intent.expiresAt.toISOString() } });
+          return send(response, 201, { success: true, data: { ...intent, expiresAt: intent.expiresAt.toISOString(), uploadUrl } });
         } catch (cause) {
           const invalidRequest = cause instanceof Error && ['INVALID_JSON', 'REQUEST_TOO_LARGE'].includes(cause.message) || cause instanceof Error && /Unsupported|size|checksum|time/.test(cause.message);
           const result = error(invalidRequest ? 'INVALID_REQUEST' : 'MEDIA_INTENT_FAILED', invalidRequest ? '图片上传请求格式无效' : '图片上传准备失败，请稍后重试', invalidRequest ? 400 : 503);

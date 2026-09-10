@@ -13,6 +13,7 @@ import { createMysqlAddressRepository } from '../src/repositories/mysql-address-
 import { issueSession } from '../src/security/session.js';
 import { createUploadIntent } from '../src/media/upload-policy.js';
 import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
+import { createCosUploadSigner } from '../src/media/cos-upload-signer.js';
 import { hashPassword, verifyPassword } from '../src/security/password.js';
 import { createAdminLoginService } from '../src/auth/admin-login-service.js';
 
@@ -153,7 +154,8 @@ test('media upload intent requires a current catalog editor and persists only a 
     sessionSecret: secret,
     adminSessionRepository: { active: async () => true },
     adminRepository: { hasRole: async ({ adminAccountId, roleCode }) => adminAccountId === 7 && roleCode === 'catalog_editor' },
-    mediaIntentRepository: { create: async (value) => { stored = value; } }
+    mediaIntentRepository: { create: async (value) => { stored = value; } },
+    mediaSigner: { issuePutUrl: async (intent) => `https://upload.example.test/${intent.objectKey}` }
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -175,7 +177,8 @@ test('media upload intent rejects an administrator without the catalog role', as
     sessionSecret: secret,
     adminSessionRepository: { active: async () => true },
     adminRepository: { hasRole: async () => false },
-    mediaIntentRepository: { create: async () => { throw new Error('must not persist'); } }
+    mediaIntentRepository: { create: async () => { throw new Error('must not persist'); } },
+    mediaSigner: { issuePutUrl: async () => { throw new Error('must not sign'); } }
   });
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
@@ -187,6 +190,19 @@ test('media upload intent rejects an administrator without the catalog role', as
     body: JSON.stringify({ mediaType: 'product', contentType: 'image/jpeg', byteSize: 42, sha256: 'c'.repeat(64) })
   });
   assert.equal(response.status, 403);
+});
+
+test('COS signer only signs the server-generated key and content type', async () => {
+  let request;
+  const signer = createCosUploadSigner({
+    secretId: 'test-id', secretKey: 'test-key', bucket: 'sravx-1419382340', region: 'ap-shanghai',
+    createClient: () => ({ getObjectUrl: (value, callback) => { request = value; callback(null, { Url: 'https://upload.example.test/signed' }); } })
+  });
+  const url = await signer.issuePutUrl({ objectKey: 'catalog/products/image.jpg', contentType: 'image/jpeg', expiresAt: new Date(Date.now() + 60_000) });
+  assert.equal(url, 'https://upload.example.test/signed');
+  assert.equal(request.Method, 'PUT');
+  assert.equal(request.Sign, true);
+  assert.deepEqual(request.Headers, { 'Content-Type': 'image/jpeg' });
 });
 
 test('profile route uses only the signed session subject', async (t) => {
