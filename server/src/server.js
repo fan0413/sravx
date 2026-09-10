@@ -223,6 +223,25 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
           const result = error('INVALID_REQUEST', '分类内容或关联图片无效', 400); return send(response, result.status, result.body);
         }
       }
+      const categoryId = /^\/api\/v1\/admin\/categories\/(\d+)$/.exec(url.pathname);
+      if (categoryId && request.method === 'PUT') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.updateCategory !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const input = categoryInput(await readJsonBody(request));
+          const resolve = async (id) => { if (!id) return null; const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id }); if (!media || !media.objectKey.startsWith('catalog/categories/')) throw new Error('Unverified media.'); return media.objectKey; };
+          if (!await adminCatalogRepository.updateCategory(Number(categoryId[1]), { ...input, icon: await resolve(input.iconIntentId), image: await resolve(input.imageIntentId) })) { const result = error('NOT_FOUND', '分类不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: Number(categoryId[1]) } });
+        } catch { const result = error('INVALID_REQUEST', '分类内容或关联图片无效', 400); return send(response, result.status, result.body); }
+      }
+      if (categoryId && request.method === 'DELETE') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.deleteCategory !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        const outcome = await adminCatalogRepository.deleteCategory(Number(categoryId[1]));
+        if (outcome === 'in_use') { const result = error('CATEGORY_IN_USE', '分类仍有关联商品，不能删除', 409); return send(response, result.status, result.body); }
+        if (outcome === 'missing') { const result = error('NOT_FOUND', '分类不存在', 404); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data: { id: Number(categoryId[1]) } });
+      }
       if (request.method === 'GET' && url.pathname === '/api/v1/admin/banners') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.listBanners !== 'function') {
           const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);

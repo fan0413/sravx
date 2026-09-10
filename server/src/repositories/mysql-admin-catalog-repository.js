@@ -78,6 +78,24 @@ export function createMysqlAdminCatalogRepository(pool) {
       );
       return { id: Number(result.insertId) };
     },
+    async updateCategory(id, input) {
+      const [result] = await pool.execute(
+        `UPDATE categories SET parent_id = ?, name = ?, icon = COALESCE(?, icon), image = COALESCE(?, image), description = ?, level = ?, sort_order = ?, is_show = ?, is_nav = ?
+         WHERE id = ? AND deleted_at IS NULL`,
+        [input.parentId, input.name, input.icon, input.image, input.description, input.level, input.sortOrder, input.isShow, input.isNav, id]
+      );
+      return result.affectedRows === 1;
+    },
+    async deleteCategory(id) {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        const [products] = await connection.execute('SELECT 1 FROM products WHERE category_id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+        if (products.length) { await connection.rollback(); return 'in_use'; }
+        const [result] = await connection.execute('UPDATE categories SET deleted_at = UTC_TIMESTAMP() WHERE id = ? AND deleted_at IS NULL', [id]);
+        await connection.commit(); return result.affectedRows === 1 ? 'deleted' : 'missing';
+      } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
+    },
     async createBanner(input) {
       const [result] = await pool.execute(
         `INSERT INTO banners (title, subtitle, image, mobile_image, link_type, link_value, link_param, position, sort_order, is_active, start_time, end_time, click_count)
