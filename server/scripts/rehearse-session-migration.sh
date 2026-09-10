@@ -5,7 +5,9 @@ set -euo pipefail
 backup_path=${1:?Usage: rehearse-session-migration.sh <controlled-logical-backup.sql> <migration.sql> <source-schema>}
 migration_path=${2:?Usage: rehearse-session-migration.sh <controlled-logical-backup.sql> <migration.sql> <source-schema>}
 source_schema=${3:?Usage: rehearse-session-migration.sh <controlled-logical-backup.sql> <migration.sql> <source-schema>}
+expected_table=${4:-user_sessions}
 [[ -f "$backup_path" && -f "$migration_path" ]] || { echo 'Controlled backup or migration file not found.' >&2; exit 2; }
+[[ "$expected_table" =~ ^[A-Za-z0-9_]+$ ]] || { echo 'Expected table name is invalid.' >&2; exit 2; }
 
 umask 077
 container_name="sravx-session-rehearsal-$$"
@@ -46,5 +48,5 @@ echo 'Isolated MySQL container is ready.'
 } | docker exec -e MYSQL_PWD="$database_password" -i "$container_name" mysql --default-character-set=utf8mb4 -uroot "$database_name"
 echo 'Business schema restore completed.'
 docker exec -e MYSQL_PWD="$database_password" -i "$container_name" mysql --default-character-set=utf8mb4 -uroot "$database_name" < "$migration_path"
-docker exec -e MYSQL_PWD="$database_password" "$container_name" mysql -N -uroot "$database_name" -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user_sessions';" | grep -qx '1'
-echo 'Session migration isolated rehearsal passed; container cleanup follows.'
+docker exec -e MYSQL_PWD="$database_password" "$container_name" mysql -N -uroot "$database_name" -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '${expected_table}';" | grep -qx '1'
+echo "Isolated migration rehearsal passed for ${expected_table}; container cleanup follows."
