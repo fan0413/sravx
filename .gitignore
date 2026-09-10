@@ -41,6 +41,8 @@ project.private.config.json
 tmp_mcp_*.txt
 
 # Generated/deployment scratch data and local backups
+.migration-private/
+outputs/
 temp_cf/
 temp_sync_backup/
 scripts/temp_*.js
