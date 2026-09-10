@@ -29,14 +29,16 @@ function error(code, message, status) {
   return { status, body: { success: false, error: { code, message } } };
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, userRepository = null, addressRepository = null, sessionRepository = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
     const authenticatedSession = async () => {
       const token = getBearerToken(request.headers.authorization);
       const session = verifySession(token, sessionSecret);
       if (!session) return null;
-      if (sessionRepository && typeof sessionRepository.active === 'function' && !await sessionRepository.active({ userId: session.subject, sessionId: session.sessionId, version: session.version })) return null;
+      const repository = session.role === 'admin' ? adminSessionRepository : sessionRepository;
+      const sessionReference = session.role === 'admin' ? { adminAccountId: session.subject, sessionId: session.sessionId, version: session.version } : { userId: session.subject, sessionId: session.sessionId, version: session.version };
+      if (repository && typeof repository.active === 'function' && !await repository.active(sessionReference)) return null;
       return session;
     };
     const url = new URL(request.url || '/', 'http://localhost');
@@ -66,12 +68,29 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401);
         return send(response, result.status, result.body);
       }
-      if (!sessionRepository || typeof sessionRepository.revoke !== 'function') {
+      const repository = session.role === 'admin' ? adminSessionRepository : sessionRepository;
+      const sessionReference = session.role === 'admin' ? { adminAccountId: session.subject, sessionId: session.sessionId } : { userId: session.subject, sessionId: session.sessionId };
+      if (!repository || typeof repository.revoke !== 'function') {
         const result = error('AUTH_NOT_READY', '登录服务尚未配置', 503);
         return send(response, result.status, result.body);
       }
-      await sessionRepository.revoke({ userId: session.subject, sessionId: session.sessionId });
+      await repository.revoke(sessionReference);
       return send(response, 200, { success: true, data: { revoked: true } });
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/v1/admin/auth/session') {
+      if (!adminLoginService || typeof adminLoginService.login !== 'function') {
+        const result = error('ADMIN_AUTH_NOT_READY', '后台登录服务尚未配置', 503);
+        return send(response, result.status, result.body);
+      }
+      try {
+        const payload = await readJsonBody(request);
+        const data = await adminLoginService.login(payload);
+        return send(response, 200, { success: true, data });
+      } catch {
+        const result = error('ADMIN_LOGIN_FAILED', '后台登录失败，请检查账号或密码', 401);
+        return send(response, result.status, result.body);
+      }
     }
 
     if (request.method === 'GET' && url.pathname === '/api/v1/me') {

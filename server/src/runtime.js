@@ -5,6 +5,9 @@ import { createMysqlUserRepository } from './repositories/mysql-user-repository.
 import { createMysqlCatalogRepository } from './repositories/mysql-catalog-repository.js';
 import { createMysqlAddressRepository } from './repositories/mysql-address-repository.js';
 import { createMysqlSessionRepository } from './repositories/mysql-session-repository.js';
+import { createMysqlAdminRepository } from './repositories/mysql-admin-repository.js';
+import { createMysqlAdminSessionRepository } from './repositories/mysql-admin-session-repository.js';
+import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createServer } from './server.js';
 
 function required(environment, name) {
@@ -35,11 +38,18 @@ export async function createRuntimeServer(environment = process.env) {
   const catalogRepository = createMysqlCatalogRepository(pool);
   const addressRepository = createMysqlAddressRepository(pool);
   const sessionRepository = createMysqlSessionRepository(pool);
+  const adminRepository = createMysqlAdminRepository(pool);
+  const adminSessionRepository = createMysqlAdminSessionRepository(pool);
   const loginService = createLoginService({
     codeExchange,
     resolveUser: userRepository.resolveUser,
     createSession: sessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, userRepository, catalogRepository, addressRepository, sessionRepository });
+  const adminLoginService = createAdminLoginService({
+    authenticate: adminRepository.authenticate,
+    createSession: adminSessionRepository.create,
+    sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
+  });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, userRepository, catalogRepository, addressRepository, sessionRepository, adminSessionRepository });
 }

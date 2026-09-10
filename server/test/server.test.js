@@ -13,6 +13,8 @@ import { createMysqlAddressRepository } from '../src/repositories/mysql-address-
 import { issueSession } from '../src/security/session.js';
 import { createUploadIntent } from '../src/media/upload-policy.js';
 import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
+import { hashPassword, verifyPassword } from '../src/security/password.js';
+import { createAdminLoginService } from '../src/auth/admin-login-service.js';
 
 const secret = 'test-only-session-secret-which-is-long-enough-123456';
 
@@ -108,6 +110,41 @@ test('logout revokes only the authenticated session', async (t) => {
   assert.equal(response.status, 200);
   assert.equal(revoked.userId, 52);
   assert.match(revoked.sessionId, /^[A-Za-z0-9_-]+$/);
+});
+
+test('administrator password hashes verify without retaining plaintext', async () => {
+  const hash = await hashPassword('admin-password-123', Buffer.alloc(16, 7));
+  assert.equal(await verifyPassword('admin-password-123', hash), true);
+  assert.equal(await verifyPassword('wrong-password-123', hash), false);
+  assert.doesNotMatch(hash, /admin-password-123/);
+});
+
+test('administrator login stores an independent administrator session', async () => {
+  let storedSession;
+  const service = createAdminLoginService({
+    authenticate: async ({ username, password }) => username === 'operator' && password === 'admin-password-123' ? { id: 7, roles: ['catalog_editor'] } : null,
+    createSession: async (session) => { storedSession = session; },
+    sessionSecret: secret,
+    now: () => 1_700_000_000
+  });
+  const result = await service.login({ username: 'operator', password: 'admin-password-123' });
+  assert.equal(result.administrator.id, 7);
+  assert.deepEqual(result.administrator.roles, ['catalog_editor']);
+  assert.equal(storedSession.adminAccountId, 7);
+});
+
+test('administrator requests use the independent session repository', async (t) => {
+  const server = createServer({
+    sessionSecret: secret,
+    sessionRepository: { active: async () => true },
+    adminSessionRepository: { active: async () => false }
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 401);
 });
 
 test('profile route uses only the signed session subject', async (t) => {
