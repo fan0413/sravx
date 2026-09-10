@@ -15,6 +15,7 @@ import { issueSession } from '../src/security/session.js';
 import { createUploadIntent } from '../src/media/upload-policy.js';
 import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
 import { createCosUploadSigner } from '../src/media/cos-upload-signer.js';
+import { bannerInput, categoryInput } from '../src/media/admin-catalog-input.js';
 import { hashPassword, verifyPassword } from '../src/security/password.js';
 import { createAdminLoginService } from '../src/auth/admin-login-service.js';
 
@@ -512,4 +513,21 @@ test('administrator catalog repository uses bound filters and keeps deleted rows
   assert.match(calls[0].sql, /p\.category_id = \?/);
   assert.match(calls[0].sql, /ps\.sku LIKE \?/);
   assert.deepEqual(calls[0].values.slice(-2), [100, 100]);
+});
+
+
+test('catalog write inputs require actual content and constrain banner link types', () => {
+  assert.equal(categoryInput({ name: '剪刀', isShow: 1 }).name, '剪刀');
+  assert.throws(() => categoryInput({ name: '' }), /name/);
+  assert.equal(bannerInput({ title: '首页图', imageIntentId: '12345678-1234-1234-1234-123456789012', linkType: 'none' }).position, 'home');
+  assert.throws(() => bannerInput({ title: 'x', imageIntentId: '12345678-1234-1234-1234-123456789012', linkType: 'unsafe' }), /linkType/);
+});
+
+test('category creation stores only a current admin confirmed category image key', async (t) => {
+  let stored;
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async () => true }, mediaIntentRepository: { getConfirmed: async ({ id }) => id === '12345678-1234-1234-1234-123456789012' ? { objectKey: 'catalog/categories/a.png' } : null }, adminCatalogRepository: { createCategory: async (value) => { stored = value; return { id: 1 }; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: '剪刀', imageIntentId: '12345678-1234-1234-1234-123456789012' }) });
+  assert.equal(response.status, 201); assert.equal(stored.image, 'catalog/categories/a.png');
 });

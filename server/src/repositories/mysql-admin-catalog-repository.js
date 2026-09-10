@@ -69,6 +69,22 @@ export function createMysqlAdminCatalogRepository(pool) {
       if (products.length !== 1) return null;
       const [specs] = await pool.execute('SELECT id, name, sku, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, image, card_image, price, sort_order FROM product_specs WHERE product_id = ? ORDER BY sort_order ASC, id ASC', [productId]);
       return { ...normalizeProduct(products[0]), specs };
+    },
+    async createCategory(input) {
+      const [result] = await pool.execute(
+        `INSERT INTO categories (parent_id, name, icon, image, description, level, sort_order, is_show, is_nav, product_count)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+        [input.parentId, input.name, input.icon, input.image, input.description, input.level, input.sortOrder, input.isShow, input.isNav]
+      );
+      return { id: Number(result.insertId) };
+    },
+    async createBanner(input) {
+      const [result] = await pool.execute(
+        `INSERT INTO banners (title, subtitle, image, mobile_image, link_type, link_value, link_param, position, sort_order, is_active, start_time, end_time, click_count)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+        [input.title, input.subtitle, input.image, input.mobileImage, input.linkType, input.linkValue, input.linkParam === null ? null : JSON.stringify(input.linkParam), input.position, input.sortOrder, input.isActive, input.startTime, input.endTime]
+      );
+      return { id: Number(result.insertId) };
     }
   });
 }

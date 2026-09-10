@@ -3,6 +3,7 @@ import { EmptyCatalogRepository } from './repositories/catalog-repository.js';
 import { catalogResponse } from './routes/catalog.js';
 import { getBearerToken, validateSigningSecret, verifySession } from './security/session.js';
 import { createUploadIntent } from './media/upload-policy.js';
+import { bannerInput, categoryInput } from './media/admin-catalog-input.js';
 
 const JSON_HEADERS = Object.freeze({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
 
@@ -177,6 +178,25 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         const isShow = url.searchParams.get('isShow');
         return send(response, 200, { success: true, data: await adminCatalogRepository.listCategories({ keyword: url.searchParams.get('keyword') || '', isShow: isShow === null || isShow === '' ? undefined : Number(isShow), page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
       }
+      if (request.method === 'POST' && url.pathname === '/api/v1/admin/categories') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.createCategory !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') {
+          const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
+        }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const input = categoryInput(await readJsonBody(request));
+          const resolve = async (id, prefix) => {
+            if (!id) return null;
+            const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id });
+            if (!media || !media.objectKey.startsWith(prefix)) throw new Error('Unverified media.');
+            return media.objectKey;
+          };
+          const data = await adminCatalogRepository.createCategory({ ...input, icon: await resolve(input.iconIntentId, 'catalog/categories/'), image: await resolve(input.imageIntentId, 'catalog/categories/') });
+          return send(response, 201, { success: true, data });
+        } catch {
+          const result = error('INVALID_REQUEST', '分类内容或关联图片无效', 400); return send(response, result.status, result.body);
+        }
+      }
       if (request.method === 'GET' && url.pathname === '/api/v1/admin/banners') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.listBanners !== 'function') {
           const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
@@ -184,6 +204,25 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         if (!await requireCatalogEditor()) return;
         const isActive = url.searchParams.get('isActive');
         return send(response, 200, { success: true, data: await adminCatalogRepository.listBanners({ keyword: url.searchParams.get('keyword') || '', position: url.searchParams.get('position') || '', isActive: isActive === null || isActive === '' ? undefined : Number(isActive), page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/v1/admin/banners') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.createBanner !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') {
+          const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
+        }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const input = bannerInput(await readJsonBody(request));
+          const resolve = async (id) => {
+            if (!id) return null;
+            const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id });
+            if (!media || !media.objectKey.startsWith('catalog/banners/')) throw new Error('Unverified media.');
+            return media.objectKey;
+          };
+          const data = await adminCatalogRepository.createBanner({ ...input, image: await resolve(input.imageIntentId), mobileImage: await resolve(input.mobileImageIntentId) });
+          return send(response, 201, { success: true, data });
+        } catch {
+          const result = error('INVALID_REQUEST', '轮播图内容或关联图片无效', 400); return send(response, result.status, result.body);
+        }
       }
       if (request.method === 'GET' && url.pathname === '/api/v1/admin/products') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.listProducts !== 'function') {

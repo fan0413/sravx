@@ -30,6 +30,16 @@ export function createMysqlMediaIntentRepository(pool) {
         [id, adminAccountId]
       );
       return result.affectedRows === 1;
+    },
+    async getConfirmed({ adminAccountId, id }) {
+      const [rows] = await pool.execute(
+        `SELECT id, object_key AS objectKey
+         FROM media_upload_intents
+         WHERE id = ? AND admin_account_id = ? AND status = 'confirmed'
+         LIMIT 1`,
+        [id, adminAccountId]
+      );
+      return rows[0] || null;
     }
   });
 }
