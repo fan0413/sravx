@@ -15,6 +15,18 @@ export function createMysqlAdminRepository(pool) {
       );
       return roles.length === 1;
     },
+    async getRoles(adminAccountId) {
+      if (!Number.isInteger(adminAccountId) || adminAccountId <= 0) return [];
+      const [roles] = await pool.execute(
+        `SELECT r.code FROM admin_account_roles ar
+         INNER JOIN admin_roles r ON r.id = ar.admin_role_id
+         INNER JOIN admin_accounts a ON a.id = ar.admin_account_id
+         WHERE ar.admin_account_id = ? AND a.status = 'active'
+         ORDER BY r.code ASC`,
+        [adminAccountId]
+      );
+      return roles.map(({ code }) => code);
+    },
     async authenticate({ username, password }) {
       if (typeof username !== 'string' || typeof password !== 'string') return null;
       const [accounts] = await pool.execute('SELECT id, password_hash, status FROM admin_accounts WHERE username = ? LIMIT 1', [username.trim()]);

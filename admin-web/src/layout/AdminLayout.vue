@@ -68,7 +68,7 @@
 import { computed } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter, RouterView } from "vue-router";
-import { signOutCloudbase } from "../lib/cloudbase";
+import { adminLogout } from "../lib/admin-auth";
 
 const route = useRoute();
 const router = useRouter();
@@ -77,7 +77,7 @@ const pageTitle = computed(() => String(route.meta.title || "电商管理平台"
 
 const handleLogout = async () => {
   try {
-    await signOutCloudbase();
+    await adminLogout();
     ElMessage.success("已退出登录");
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "退出失败");
@@ -139,3 +139,4 @@ const handleLogout = async () => {
   background: #f6f8fa;
 }
 </style>
+

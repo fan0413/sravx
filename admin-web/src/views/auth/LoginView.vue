@@ -21,7 +21,7 @@
 import { reactive, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { signInWithUsernamePassword } from "../../lib/cloudbase";
+import { adminLogin } from "../../lib/admin-auth";
 
 const router = useRouter();
 const route = useRoute();
@@ -44,7 +44,7 @@ const handleLogin = async () => {
 
   submitting.value = true;
   try {
-    await signInWithUsernamePassword(form.username.trim(), form.password);
+    await adminLogin(form.username.trim(), form.password);
     ElMessage.success("登录成功");
     const redirect = typeof route.query.redirect === "string" ? route.query.redirect : "/dashboard";
     await router.replace(redirect);
@@ -69,3 +69,4 @@ const handleLogin = async () => {
   width: 420px;
 }
 </style>
+

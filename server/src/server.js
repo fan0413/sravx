@@ -108,6 +108,19 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       }
     }
 
+    if (request.method === 'GET' && url.pathname === '/api/v1/admin/auth/session') {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'admin') {
+        const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401);
+        return send(response, result.status, result.body);
+      }
+      if (!adminRepository || typeof adminRepository.getRoles !== 'function') {
+        const result = error('ADMIN_AUTH_NOT_READY', '后台登录服务尚未配置', 503);
+        return send(response, result.status, result.body);
+      }
+      return send(response, 200, { success: true, data: { administrator: { id: session.subject, roles: await adminRepository.getRoles(session.subject) } } });
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/v1/me') {
       const session = await authenticatedSession();
       if (!session) {

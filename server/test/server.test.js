@@ -544,3 +544,12 @@ test('readiness distinguishes an unavailable dependency from process liveness', 
   assert.equal(unavailableResponse.status, 503);
   assert.equal((await unavailableResponse.json()).error.code, 'NOT_READY');
 });
+
+test('administrator session introspection returns only the signed session identity and roles', async (t) => {
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { getRoles: async (id) => id === 7 ? ['catalog_editor'] : [] } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/auth/session`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).data.administrator, { id: 7, roles: ['catalog_editor'] });
+});

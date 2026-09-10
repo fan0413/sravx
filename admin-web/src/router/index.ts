@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
 import AdminLayout from "../layout/AdminLayout.vue";
-import { isNonAnonymousLoggedIn } from "../lib/cloudbase";
+import { adminLoggedIn } from "../lib/admin-auth";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -167,7 +167,7 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   if (to.meta.public) return true;
-  const loggedIn = await isNonAnonymousLoggedIn();
+  const loggedIn = await adminLoggedIn();
   if (loggedIn) return true;
   return {
     path: "/login",
@@ -176,3 +176,4 @@ router.beforeEach(async (to) => {
 });
 
 export default router;
+
