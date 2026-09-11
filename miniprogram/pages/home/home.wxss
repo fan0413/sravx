@@ -9,20 +9,20 @@
 .search-handle { width: 10rpx; height: 2rpx; background: #86868B; position: absolute; bottom: 4rpx; right: 2rpx; transform: rotate(45deg); }
 .search-placeholder { font-size: 26rpx; color: #86868B; }
 .main-scroll { height: 100%; }
-.intro-block { padding: 40rpx 32rpx 28rpx; }
-.page-title { display: block; font-size: 54rpx; line-height: 1.1; font-weight: 700; letter-spacing: -1rpx; color: #1D1D1F; }
-.page-subtitle { display: block; margin-top: 14rpx; font-size: 26rpx; color: #6E6E73; }
+.intro-block { padding: 46rpx 32rpx 34rpx; }
+.page-title { display: block; font-size: 60rpx; line-height: 1.08; font-weight: 700; letter-spacing: -1rpx; color: #1D1D1F; }
+.page-subtitle { display: block; margin-top: 16rpx; font-size: 28rpx; color: #515154; font-weight: 400; }
 .category-scroll, .chip-scroll { white-space: nowrap; }
-.category-row { display: flex; gap: 16rpx; padding: 0 28rpx 22rpx; }
-.category-card { width: 144rpx; min-width: 144rpx; height: 154rpx; padding: 14rpx 12rpx; display: flex; flex-direction: column; align-items: center; justify-content: space-between; border-radius: 24rpx; background: #FFF; }
+.category-row { display: flex; gap: 18rpx; padding: 0 28rpx 28rpx; }
+.category-card { width: 174rpx; min-width: 174rpx; height: 190rpx; padding: 18rpx 14rpx; display: flex; flex-direction: column; align-items: center; justify-content: space-between; border-radius: 28rpx; background: #FFF; }
 .category-card:active, .product-card:active { opacity: .72; }
-.category-image { width: 84rpx; height: 84rpx; }
-.category-name { width: 100%; text-align: center; font-size: 22rpx; font-weight: 600; color: #1D1D1F; }
-.all-products { align-items: flex-start; justify-content: flex-end; padding: 22rpx 18rpx; background: #1D1D1F; }
-.all-products-title { color: #FFF; font-size: 28rpx; font-weight: 600; }
-.all-products-caption { margin-top: 6rpx; color: rgba(255,255,255,.65); font-size: 20rpx; }
+.category-image { width: 112rpx; height: 112rpx; }
+.category-name { width: 100%; text-align: center; font-size: 25rpx; font-weight: 600; color: #1D1D1F; }
+.all-products { align-items: flex-start; justify-content: flex-end; padding: 26rpx 22rpx; background: #1D1D1F; }
+.all-products-title { color: #FFF; font-size: 32rpx; font-weight: 600; }
+.all-products-caption { margin-top: 8rpx; color: rgba(255,255,255,.68); font-size: 22rpx; }
 .accessory-block { padding: 20rpx 0 18rpx; }
-.section-label { display: block; padding: 0 32rpx 18rpx; font-size: 30rpx; font-weight: 650; color: #1D1D1F; }
+.section-label { display: block; padding: 0 32rpx 20rpx; font-size: 32rpx; font-weight: 650; color: #1D1D1F; }
 .chip-row { display: flex; gap: 14rpx; padding: 0 28rpx; }
 .filter-chip { min-width: max-content; padding: 17rpx 24rpx; border-radius: 99rpx; background: #FFF; color: #3A3A3C; font-size: 23rpx; }
 .chip-selected { background: #1D1D1F; color: #FFF; }
@@ -36,10 +36,10 @@
 .banner-swiper, .banner-item { width: 694rpx; height: 530rpx; border-radius: 30rpx; overflow: hidden; }
 .banner-item { position: relative; background: #ECEDEF; }
 .banner-img { width: 694rpx; height: 530rpx; background: #ECEDEF; }
-.banner-copy { position: absolute; bottom: 0; left: 0; right: 0; padding: 110rpx 34rpx 34rpx; background: rgba(0,0,0,.24); }
-.banner-eyebrow { display: block; margin-bottom: 10rpx; font-size: 18rpx; font-weight: 600; letter-spacing: 2rpx; color: rgba(255,255,255,.78); }
+.banner-copy { position: absolute; bottom: 0; left: 0; right: 0; padding: 26rpx 30rpx 28rpx; background: rgba(0,0,0,.18); }
+.banner-eyebrow { display: block; margin-bottom: 8rpx; font-size: 18rpx; font-weight: 600; letter-spacing: 2rpx; color: rgba(255,255,255,.82); }
 .banner-title { display: block; font-size: 40rpx; font-weight: 600; color: #FFF; letter-spacing: 1rpx; }
-.banner-action { display: inline-flex; margin-top: 20rpx; padding: 13rpx 20rpx; border-radius: 99rpx; background: #FFF; color: #1D1D1F; font-size: 22rpx; font-weight: 600; }
+.banner-action { display: inline-flex; margin-top: 14rpx; padding: 12rpx 20rpx; border-radius: 99rpx; background: #FFF; color: #1D1D1F; font-size: 22rpx; font-weight: 600; }
 .swiper-dots { display: flex; justify-content: center; gap: 12rpx; margin-top: 18rpx; }
 .dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #D2D2D7; transition: all .3s ease; }
 .dot-active { width: 32rpx; border-radius: 6rpx; background: #1D1D1F; }

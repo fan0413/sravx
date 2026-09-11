@@ -3,10 +3,11 @@
   display: flex;
   align-items: center;
   justify-content: space-around;
-  height: 110rpx;
+  height: 116rpx;
   padding-bottom: env(safe-area-inset-bottom);
-  background-color: #FFFFFF;
-  border-top: 1rpx solid rgba(0, 0, 0, 0.06);
+  background-color: rgba(255, 255, 255, 0.96);
+  border-top: 1rpx solid rgba(60, 60, 67, 0.12);
+  box-shadow: 0 -8rpx 28rpx rgba(29, 29, 31, 0.05);
   position: fixed;
   bottom: 0;
   left: 0;
@@ -20,30 +21,30 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding-top: 10rpx;
+  padding-top: 8rpx;
   transition: all 0.2s ease;
 }
 
 .icon-wrap {
-  width: 48rpx;
-  height: 48rpx;
+  width: 50rpx;
+  height: 50rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 4rpx;
+  margin-bottom: 5rpx;
 }
 
 .tab-label {
-  font-size: 20rpx;
-  color: #86868B;
-  font-weight: 400;
-  letter-spacing: 1rpx;
+  font-size: 22rpx;
+  color: #6E6E73;
+  font-weight: 500;
+  letter-spacing: .5rpx;
   transition: color 0.2s ease;
 }
 
 .label-active {
   color: #1D1D1F;
-  font-weight: 500;
+  font-weight: 650;
 }
 
 /* ====== Home Icon ====== */
@@ -78,10 +79,12 @@
 
 .icon-active .home-outline {
   border-color: #1D1D1F;
+  border-width: 3rpx;
 }
 
 .icon-active .home-door {
   border-color: #1D1D1F;
+  border-width: 3rpx;
 }
 
 /* ====== Shop Icon ====== */
@@ -110,6 +113,7 @@
 
 .icon-active .shop-dot {
   border-color: #1D1D1F;
+  border-width: 3rpx;
 }
 
 /* ====== User Icon ====== */
@@ -144,10 +148,12 @@
 
 .icon-active .user-head {
   border-color: #1D1D1F;
+  border-width: 3rpx;
 }
 
 .icon-active .user-body {
   border-color: #1D1D1F;
+  border-width: 3rpx;
 }
 
 /* ====== Order Icon ====== */
@@ -182,10 +188,12 @@
 
 .icon-active .order-bag {
   border-color: #1D1D1F;
+  border-width: 3rpx;
 }
 
 .icon-active .order-flap {
   border-color: #1D1D1F;
+  border-width: 3rpx;
 }
 
 .phone-auth-mask {
