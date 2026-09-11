@@ -266,123 +266,12 @@
   gap: 24rpx;
 }
 
-.preview-card {
-  background: #FFFFFF;
-  border-radius: 32rpx;
-  overflow: hidden;
-  box-shadow: 0 14rpx 34rpx rgba(29, 29, 31, 0.07);
-}
-
-.preview-card:active {
-  opacity: 0.85;
-}
-
-.preview-surface {
-  position: relative;
-  width: 100%;
-  height: 392rpx;
-  overflow: hidden;
-  background: #ECEDEF;
-}
-
-.preview-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.preview-mark {
-  position: absolute;
-  top: 18rpx;
-  left: 18rpx;
-  padding: 10rpx 14rpx;
-  border-radius: 99rpx;
-  background: rgba(255,255,255,.88);
-}
-
-.preview-mark text { font-size: 17rpx; letter-spacing: 1.4rpx; font-weight: 700; color: var(--color-primary); }
-.preview-summary { padding: 26rpx 28rpx 22rpx; }
-.preview-name {
-  display: block;
-  font-size: 32rpx;
-  font-weight: 700;
-  color: var(--color-primary);
-  letter-spacing: -.5rpx;
-}
-
-.preview-model {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  color: var(--color-secondary);
-  font-weight: 400;
-}
-
-.preview-info {
-  padding: 18rpx 28rpx 24rpx;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border-top: 1rpx solid var(--color-border);
-}
-
-.preview-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 48rpx;
-}
-
-.warranty-row { margin-top: 8rpx; }
-
-.preview-label {
-  font-size: 23rpx;
-  color: var(--color-secondary);
-  font-weight: 400;
-  flex-shrink: 0;
-}
-
-.preview-sn {
-  font-size: 23rpx;
-  color: var(--color-primary);
-  font-family: 'SF Mono', 'Menlo', monospace;
-  text-align: right;
-}
-
-.warranty-label {
-  position: relative;
-  padding-left: 18rpx;
-}
-
-.warranty-label::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 8rpx;
-  height: 8rpx;
-  border-radius: 50%;
-}
-
-.warranty-label.lifetime::before { background: var(--color-accent); }
-.warranty-label.valid::before { background: var(--color-success); }
-.warranty-label.expired::before { background: var(--color-danger); }
-.warranty-label.unknown::before { background: var(--color-border); }
-
-.preview-value {
-  font-size: 23rpx;
-  color: var(--color-primary);
-  font-weight: 500;
-  text-align: right;
-}
-
-.preview-value.lifetime {
-  color: var(--color-accent);
-  font-weight: 500;
-}
+.preview-card { overflow: hidden; border-radius: 28rpx; background: #FFFFFF; box-shadow: 0 12rpx 28rpx rgba(29,29,31,.06); }
+.preview-card:active { opacity: .78; }
+.preview-surface { width: 100%; height: 392rpx; overflow: hidden; background: #ECEDEF; }
+.preview-bg { width: 100%; height: 100%; }
+.preview-summary { padding: 26rpx 28rpx 28rpx; background: #FFFFFF; }
+.preview-name { display: block; color: var(--color-primary); font-size: 32rpx; font-weight: 700; letter-spacing: -.5rpx; }
 
 /* more link */
 

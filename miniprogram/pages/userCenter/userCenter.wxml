@@ -53,21 +53,9 @@
       >
         <view class="preview-surface">
           <image class="preview-bg" src="{{item.card_image || item.image}}" mode="aspectFill" lazy-load />
-          <view class="preview-mark"><text>SRAVX REGISTERED TOOL</text></view>
         </view>
         <view class="preview-summary">
           <text class="preview-name ellipsis">{{item.name}}</text>
-          <text class="preview-model">{{item.spec_name || item.model || '专业美容工具'}}</text>
-        </view>
-        <view class="preview-info">
-          <view class="preview-row warranty-row">
-            <text class="preview-label">SN编码</text>
-            <text class="preview-sn">{{item.sn}}</text>
-          </view>
-          <view class="preview-row">
-            <text class="preview-label warranty-label {{item.warranty.type}}">{{item.warranty.label}}</text>
-            <text class="preview-value {{item.warranty.type}}">{{item.warranty.text}}</text>
-          </view>
         </view>
       </view>
       <view wx:if="{{scissors.length > 2}}" class="preview-more" bindtap="onScissorsTap">
