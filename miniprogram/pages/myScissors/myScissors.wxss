@@ -14,7 +14,7 @@
 
 .card-item { overflow: hidden; border-radius: 34rpx; background: #FFFFFF; box-shadow: 0 14rpx 34rpx rgba(29,29,31,.07); transition: opacity .2s ease; }
 .card-item:active { opacity: .78; }
-.card-surface { width: 100%; height: 430rpx; overflow: hidden; background: #ECEDEF; }
+.card-surface { width: 100%; height: 458rpx; overflow: hidden; background: #ECEDEF; }
 .card-bg { width: 100%; height: 100%; }
 .tool-summary { padding: 28rpx 30rpx 30rpx; background: #FFFFFF; }
 .card-name { display: block; color: var(--color-primary); font-size: 34rpx; font-weight: 700; letter-spacing: -.5rpx; }

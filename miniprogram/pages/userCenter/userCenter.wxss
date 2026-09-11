@@ -268,7 +268,7 @@
 
 .preview-card { overflow: hidden; border-radius: 28rpx; background: #FFFFFF; box-shadow: 0 12rpx 28rpx rgba(29,29,31,.06); }
 .preview-card:active { opacity: .78; }
-.preview-surface { width: 100%; height: 392rpx; overflow: hidden; background: #ECEDEF; }
+.preview-surface { width: 100%; height: 415rpx; overflow: hidden; background: #ECEDEF; }
 .preview-bg { width: 100%; height: 100%; }
 .preview-summary { padding: 26rpx 28rpx 28rpx; background: #FFFFFF; }
 .preview-name { display: block; color: var(--color-primary); font-size: 32rpx; font-weight: 700; letter-spacing: -.5rpx; }
