@@ -1,6 +1,6 @@
 .container {
   height: 100%;
-  background: #F5F5F7;
+  background: #F2F2F7;
   position: relative;
 }
 
@@ -146,7 +146,7 @@
 }
 
 .product-card {
-  background: #F5F5F7;
+  background: #F2F2F7;
   border-radius: 20rpx;
   padding: 24rpx;
 }

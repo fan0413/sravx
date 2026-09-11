@@ -1,7 +1,7 @@
 .shop-container {
   display: flex;
   height: 100%;
-  background: #F5F5F7;
+  background: #F2F2F7;
 }
 
 /* ====== Sidebar ====== */
@@ -46,7 +46,7 @@
 .product-area {
   flex: 1;
   height: 100%;
-  background: #F5F5F7;
+  background: #F2F2F7;
 }
 
 /* ====== Section Anchor & Title ====== */

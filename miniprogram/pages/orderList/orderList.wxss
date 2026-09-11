@@ -1,6 +1,6 @@
 .container {
   height: 100%;
-  background: #F5F5F7;
+  background: #F2F2F7;
   position: relative;
 }
 

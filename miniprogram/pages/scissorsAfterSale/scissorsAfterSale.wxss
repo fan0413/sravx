@@ -1,4 +1,4 @@
-.page { min-height: 100vh; padding: 24rpx 28rpx 56rpx; box-sizing: border-box; background: #f5f5f7; }
+.page { min-height: 100vh; padding: 24rpx 28rpx 56rpx; box-sizing: border-box; background: #F2F2F7; }
 .loading, .empty { padding: 96rpx 0; text-align: center; color: #86868b; font-size: 28rpx; }
 .scissors-card, .panel, .record-panel { background: #fff; border-radius: 24rpx; box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, .05); }
 .scissors-card { display: flex; overflow: hidden; }
