@@ -26,6 +26,26 @@ function formatTime(value) {
   return String(value).replace('T', ' ').slice(0, 16)
 }
 
+function formatDate(value) {
+  if (!value) return '—'
+  const match = String(value).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  return match ? `${match[1]}年${match[2]}月${match[3]}日` : String(value)
+}
+
+function normalizeScissors(scissors) {
+  if (!scissors) return null
+  const activationDateText = formatDate(scissors.activation_date)
+  const warrantyExpireText = formatDate(scissors.warranty_expire)
+  const warrantyText = scissors.activation_date && scissors.warranty_expire
+    ? `${activationDateText} 至 ${warrantyExpireText}`
+    : (warrantyExpireText === '—' && scissors.warranty_months ? `${scissors.warranty_months}个月` : warrantyExpireText)
+  return {
+    ...scissors,
+    modelText: scissors.spec_name || scissors.model || '专业美容工具',
+    activationDateText,
+    warrantyText
+  }
+}
 function normalizeRecord(record) {
   return {
     ...record,
@@ -86,7 +106,7 @@ Page({
         addressList.find(item => Number(item.is_default) === 1) || addressList[0] || null
       const records = (data.records || []).map(normalizeRecord)
       this.setData({
-        scissors: data.scissors || null,
+        scissors: normalizeScissors(data.scissors),
         records,
         addresses: addressList,
         selectedAddressId: selectedAddress ? Number(selectedAddress.id) : 0,

@@ -1,20 +1,81 @@
 <view class="page">
   <view wx:if="{{loading}}" class="loading">加载中...</view>
   <block wx:elif="{{scissors}}">
-    <view class="scissors-card"><image class="scissors-image" src="{{scissors.image}}" mode="aspectFill" /><view class="scissors-copy"><text class="scissors-name">{{scissors.name}}</text><text class="scissors-sn">SN：{{scissors.sn}}</text><text class="warranty">质保至 {{scissors.warranty_expire || '—'}}</text></view></view>
-    <view class="section-title">申请售后</view>
+    <view class="device-hero">
+      <view class="device-image-wrap">
+        <image class="device-image" src="{{scissors.image}}" mode="aspectFit" />
+      </view>
+      <text class="device-name">{{scissors.name}}</text>
+      <text class="device-model">{{scissors.modelText}}</text>
+    </view>
+
+    <view class="archive-heading">工具档案</view>
+    <view class="device-info-card">
+      <view class="device-info-row">
+        <text class="device-info-label">型号</text>
+        <text class="device-info-value">{{scissors.modelText}}</text>
+      </view>
+      <view class="device-info-row">
+        <text class="device-info-label">SN编码</text>
+        <text class="device-info-value sn-value">{{scissors.sn}}</text>
+      </view>
+      <view class="device-info-row">
+        <text class="device-info-label">激活日期</text>
+        <text class="device-info-value">{{scissors.activationDateText}}</text>
+      </view>
+      <view class="device-info-row">
+        <text class="device-info-label">保修期</text>
+        <text class="device-info-value warranty-value">{{scissors.warrantyText}}</text>
+      </view>
+    </view>
+
+    <view class="section-title">售后服务</view>
     <view class="panel">
-      <view class="type-row"><view class="type-option {{serviceType === 'repair' ? 'selected' : ''}}" data-type="repair" bindtap="onSelectService">维修</view><view class="type-option {{serviceType === 'replacement' ? 'selected' : ''}}" data-type="replacement" bindtap="onSelectService">置换</view></view>
+      <view class="type-row">
+        <view class="type-option {{serviceType === 'repair' ? 'selected' : ''}}" data-type="repair" bindtap="onSelectService">维修</view>
+        <view class="type-option {{serviceType === 'replacement' ? 'selected' : ''}}" data-type="replacement" bindtap="onSelectService">置换</view>
+      </view>
       <textarea class="description" value="{{description}}" maxlength="500" placeholder="请说明剪刀问题、使用情况与处理诉求" bindinput="onDescriptionInput" />
       <view class="address-title"><text>维修完成后的收货地址</text><text class="manage-link" bindtap="onManageAddress">管理地址</text></view>
       <view wx:if="{{addresses.length === 0}}" class="address-empty" bindtap="onManageAddress">请先新增收货地址</view>
-      <view wx:else class="address-list"><view wx:for="{{addresses}}" wx:key="id" class="address-item {{selectedAddressId === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="onSelectAddress"><view class="address-row"><text>{{item.name || item.contact}}</text><text>{{item.phone}}</text></view><text>{{item.province}}{{item.city}}{{item.district}}{{item.detail}}</text></view></view>
+      <view wx:else class="address-list">
+        <view wx:for="{{addresses}}" wx:key="id" class="address-item {{selectedAddressId === item.id ? 'selected' : ''}}" data-id="{{item.id}}" bindtap="onSelectAddress">
+          <view class="address-row"><text>{{item.name || item.contact}}</text><text>{{item.phone}}</text></view>
+          <text>{{item.province}}{{item.city}}{{item.district}}{{item.detail}}</text>
+        </view>
+      </view>
       <view class="submit-button {{submitting ? 'disabled' : ''}}" bindtap="onSubmit">{{submitting ? '提交中...' : '提交申请'}}</view>
       <text class="hint">审核通过后会提供寄回地址。寄出快递费请您先行垫付并保留凭证；维修完成并寄回后，将按售后规则补发运费抵扣券，具体以到账券面为准。</text>
     </view>
-    <view wx:if="{{pendingShipment}}" class="panel shipment-panel"><text class="shipment-title">填写寄回物流</text><text class="shipment-address">寄回地址：{{pendingShipment.serviceAddress || '请等待售后专员补充地址'}}</text><input class="form-input" data-field="carrier" value="{{shipment.carrier}}" placeholder="快递公司" bindinput="onShipmentInput" /><input class="form-input" data-field="trackingNo" value="{{shipment.trackingNo}}" placeholder="快递单号" bindinput="onShipmentInput" /><input class="form-input" data-field="freightAmount" value="{{shipment.freightAmount}}" type="digit" placeholder="实际寄出运费（元）" bindinput="onShipmentInput" /><view class="submit-button" bindtap="onSubmitShipment">提交寄回物流</view><text class="hint">请使用普通快递，勿使用到付件；剪刀请套好刀套、固定刀尖并使用硬质包装。</text></view>
+
+    <view wx:if="{{pendingShipment}}" class="panel shipment-panel">
+      <text class="shipment-title">填写寄回物流</text>
+      <text class="shipment-address">寄回地址：{{pendingShipment.serviceAddress || '请等待售后专员补充地址'}}</text>
+      <input class="form-input" data-field="carrier" value="{{shipment.carrier}}" placeholder="快递公司" bindinput="onShipmentInput" />
+      <input class="form-input" data-field="trackingNo" value="{{shipment.trackingNo}}" placeholder="快递单号" bindinput="onShipmentInput" />
+      <input class="form-input" data-field="freightAmount" value="{{shipment.freightAmount}}" type="digit" placeholder="实际寄出运费（元）" bindinput="onShipmentInput" />
+      <view class="submit-button" bindtap="onSubmitShipment">提交寄回物流</view>
+      <text class="hint">请使用普通快递，勿使用到付件；剪刀请套好刀套、固定刀尖并使用硬质包装。</text>
+    </view>
+
     <view class="section-title">售后记录</view>
     <view wx:if="{{records.length === 0}}" class="empty">暂无售后记录</view>
-    <block wx:else><view wx:for="{{records}}" wx:key="id" class="record-panel"><view class="record-head"><text class="record-type">{{item.serviceTypeText}}</text><text class="record-status">{{item.statusText}}</text></view><text class="record-desc">{{item.issue_description}}</text><text class="record-time">{{item.createdAtText}}</text><view wx:if="{{item.return_tracking_no}}" class="logistics">寄回物流：{{item.return_carrier}} {{item.return_tracking_no}}</view><view wx:if="{{item.outbound_tracking_no}}" class="logistics">回寄物流：{{item.outbound_carrier}} {{item.outbound_tracking_no}}</view><view wx:if="{{item.freight_coupon_status === 'issued'}}" class="coupon-note">运费抵扣券已补发：{{item.freight_coupon_note || '请前往优惠券查看'}}</view><view wx:if="{{item.messages.length > 0}}" class="message-list"><view wx:for="{{item.messages}}" wx:key="id" class="message {{item.isSeller ? 'seller' : ''}}"><view class="message-meta"><text>{{item.senderText}}</text><text>{{item.createdAtText}}</text></view><text class="message-content">{{item.content}}</text></view></view><view wx:else class="waiting-message">售后专员暂未留言，请耐心等待。</view></view></block>
+    <block wx:else>
+      <view wx:for="{{records}}" wx:key="id" class="record-panel">
+        <view class="record-head"><text class="record-type">{{item.serviceTypeText}}</text><text class="record-status">{{item.statusText}}</text></view>
+        <text class="record-desc">{{item.issue_description}}</text>
+        <text class="record-time">{{item.createdAtText}}</text>
+        <view wx:if="{{item.return_tracking_no}}" class="logistics">寄回物流：{{item.return_carrier}} {{item.return_tracking_no}}</view>
+        <view wx:if="{{item.outbound_tracking_no}}" class="logistics">回寄物流：{{item.outbound_carrier}} {{item.outbound_tracking_no}}</view>
+        <view wx:if="{{item.freight_coupon_status === 'issued'}}" class="coupon-note">运费抵扣券已补发：{{item.freight_coupon_note || '请前往优惠券查看'}}</view>
+        <view wx:if="{{item.messages.length > 0}}" class="message-list">
+          <view wx:for="{{item.messages}}" wx:key="id" class="message {{item.isSeller ? 'seller' : ''}}">
+            <view class="message-meta"><text>{{item.senderText}}</text><text>{{item.createdAtText}}</text></view>
+            <text class="message-content">{{item.content}}</text>
+          </view>
+        </view>
+        <view wx:else class="waiting-message">售后专员暂未留言，请耐心等待。</view>
+      </view>
+    </block>
   </block>
 </view>
