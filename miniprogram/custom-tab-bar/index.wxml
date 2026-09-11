@@ -8,8 +8,8 @@
   >
     <view wx:if="{{item.icon === 'home'}}" class="icon-wrap">
       <view class="icon-home {{active === index ? 'icon-active' : ''}}">
-        <view class="home-outline"></view>
-        <view class="home-door"></view>
+        <view class="home-product"></view>
+        <view class="home-product-detail"></view>
       </view>
     </view>
 
@@ -22,8 +22,9 @@
 
     <view wx:elif="{{item.icon === 'order'}}" class="icon-wrap">
       <view class="icon-order {{active === index ? 'icon-active' : ''}}">
-        <view class="order-bag"></view>
-        <view class="order-flap"></view>
+        <view class="order-document"></view>
+        <view class="order-line order-line-first"></view>
+        <view class="order-line order-line-second"></view>
       </view>
     </view>
 

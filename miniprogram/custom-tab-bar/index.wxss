@@ -47,45 +47,11 @@
   font-weight: 650;
 }
 
-/* ====== Home Icon ====== */
-.icon-home {
-  width: 44rpx;
-  height: 44rpx;
-  position: relative;
-}
-
-.home-outline {
-  width: 30rpx;
-  height: 30rpx;
-  border: 2rpx solid #636366;
-  border-radius: 6rpx 6rpx 0 0;
-  position: absolute;
-  bottom: 4rpx;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.home-door {
-  width: 12rpx;
-  height: 14rpx;
-  border: 2rpx solid #636366;
-  border-radius: 6rpx 6rpx 0 0;
-  border-bottom: none;
-  position: absolute;
-  bottom: 4rpx;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.icon-active .home-outline {
-  border-color: #161616;
-  border-width: 3rpx;
-}
-
-.icon-active .home-door {
-  border-color: #161616;
-  border-width: 3rpx;
-}
+/* ====== Product Home Icon ====== */
+.icon-home { width: 44rpx; height: 44rpx; position: relative; }
+.home-product { width: 34rpx; height: 28rpx; position: absolute; bottom: 4rpx; left: 50%; border: 2rpx solid #636366; border-radius: 8rpx; transform: translateX(-50%); }
+.home-product-detail { width: 14rpx; height: 14rpx; position: absolute; top: 10rpx; left: 50%; border: 2rpx solid #636366; border-radius: 4rpx; transform: translateX(-50%); }
+.icon-active .home-product, .icon-active .home-product-detail { border-color: #161616; border-width: 3rpx; }
 
 /* ====== Shopping Bag Icon ====== */
 .icon-bag { width: 44rpx; height: 44rpx; position: relative; }
@@ -133,46 +99,12 @@
   border-width: 3rpx;
 }
 
-/* ====== Order Icon ====== */
-.icon-order {
-  width: 44rpx;
-  height: 44rpx;
-  position: relative;
-}
-
-.order-bag {
-  width: 36rpx;
-  height: 32rpx;
-  border: 2rpx solid #636366;
-  border-radius: 0 0 8rpx 8rpx;
-  position: absolute;
-  bottom: 2rpx;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.order-flap {
-  width: 20rpx;
-  height: 10rpx;
-  border: 2rpx solid #636366;
-  border-radius: 10rpx 10rpx 0 0;
-  border-bottom: none;
-  position: absolute;
-  top: 10rpx;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.icon-active .order-bag {
-  border-color: #161616;
-  border-width: 3rpx;
-}
-
-.icon-active .order-flap {
-  border-color: #161616;
-  border-width: 3rpx;
-}
-
+/* ====== Order Document Icon ====== */
+.icon-order { width: 44rpx; height: 44rpx; position: relative; }
+.order-document { width: 29rpx; height: 34rpx; position: absolute; top: 4rpx; left: 50%; border: 2rpx solid #636366; border-radius: 6rpx; transform: translateX(-50%); }
+.order-line { width: 14rpx; height: 2rpx; position: absolute; left: 50%; background: #636366; border-radius: 99rpx; transform: translateX(-50%); }
+.order-line-first { top: 16rpx; }.order-line-second { top: 24rpx; width: 10rpx; }
+.icon-active .order-document { border-color: #161616; border-width: 3rpx; }.icon-active .order-line { background: #161616; height: 3rpx; }
 .phone-auth-mask {
   position: fixed;
   inset: 0;
