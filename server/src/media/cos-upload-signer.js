@@ -29,6 +29,16 @@ export function createCosUploadSigner({ secretId, secretKey, bucket, region, cre
       const contentType = String(headers['content-type'] || '').split(';', 1)[0].trim().toLowerCase();
       if (byteSize !== intent.byteSize || contentType !== intent.contentType) throw new Error('Uploaded object metadata did not match its intent.');
       return true;
+    },
+    async issueGetUrl(objectKey, expires = 300) {
+      if (typeof objectKey !== 'string' || !objectKey.startsWith('catalog/')) throw new Error('A controlled object key is required.');
+      const Expires = Math.max(1, Math.min(900, Math.floor(Number(expires) || 300)));
+      return new Promise((resolve, reject) => {
+        client.getObjectUrl({ Bucket, Region, Key: objectKey, Method: 'GET', Sign: true, Expires }, (cause, data) => {
+          if (cause || !data?.Url) return reject(cause || new Error('COS did not return a download URL.'));
+          resolve(data.Url);
+        });
+      });
     }
   });
 }

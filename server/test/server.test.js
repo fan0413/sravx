@@ -241,6 +241,11 @@ test('COS signer only signs the server-generated key and content type', async ()
   assert.equal(request.Method, 'PUT');
   assert.equal(request.Sign, true);
   assert.deepEqual(request.Headers, { 'Content-Type': 'image/jpeg' });
+  const downloadUrl = await signer.issueGetUrl('catalog/products/image.jpg', 60);
+  assert.equal(downloadUrl, 'https://upload.example.test/signed');
+  assert.equal(request.Method, 'GET');
+  assert.equal(request.Expires, 60);
+  await assert.rejects(signer.issueGetUrl('outside-catalog/image.jpg'), /controlled/);
 });
 
 test('profile route uses only the signed session subject', async (t) => {

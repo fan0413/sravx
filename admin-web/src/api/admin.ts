@@ -1929,6 +1929,12 @@ export async function uploadAdminImages(files: File[], folder: string) {
 }
 
 export async function resolveAdminFileUrls(fileIDs: string[]) {
+  if (targetAdminModeEnabled()) {
+    const objectKeys = fileIDs.filter((item) => item.startsWith("catalog/"));
+    if (objectKeys.length === 0) return {};
+    const data = await targetAdminRequest<{ urls: Record<string, string> }>("/api/v1/admin/media/temporary-urls", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ objectKeys }) });
+    return data.urls || {};
+  }
   return getTempFileUrlMap(fileIDs);
 }
 

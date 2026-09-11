@@ -342,6 +342,23 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
           return send(response, result.status, result.body);
         }
       }
+      if (request.method === 'POST' && url.pathname === '/api/v1/admin/media/temporary-urls') {
+        if (!adminRepository || typeof adminRepository.hasRole !== 'function' || !mediaSigner || typeof mediaSigner.issueGetUrl !== 'function') {
+          const result = error('ADMIN_MEDIA_NOT_READY', '后台媒体服务尚未配置', 503);
+          return send(response, result.status, result.body);
+        }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const payload = await readJsonBody(request);
+          const objectKeys = Array.isArray(payload?.objectKeys) ? payload.objectKeys : [];
+          if (objectKeys.length > 50 || objectKeys.some((key) => typeof key !== 'string' || !key.startsWith('catalog/') || key.length > 500)) throw new Error('Invalid object keys.');
+          const entries = await Promise.all(objectKeys.map(async (key) => [key, await mediaSigner.issueGetUrl(key)]));
+          return send(response, 200, { success: true, data: { urls: Object.fromEntries(entries) } });
+        } catch {
+          const result = error('INVALID_REQUEST', '图片读取请求无效', 400);
+          return send(response, result.status, result.body);
+        }
+      }
       const confirmation = /^\/api\/v1\/admin\/media\/upload-intents\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/confirm$/i.exec(url.pathname);
       if (request.method === 'POST' && confirmation) {
         if (!adminRepository || typeof adminRepository.hasRole !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getPending !== 'function' || typeof mediaIntentRepository.confirm !== 'function' || !mediaSigner || typeof mediaSigner.verifyObject !== 'function') {
