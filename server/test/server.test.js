@@ -532,6 +532,31 @@ test('category creation stores only a current admin confirmed category image key
   assert.equal(response.status, 201); assert.equal(stored.image, 'catalog/categories/a.png');
 });
 
+test('product creation stores only confirmed product media keys for every image field', async (t) => {
+  let stored;
+  const ids = ['11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444'];
+  const server = createServer({
+    sessionSecret: secret,
+    adminSessionRepository: { active: async () => true },
+    adminRepository: { hasRole: async () => true },
+    mediaIntentRepository: { getConfirmed: async ({ id }) => ids.includes(id) ? { objectKey: `catalog/products/${id}.png` } : null },
+    adminCatalogRepository: { createProduct: async (value) => { stored = value; return { id: 1 }; } }
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const payload = {
+    name: '宠物剪刀', price: 99, categoryId: 1, coverImageIntentId: ids[0], imageIntentIds: [ids[1]], detailImageIntentIds: [ids[2]], params: { '尺寸': '7 寸' }, stock: 3, warrantyMonths: 12, hasSpec: 1, isOnSale: 1, isRecommend: 0, allowCoupon: 1,
+    shippingType: 'normal', shipDeadlineDays: 2, shippingPromise: '付款后 2 天内发货', shippingDelayReason: '现货', shippingNote: '工作日发货',
+    specs: [{ name: '标准款', sku: 'S-1', imageIntentId: ids[3], price: 99, sortOrder: 1, shippingType: 'normal', shipDeadlineDays: 2, shippingPromise: '付款后 2 天内发货', shippingDelayReason: '现货', shippingNote: '工作日发货' }]
+  };
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  assert.equal(response.status, 201);
+  assert.equal(stored.coverImage, `catalog/products/${ids[0]}.png`);
+  assert.deepEqual(stored.images, [`catalog/products/${ids[1]}.png`]);
+  assert.deepEqual(stored.detailImages, [`catalog/products/${ids[2]}.png`]);
+  assert.equal(stored.specs[0].image, `catalog/products/${ids[3]}.png`);
+});
+
 test('readiness distinguishes an unavailable dependency from process liveness', async (t) => {
   const ready = createServer({ sessionSecret: secret, healthCheck: async () => {} });
   ready.listen(0, '127.0.0.1'); await once(ready, 'listening'); t.after(() => ready.close());

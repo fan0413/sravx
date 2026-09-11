@@ -1827,6 +1827,51 @@ export async function createProduct(payload: CreateProductInput): Promise<{ id: 
 }
 
 export async function createAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
+  if (targetAdminModeEnabled()) {
+    const primarySpec = payload.specs?.[0];
+    if (!primarySpec) throw new Error("请至少填写一个规格及其履约信息");
+    const intentIds = (items: string[] | undefined) => (items || []).map((item) => targetMediaIntentId(item)).filter((item): item is string => Boolean(item));
+    const body = {
+      name: payload.name,
+      shortName: payload.short_name,
+      description: payload.desc,
+      price: payload.price,
+      categoryId: payload.category_id,
+      coverImageIntentId: targetMediaIntentId(payload.cover_image),
+      imageIntentIds: intentIds(payload.images),
+      detailImageIntentIds: intentIds(payload.detail_images),
+      scissorsCardImageIntentId: targetMediaIntentId(payload.scissors_card_image),
+      params: payload.params,
+      stock: payload.stock,
+      warrantyMonths: payload.warranty_months,
+      hasSpec: payload.has_spec,
+      sortOrder: payload.sort_order,
+      isOnSale: payload.is_on_sale,
+      isRecommend: payload.is_recommend,
+      allowCoupon: payload.allow_coupon,
+      shippingType: primarySpec.shipping_type,
+      shipDeadlineDays: primarySpec.ship_deadline_days,
+      shippingPromise: primarySpec.shipping_promise,
+      shippingDelayReason: primarySpec.shipping_delay_reason,
+      shippingNote: primarySpec.shipping_note,
+      specs: (payload.specs || []).map((spec) => ({
+        name: spec.name,
+        sku: spec.sku,
+        imageIntentId: targetMediaIntentId(spec.image),
+        cardImageIntentId: targetMediaIntentId(spec.card_image),
+        price: spec.price,
+        sortOrder: spec.sort_order,
+        shippingType: spec.shipping_type,
+        shipDeadlineDays: spec.ship_deadline_days,
+        shippingPromise: spec.shipping_promise,
+        shippingDelayReason: spec.shipping_delay_reason,
+        shippingNote: spec.shipping_note
+      }))
+    };
+    if (!body.coverImageIntentId) throw new Error("请重新上传商品封面图");
+    if (body.imageIntentIds.length !== (payload.images || []).length || body.detailImageIntentIds.length !== (payload.detail_images || []).length) throw new Error("商品图片需重新上传后再保存");
+    return targetAdminRequest<{ id: number }>("/api/v1/admin/products", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-product", {
     action: "add",
     ...payload
@@ -1843,6 +1888,7 @@ export async function fetchAdminProductDetail(id: number): Promise<Record<string
 }
 
 export async function updateAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
+  if (targetAdminModeEnabled()) throw new Error("目标商品编辑仍在核验，当前可创建新商品或删除空商品");
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-product", {
     action: "update",
     ...payload
@@ -1851,6 +1897,7 @@ export async function updateAdminProduct(payload: CreateProductInput): Promise<{
 }
 
 export async function deleteAdminProduct(id: number): Promise<{ id: number }> {
+  if (targetAdminModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/products/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-product", {
     action: "delete",
     id

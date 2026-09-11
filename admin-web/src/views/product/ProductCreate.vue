@@ -334,6 +334,7 @@ import {
   updateAdminProduct,
   uploadAdminImages
 } from "../../api/admin";
+import { targetAdminModeEnabled } from "../../lib/target-admin-auth";
 import { getLoginUser, signInWithUsernamePassword } from "../../lib/cloudbase";
 import type { UploadFile, UploadFiles, UploadRawFile, UploadUserFile } from "element-plus";
 import type { CategoryRow } from "../../api/types";
@@ -1051,13 +1052,19 @@ const handleSave = async () => {
 
     let res: { id: number };
     if (isEditMode.value) {
+      if (targetAdminModeEnabled()) throw new Error("目标商品编辑仍在核验，请在切换前保持此商品不变");
       const payload = await buildPayload(`products/${editingId.value}`);
       res = await updateAdminProduct({ ...payload, id: editingId.value });
     } else {
-      const initialPayload = await buildPayload();
-      res = await createAdminProduct(initialPayload);
-      const finalPayload = await buildPayload(`products/${res.id}`);
-      await updateAdminProduct({ ...finalPayload, id: res.id });
+      if (targetAdminModeEnabled()) {
+        const payload = await buildPayload(`products/draft-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`);
+        res = await createAdminProduct(payload);
+      } else {
+        const initialPayload = await buildPayload();
+        res = await createAdminProduct(initialPayload);
+        const finalPayload = await buildPayload(`products/${res.id}`);
+        await updateAdminProduct({ ...finalPayload, id: res.id });
+      }
     }
     ElMessage.success(isEditMode.value ? `商品更新成功，ID：${res.id}` : `商品创建成功，ID：${res.id}`);
     await router.push("/product/list");

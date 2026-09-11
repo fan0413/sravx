@@ -58,7 +58,7 @@ export function createMysqlAdminCatalogRepository(pool) {
       if (typeof sku === 'string' && sku.trim()) { filters.push('EXISTS (SELECT 1 FROM product_specs ps WHERE ps.product_id = p.id AND ps.sku LIKE ?)'); values.push(`%${sku.trim().slice(0, 64)}%`); }
       if (typeof shippingType === 'string' && shippingType.trim()) { filters.push('p.shipping_type = ?'); values.push(shippingType.trim().slice(0, 32)); }
       const where = filters.join(' AND ');
-      const columns = 'p.id, p.name, p.short_name, p.`desc`, p.price, p.category_id, p.cover_image, p.images, p.stock, p.reserved_stock, p.sales_count, p.is_on_sale, p.is_recommend, p.shipping_type, p.ship_deadline_days, p.shipping_promise, p.shipping_delay_reason, p.shipping_note, p.sort_order, p.created_at, p.updated_at';
+      const columns = 'p.id, p.name, p.short_name, p.`desc`, p.price, p.category_id, p.cover_image, p.images, p.detail_images, p.params, p.scissors_card_image, p.stock, p.reserved_stock, p.sales_count, p.is_on_sale, p.is_recommend, p.allow_coupon, p.warranty_months, p.shipping_type, p.ship_deadline_days, p.shipping_promise, p.shipping_delay_reason, p.shipping_note, p.sort_order, p.created_at, p.updated_at';
       const [rows] = await pool.execute(`SELECT ${columns} FROM products p WHERE ${where} ORDER BY p.sort_order ASC, p.id DESC LIMIT ? OFFSET ?`, [...values, limit, offset]);
       const [totals] = await pool.execute(`SELECT COUNT(*) AS total FROM products p WHERE ${where}`, values);
       return { list: rows.map(normalizeProduct), total: Number(totals[0]?.total || 0) };
@@ -121,15 +121,15 @@ export function createMysqlAdminCatalogRepository(pool) {
       try {
         await connection.beginTransaction();
         const [result] = await connection.execute(
-          `INSERT INTO products (name, short_name, \`desc\`, price, category_id, cover_image, stock, reserved_stock, sales_count, warranty_months, has_spec, is_on_sale, is_recommend, allow_coupon, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [input.name, input.shortName, input.description, input.price, input.categoryId, input.coverImage, input.stock, input.warrantyMonths, input.hasSpec, input.isOnSale, input.isRecommend, input.allowCoupon, input.shippingType, input.shipDeadlineDays, input.shippingPromise, input.shippingDelayReason, input.shippingNote, input.sortOrder]
+          `INSERT INTO products (name, short_name, \`desc\`, price, category_id, cover_image, images, detail_images, params, scissors_card_image, stock, reserved_stock, sales_count, warranty_months, has_spec, is_on_sale, is_recommend, allow_coupon, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [input.name, input.shortName, input.description, input.price, input.categoryId, input.coverImage, JSON.stringify(input.images), JSON.stringify(input.detailImages), JSON.stringify(input.params), input.scissorsCardImage, input.stock, input.warrantyMonths, input.hasSpec, input.isOnSale, input.isRecommend, input.allowCoupon, input.shippingType, input.shipDeadlineDays, input.shippingPromise, input.shippingDelayReason, input.shippingNote, input.sortOrder]
         );
         const id = Number(result.insertId);
         for (const spec of input.specs) await connection.execute(
-          `INSERT INTO product_specs (product_id, name, sku, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, card_image, price, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [id, spec.name, spec.sku, spec.shippingType, spec.shipDeadlineDays, spec.shippingPromise, spec.shippingDelayReason, spec.shippingNote, input.coverImage, spec.price, spec.sortOrder]
+          `INSERT INTO product_specs (product_id, name, sku, image, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, card_image, price, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, spec.name, spec.sku, spec.image, spec.shippingType, spec.shipDeadlineDays, spec.shippingPromise, spec.shippingDelayReason, spec.shippingNote, spec.cardImage, spec.price, spec.sortOrder]
         );
         await connection.commit(); return { id };
       } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
@@ -139,13 +139,12 @@ export function createMysqlAdminCatalogRepository(pool) {
       try {
         await connection.beginTransaction();
         const [result] = await connection.execute(
-          `UPDATE products SET name=?, short_name=?, \`desc\`=?, price=?, category_id=?, cover_image=COALESCE(?,cover_image), stock=?, warranty_months=?, has_spec=?, is_on_sale=?, is_recommend=?, allow_coupon=?, shipping_type=?, ship_deadline_days=?, shipping_promise=?, shipping_delay_reason=?, shipping_note=?, sort_order=? WHERE id=? AND deleted_at IS NULL`,
-          [input.name, input.shortName, input.description, input.price, input.categoryId, input.coverImage, input.stock, input.warrantyMonths, input.hasSpec, input.isOnSale, input.isRecommend, input.allowCoupon, input.shippingType, input.shipDeadlineDays, input.shippingPromise, input.shippingDelayReason, input.shippingNote, input.sortOrder, id]
+          `UPDATE products SET name=?, short_name=?, \`desc\`=?, price=?, category_id=?, cover_image=COALESCE(?,cover_image), images=?, detail_images=?, params=?, scissors_card_image=COALESCE(?,scissors_card_image), stock=?, warranty_months=?, has_spec=?, is_on_sale=?, is_recommend=?, allow_coupon=?, shipping_type=?, ship_deadline_days=?, shipping_promise=?, shipping_delay_reason=?, shipping_note=?, sort_order=? WHERE id=? AND deleted_at IS NULL`,
+          [input.name, input.shortName, input.description, input.price, input.categoryId, input.coverImage, JSON.stringify(input.images), JSON.stringify(input.detailImages), JSON.stringify(input.params), input.scissorsCardImage, input.stock, input.warrantyMonths, input.hasSpec, input.isOnSale, input.isRecommend, input.allowCoupon, input.shippingType, input.shipDeadlineDays, input.shippingPromise, input.shippingDelayReason, input.shippingNote, input.sortOrder, id]
         );
         if (result.affectedRows !== 1) { await connection.rollback(); return false; }
-        const [coverRows] = await connection.execute('SELECT cover_image AS coverImage FROM products WHERE id = ? LIMIT 1', [id]);
         await connection.execute('DELETE FROM product_specs WHERE product_id = ?', [id]);
-        for (const spec of input.specs) await connection.execute(`INSERT INTO product_specs (product_id,name,sku,shipping_type,ship_deadline_days,shipping_promise,shipping_delay_reason,shipping_note,card_image,price,sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?)`, [id,spec.name,spec.sku,spec.shippingType,spec.shipDeadlineDays,spec.shippingPromise,spec.shippingDelayReason,spec.shippingNote,coverRows[0]?.coverImage || '',spec.price,spec.sortOrder]);
+        for (const spec of input.specs) await connection.execute(`INSERT INTO product_specs (product_id,name,sku,image,shipping_type,ship_deadline_days,shipping_promise,shipping_delay_reason,shipping_note,card_image,price,sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, [id,spec.name,spec.sku,spec.image,spec.shippingType,spec.shipDeadlineDays,spec.shippingPromise,spec.shippingDelayReason,spec.shippingNote,spec.cardImage,spec.price,spec.sortOrder]);
         await connection.commit(); return true;
       } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
     },
