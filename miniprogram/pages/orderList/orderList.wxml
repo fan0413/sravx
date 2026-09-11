@@ -11,15 +11,15 @@
     </view>
   </view>
 
-  <scroll-view scroll-y class="order-scroll" style="padding-top: {{navBarHeight + 100}}rpx;" enhanced show-scrollbar="{{false}}" bindrefresherrefresh="onRefresh" refresher-enabled="{{true}}" refresher-triggered="{{refresherTriggered}}">
+  <scroll-view scroll-y class="order-scroll" style="padding-top: {{navBarHeight + 92}}rpx;" enhanced show-scrollbar="{{false}}" bindrefresherrefresh="onRefresh" refresher-enabled="{{true}}" refresher-triggered="{{refresherTriggered}}">
     <view class="order-list">
-      <view class="order-type-tabs">
-        <view wx:for="{{orderTypeTabs}}" wx:key="key" class="order-type-tab {{activeOrderType === item.key ? 'active' : ''}}" bindtap="onOrderTypeChange" data-type="{{item.key}}"><text>{{item.name}}</text></view>
-      </view>
-
       <view class="section-header">
         <text class="section-title">订单记录</text>
         <text class="section-count">{{displayedOrders.length}} 笔</text>
+      </view>
+
+      <view class="order-type-tabs">
+        <view wx:for="{{orderTypeTabs}}" wx:key="key" class="order-type-tab {{activeOrderType === item.key ? 'active' : ''}}" bindtap="onOrderTypeChange" data-type="{{item.key}}"><text>{{item.name}}</text></view>
       </view>
 
       <view wx:if="{{displayedOrders.length > 0}}">
