@@ -510,6 +510,16 @@ test('administrator catalog list endpoints require catalog editor and return rep
   assert.equal(body.data.query.page, '2');
 });
 
+test('administrator overview returns only target catalog metrics', async (t) => {
+  const overview = { users: { total: 0, active: 0 }, products: { total: 2, onSale: 1, lowStock: 1 }, orders: { total: 0, paid: 0, pending: 0, fulfilled: 0 }, gmv: { total: 0, week: 0 }, refunds: { pending: 0 }, coupons: { active: 0 }, scissors: { total: 0, unused: 0, bound: 0 }, banners: { online: 1 } };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async () => true }, adminCatalogRepository: { overview: async () => overview } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/overview`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).data, overview);
+});
+
 test('administrator catalog repository uses bound filters and keeps deleted rows out', async () => {
   const calls = [];
   const repository = createMysqlAdminCatalogRepository({ execute: async (sql, values = []) => { calls.push({ sql, values }); return sql.includes('COUNT(*)') ? [[{ total: 0 }]] : [[]]; } });

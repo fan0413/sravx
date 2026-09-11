@@ -88,6 +88,7 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { fetchOverview } from "../../api/admin";
 import type { OverviewStats } from "../../api/types";
+import { targetAdminModeEnabled } from "../../lib/target-admin-auth";
 
 const router = useRouter();
 const loading = ref(false);
@@ -110,7 +111,9 @@ const alertText = computed(() => {
   if (stats.products.lowStock > 0) {
     return `有 ${stats.products.lowStock} 款商品库存低于 10，请尽快补货。`;
   }
-  return "一切运行正常，继续保持。所有业务数据实时来自 CloudBase 云端。";
+  return targetAdminModeEnabled()
+    ? "目录数据已来自目标数据库；交易、用户、优惠券和剪刀指标将在对应模块迁移并核验后接入。"
+    : "一切运行正常，继续保持。所有业务数据实时来自 CloudBase 云端。";
 });
 
 const alertType = computed<"success" | "warning">(() =>

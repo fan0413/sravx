@@ -196,6 +196,13 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         }
         return true;
       };
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/overview') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.overview !== 'function') {
+          const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
+        }
+        if (!await requireCatalogEditor()) return;
+        return send(response, 200, { success: true, data: await adminCatalogRepository.overview() });
+      }
       if (request.method === 'GET' && url.pathname === '/api/v1/admin/categories') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.listCategories !== 'function') {
           const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);
