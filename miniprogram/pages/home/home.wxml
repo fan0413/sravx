@@ -16,13 +16,13 @@
   <scroll-view scroll-y class="main-scroll" style="padding-top: {{scrollPaddingTop}}rpx;" enhanced show-scrollbar="{{false}}">
     <view class="intro-block">
       <text class="page-title">产品</text>
-      <text class="page-subtitle">为专业宠物美容师挑选</text>
+
     </view>
 
     <scroll-view wx:if="{{categories.length}}" class="category-scroll" scroll-x show-scrollbar="{{false}}" enhanced>
       <view class="category-row">
         <view wx:for="{{categories}}" wx:key="id" class="category-card" bindtap="onBrowseTap">
-          <image class="category-image" src="{{item.image}}" mode="aspectFit" lazy-load />
+          <image class="category-image" src="{{item.image || '/images/logo.png'}}" mode="aspectFit" lazy-load />
           <text class="category-name ellipsis">{{item.name}}</text>
         </view>
         <view class="category-card all-products" bindtap="onBrowseTap">
@@ -57,7 +57,7 @@
         <swiper-item wx:for="{{banners}}" wx:key="id">
           <view class="banner-item" bindtap="onBrowseTap">
             <view class="banner-media">
-              <image class="banner-img" src="{{item.image}}" mode="aspectFill" />
+              <image class="banner-img" src="{{item.image || '/images/logo.png'}}" mode="aspectFill" />
             </view>
             <view class="banner-detail">
               <text class="banner-eyebrow">SRAVX PROFESSIONAL TOOLS</text>

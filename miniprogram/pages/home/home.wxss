@@ -9,16 +9,16 @@
 .search-handle { width: 10rpx; height: 2rpx; background: #636366; position: absolute; bottom: 4rpx; right: 2rpx; transform: rotate(45deg); }
 .search-placeholder { font-size: 26rpx; color: #636366; }
 .main-scroll { height: 100%; }
-.intro-block { padding: 46rpx 32rpx 34rpx; }
-.page-title { display: block; font-size: 60rpx; line-height: 1.08; font-weight: 720; letter-spacing: -1.5rpx; color: var(--color-primary); }
+.intro-block { padding: 58rpx 32rpx 42rpx; }
+.page-title { display: block; font-size: 68rpx; line-height: 1.08; font-weight: 720; letter-spacing: -2rpx; color: var(--color-primary); }
 .page-subtitle { display: block; margin-top: 16rpx; font-size: 28rpx; color: var(--color-secondary); font-weight: 450; }
 .category-scroll, .chip-scroll { white-space: nowrap; }
-.category-row { display: flex; gap: 18rpx; padding: 0 28rpx 28rpx; }
-.category-card { width: 174rpx; min-width: 174rpx; height: 190rpx; padding: 18rpx 14rpx; display: flex; flex-direction: column; align-items: center; justify-content: space-between; border-radius: 28rpx; background: #FFF; }
+.category-row { display: flex; gap: 18rpx; padding: 0 28rpx 34rpx; }
+.category-card { width: 216rpx; min-width: 216rpx; height: 244rpx; padding: 24rpx 16rpx; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18rpx; border-radius: 32rpx; background: #FFF; }
 .category-card:active, .product-card:active { opacity: .72; }
-.category-image { width: 112rpx; height: 112rpx; }
-.category-name { width: 100%; text-align: center; font-size: 25rpx; font-weight: 600; color: #161616; }
-.all-products { align-items: flex-start; justify-content: flex-end; padding: 26rpx 22rpx; background: #161616; }
+.category-image { width: 140rpx; height: 140rpx; }
+.category-name { width: 100%; text-align: center; font-size: 27rpx; font-weight: 650; color: var(--color-primary); }
+.all-products { align-items: flex-start; justify-content: flex-end; gap: 0; padding: 30rpx 26rpx; background: #161616; }
 .all-products-title { color: #FFF; font-size: 32rpx; font-weight: 600; }
 .all-products-caption { margin-top: 8rpx; color: rgba(255,255,255,.68); font-size: 22rpx; }
 .accessory-block { padding: 20rpx 0 18rpx; }
