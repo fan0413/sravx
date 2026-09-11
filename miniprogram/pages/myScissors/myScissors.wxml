@@ -1,31 +1,11 @@
 <view class="container">
   <view wx:if="{{scissors.length > 0}}" class="card-scroll">
-    <view wx:for="{{scissors}}" wx:key="sn" class="card-item">
-      <view class="card-surface" bindtap="onCardTap" data-item="{{item}}">
+    <view wx:for="{{scissors}}" wx:key="sn" class="card-item" bindtap="onCardTap" data-item="{{item}}">
+      <view class="card-surface">
         <image class="card-bg" src="{{item.card_image || item.image}}" mode="aspectFill" lazy-load />
-        <view class="card-mark"><text>SRAVX REGISTERED TOOL</text></view>
       </view>
-
-      <view class="tool-summary" bindtap="onCardTap" data-item="{{item}}">
+      <view class="tool-summary">
         <text class="card-name ellipsis">{{item.name}}</text>
-        <text class="card-model">{{item.spec_name || item.model || '专业美容工具'}}</text>
-      </view>
-
-      <view class="info-bar" bindtap="onCardTap" data-item="{{item}}">
-        <view class="info-row">
-          <text class="info-label">SN编码</text>
-          <text class="sn-code">{{item.sn}}</text>
-        </view>
-        <view class="info-row-double warranty-row">
-          <text class="info-label warranty-label {{item.warranty.type}}">{{item.warranty.label}}</text>
-          <text class="info-value {{item.warranty.type}}">{{item.warranty.text}}</text>
-        </view>
-      </view>
-
-      <view class="card-actions">
-        <view class="action-unbind" bindtap="onDeleteDevice" data-id="{{item.id}}">
-          <text>解除绑定</text>
-        </view>
       </view>
     </view>
   </view>
