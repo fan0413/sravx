@@ -24,8 +24,9 @@
 .accessory-block { padding: 20rpx 0 18rpx; }
 .section-label { display: block; padding: 0 32rpx 20rpx; font-size: 32rpx; font-weight: 700; letter-spacing: -.5rpx; color: var(--color-primary); }
 .chip-row { display: flex; gap: 14rpx; padding: 0 28rpx; }
-.filter-chip { min-width: max-content; padding: 17rpx 24rpx; border-radius: 99rpx; background: #FFF; color: #3A3A3C; font-size: 23rpx; }
-.chip-selected { background: #161616; color: #FFF; }
+.filter-chip { min-width: max-content; padding: 17rpx 24rpx; border: 1rpx solid transparent; border-radius: 99rpx; background: #FFF; color: #3A3A3C; font-size: 23rpx; transition: transform .16s ease, opacity .16s ease, border-color .16s ease, background .16s ease; }
+.filter-chip:active { transform: scale(.94); opacity: .76; }
+.chip-selected { border-color: var(--color-accent); background: #F7F5F2; color: var(--color-accent-dark); font-weight: 650; }
 .section-header { display: flex; align-items: baseline; justify-content: space-between; padding: 60rpx 32rpx 26rpx; }
 .feature-header { padding-top: 34rpx; }
 .product-header { padding-top: 66rpx; }
