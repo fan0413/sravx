@@ -1,3 +1,9 @@
+function formatOrderTime(value) {
+  if (!value) return '—'
+  const text = String(value).replace('T', ' ')
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2})/)
+  return match ? `${match[1]} ${match[2]}` : text.slice(0, 16)
+}
 function statusText(status, autoCancel) {
   if (status === 'cancelled' && (autoCancel === 1 || autoCancel === true)) return '超时关闭'
   const statusMap = {
@@ -76,7 +82,8 @@ function mapGoodsOrders(rawOrders) {
       amount,
       quantity,
       progressHint: progressHint('goods', order.status),
-      completedTime: order.completed_at || order.updated_at || order.created_at || ''
+      completedTime: formatOrderTime(order.completed_at || order.updated_at || order.created_at),
+      createdTime: formatOrderTime(order.created_at)
     }
   })
 }
@@ -97,7 +104,8 @@ function mapPointsOrders(rawOrders) {
       quantity,
       points,
       progressHint: progressHint('points', order.status),
-      completedTime: order.completed_at || order.updated_at || order.created_at || ''
+      completedTime: formatOrderTime(order.completed_at || order.updated_at || order.created_at),
+      createdTime: formatOrderTime(order.created_at)
     }
   })
 }
