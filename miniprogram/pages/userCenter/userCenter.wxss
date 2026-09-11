@@ -139,7 +139,7 @@
 .level-gold {
   background: #EEE9DF;
   border-color: #D6C7AF;
-  color: #624A2D;
+  color: #4D443C;
 }
 
 .level-diamond {
@@ -150,7 +150,7 @@
 
 .level-black-diamond {
   background: #161616;
-  border-color: #8A6A42;
+  border-color: #6E6256;
   color: #F3EBDD;
   box-shadow: 0 6rpx 16rpx rgba(29, 29, 31, 0.16);
 }

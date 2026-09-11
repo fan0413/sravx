@@ -12,8 +12,8 @@
 page {
   --color-primary: #161616;
   --color-secondary: #636366;
-  --color-accent: #8A6A42;
-  --color-accent-dark: #624A2D;
+  --color-accent: #6E6256;
+  --color-accent-dark: #4D443C;
   --color-bg: #FFFFFF;
   --color-bg-secondary: #F2F2F7;
   --color-border: #E5E5EA;
