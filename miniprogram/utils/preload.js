@@ -84,15 +84,25 @@ function normalizeCategories(res) {
 async function preloadHome(options = {}) {
   if (!options.force && cache.home) return cache.home
 
-  const [bannerRes, productRes] = await Promise.all([
+  const [bannerRes, productRes, categoryRes] = await Promise.all([
     api.getBanners('home').catch(() => []),
-    api.getHomeProducts().catch(() => [])
+    api.getHomeProducts().catch(() => []),
+    getCategoryData().catch(() => DEFAULT_CATEGORIES)
   ])
 
   const banners = unwrapList(bannerRes)
+  const products = normalizeHomeProducts(productRes)
+  const categories = (categoryRes || []).slice(0, 8).map((category, index) => {
+    const matched = products.find((product) => Number(product.category_id) === Number(category.id)) || products[index]
+    return {
+      ...category,
+      image: category.image || category.icon || (matched && matched.image) || '/images/logo.png'
+    }
+  })
   const data = {
     banners: banners.length > 0 ? banners : HOME_FALLBACK_BANNERS,
-    products: normalizeHomeProducts(productRes)
+    products,
+    categories
   }
   cache.home = data
   return data

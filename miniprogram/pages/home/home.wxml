@@ -1,80 +1,99 @@
 <view class="container">
   <view class="search-bar" style="padding-top: {{navBarTop}}rpx; padding-right: {{capsuleRight}}rpx;">
+    <view class="brand-lockup" style="height: {{navBarHeight}}rpx;" bindtap="onSearchTap">
+      <image class="brand-mark" src="/images/logo.png" mode="aspectFit" />
+      <text class="brand-name">SRAVX</text>
+    </view>
     <view class="search-inner" style="height: {{navBarHeight}}rpx;" bindtap="onSearchTap">
       <view class="search-icon">
         <view class="search-circle"></view>
         <view class="search-handle"></view>
       </view>
-      <text class="search-placeholder">搜索 Sravx 产品</text>
+      <text class="search-placeholder">搜索产品与服务</text>
     </view>
   </view>
 
   <scroll-view scroll-y class="main-scroll" style="padding-top: {{scrollPaddingTop}}rpx;" enhanced show-scrollbar="{{false}}">
+    <view class="intro-block">
+      <text class="page-title">产品</text>
+      <text class="page-subtitle">为专业宠物美容师挑选</text>
+    </view>
+
+    <scroll-view wx:if="{{categories.length}}" class="category-scroll" scroll-x show-scrollbar="{{false}}" enhanced>
+      <view class="category-row">
+        <view wx:for="{{categories}}" wx:key="id" class="category-card" bindtap="onBrowseTap">
+          <image class="category-image" src="{{item.image}}" mode="aspectFit" lazy-load />
+          <text class="category-name ellipsis">{{item.name}}</text>
+        </view>
+        <view class="category-card all-products" bindtap="onBrowseTap">
+          <text class="all-products-title">全部</text>
+          <text class="all-products-caption">浏览商城</text>
+        </view>
+      </view>
+    </scroll-view>
+
+    <view class="accessory-block">
+      <text class="section-label">按需求选购</text>
+      <scroll-view class="chip-scroll" scroll-x show-scrollbar="{{false}}" enhanced>
+        <view class="chip-row">
+          <view class="filter-chip chip-selected" bindtap="onBrowseTap"><text>专业剪刀</text></view>
+          <view class="filter-chip" bindtap="onBrowseTap"><text>日常护理</text></view>
+          <view class="filter-chip" bindtap="onBrowseTap"><text>收纳与保养</text></view>
+          <view class="filter-chip" bindtap="onBrowseTap"><text>新品上架</text></view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="section-header feature-header">
+      <view>
+        <text class="section-kicker">FEATURED FOR GROOMERS</text>
+        <text class="section-title">认识新伙伴</text>
+      </view>
+      <text class="section-more" bindtap="onBrowseTap">查看全部</text>
+    </view>
+
     <view class="swiper-wrap">
-      <swiper
-        class="banner-swiper"
-        autoplay
-        circular
-        interval="{{4000}}"
-        duration="{{500}}"
-        bindchange="onSwiperChange"
-      >
+      <swiper class="banner-swiper" autoplay circular interval="4000" duration="500" bindchange="onSwiperChange">
         <swiper-item wx:for="{{banners}}" wx:key="id">
-          <view class="banner-item">
+          <view class="banner-item" bindtap="onBrowseTap">
             <image class="banner-img" src="{{item.image}}" mode="aspectFill" />
-            <view class="banner-overlay">
+            <view class="banner-copy">
+              <text class="banner-eyebrow">SRAVX PRO SERIES</text>
               <text class="banner-title">{{item.title}}</text>
+              <text class="banner-action">探索系列</text>
             </view>
           </view>
         </swiper-item>
       </swiper>
       <view class="swiper-dots">
-        <view
-          wx:for="{{banners}}"
-          wx:key="id"
-          class="dot {{swiperCurrent === index ? 'dot-active' : ''}}"
-        ></view>
+        <view wx:for="{{banners}}" wx:key="id" class="dot {{swiperCurrent === index ? 'dot-active' : ''}}"></view>
       </view>
     </view>
 
-    <view class="section-header">
+    <view class="section-header product-header">
       <view>
-        <text class="section-kicker">CURATED FOR GROOMERS</text>
-        <text class="section-title">精选产品</text>
+        <text class="section-kicker">CURATED TOOLS</text>
+        <text class="section-title">为工作而生</text>
       </view>
-      <text class="section-more" bindtap="onSearchTap">查看全部</text>
+      <text class="section-more" bindtap="onBrowseTap">查看全部</text>
     </view>
 
-    <view wx:if="{{loading}}" class="loading-state">
-      <text>加载中...</text>
-    </view>
-
-    <view wx:elif="{{products.length === 0}}" class="empty-state">
-      <text>暂无商品</text>
-    </view>
+    <view wx:if="{{loading}}" class="loading-state"><text>正在准备产品目录</text></view>
+    <view wx:elif="{{products.length === 0}}" class="empty-state"><text>新品正在整理中</text></view>
 
     <view wx:else class="product-grid">
-      <view
-        wx:for="{{products}}"
-        wx:key="id"
-        class="product-card"
-        bindtap="onProductTap"
-        data-id="{{item.id}}"
-      >
+      <view wx:for="{{products}}" wx:key="id" class="product-card" bindtap="onProductTap" data-id="{{item.id}}">
         <view class="product-img-wrap">
           <image class="product-img" src="{{item.image || item.cover_image}}" mode="aspectFill" lazy-load />
-          <view wx:if="{{item.tag}}" class="product-tag">
-            <text>{{item.tag}}</text>
-          </view>
+          <view class="product-index"><text>{{index + 1}}</text></view>
         </view>
         <view class="product-info">
           <text class="product-name ellipsis-2">{{item.short_name}}</text>
           <text class="product-desc ellipsis">{{item.desc}}</text>
-          <text class="product-price">¥{{item.price}}</text>
+          <view class="product-bottom"><text class="product-price">¥{{item.price}}</text><text class="product-link">查看</text></view>
         </view>
       </view>
     </view>
-
     <view style="height: 240rpx;"></view>
   </scroll-view>
 </view>

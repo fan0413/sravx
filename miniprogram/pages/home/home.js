@@ -5,6 +5,7 @@ Page({
   data: {
     banners: [],
     products: [],
+    categories: [],
     swiperCurrent: 0,
     navBarTop: 0,
     navBarHeight: 64,
@@ -36,6 +37,7 @@ Page({
     this.setData({
       banners: data.banners || [],
       products: data.products || [],
+      categories: data.categories || [],
       loading: false
     })
   },
@@ -82,6 +84,10 @@ Page({
 
   onSearchTap() {
     wx.navigateTo({ url: '/pages/search/search' })
+  },
+
+  onBrowseTap() {
+    wx.switchTab({ url: '/pages/shop/shop' })
   },
 
   onProductTap(e) {
