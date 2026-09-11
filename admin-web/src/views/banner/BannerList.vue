@@ -281,7 +281,7 @@ async function loadRows() {
     if (list.length > 0) {
       const fileIDs = list
         .map((item) => item.image)
-        .filter((src) => String(src || "").startsWith("cloud://"));
+        .filter((src) => String(src || "").startsWith("cloud://") || String(src || "").startsWith("catalog/"));
       if (fileIDs.length > 0) {
         const urlMap = await resolveAdminFileUrls(fileIDs);
         list.forEach((item) => {

@@ -120,11 +120,16 @@
         </template>
       </el-table-column>
       <el-table-column prop="updated_at" label="更新时间" min-width="170" />
-      <el-table-column label="操作" width="180" fixed="right" align="center" header-align="center">
+      <el-table-column label="操作" :width="targetMode ? 100 : 180" fixed="right" align="center" header-align="center">
         <template #default="{ row }">
-          <el-button link type="primary" @click="router.push(`/product/edit/${row.id}`)">编辑商品</el-button>
-          <el-button link type="primary" @click="handleRestock(row)">设置库存</el-button>
-          <el-button link type="danger" @click="handleDelete(row)">删除商品</el-button>
+          <template v-if="targetMode">
+            <el-button link type="danger" @click="handleDelete(row)">删除商品</el-button>
+          </template>
+          <template v-else>
+            <el-button link type="primary" @click="router.push(`/product/edit/${row.id}`)">编辑商品</el-button>
+            <el-button link type="primary" @click="handleRestock(row)">设置库存</el-button>
+            <el-button link type="danger" @click="handleDelete(row)">删除商品</el-button>
+          </template>
         </template>
       </el-table-column>
     </el-table>
@@ -147,6 +152,7 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { deleteAdminProduct, fetchAdminProducts, fetchCategories, resolveAdminFileUrls, restockAdminProduct } from "../../api/admin";
 import type { CategoryRow, ProductRow } from "../../api/admin";
+import { targetAdminModeEnabled } from "../../lib/target-admin-auth";
 
 const query = reactive({
   keyword: "",
@@ -160,6 +166,7 @@ const query = reactive({
 });
 const route = useRoute();
 const router = useRouter();
+const targetMode = targetAdminModeEnabled();
 
 const rows = ref<ProductRow[]>([]);
 const total = ref(0);
@@ -213,13 +220,13 @@ const loadRows = async () => {
     const list = result.list || [];
     const fileIds = list
       .map((item) => String(item.cover_image || "").trim())
-      .filter((item) => item.startsWith("cloud://"));
+      .filter((item) => item.startsWith("cloud://") || item.startsWith("catalog/"));
     const urlMap = await resolveAdminFileUrls(fileIds);
     rows.value = list.map((item) => {
       const cover = String(item.cover_image || "").trim();
       return {
         ...item,
-        cover_image: cover.startsWith("cloud://") ? urlMap[cover] || cover : cover
+        cover_image: cover.startsWith("cloud://") || cover.startsWith("catalog/") ? urlMap[cover] || cover : cover
       };
     });
   } finally {

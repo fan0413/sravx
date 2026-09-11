@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard" v-loading="loading">
     <el-row :gutter="12">
-      <el-col :span="6">
+      <el-col v-if="!targetMode" :span="6">
         <el-card>
           <el-statistic title="活跃用户" :value="stats.users.active" />
           <div class="card-tip">总注册：{{ stats.users.total }}</div>
@@ -13,13 +13,13 @@
           <div class="card-tip">商品总数：{{ stats.products.total }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col v-if="!targetMode" :span="6">
         <el-card>
           <el-statistic title="订单总数" :value="stats.orders.total" />
           <div class="card-tip">已完成：{{ stats.orders.fulfilled }}</div>
         </el-card>
       </el-col>
-      <el-col :span="6">
+      <el-col v-if="!targetMode" :span="6">
         <el-card>
           <el-statistic title="已支付订单" :value="stats.orders.paid" />
           <div class="card-tip">待付款：{{ stats.orders.pending }}</div>
@@ -27,7 +27,7 @@
       </el-col>
     </el-row>
 
-    <el-row :gutter="12" class="mt12">
+    <el-row v-if="!targetMode" :gutter="12" class="mt12">
       <el-col :span="8">
         <el-card>
           <el-statistic title="累计 GMV (元)" :value="stats.gmv.total" :precision="2" />
@@ -57,7 +57,7 @@
           <div class="card-tip">点击查看低库存商品</div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col v-if="!targetMode" :span="8">
         <el-card class="clickable-card" @click="goPendingRefunds">
           <el-statistic title="退款待审核" :value="stats.refunds.pending" />
           <div class="card-tip">仅统计未审批（待审核）退款单</div>
@@ -92,6 +92,7 @@ import { targetAdminModeEnabled } from "../../lib/target-admin-auth";
 
 const router = useRouter();
 const loading = ref(false);
+const targetMode = targetAdminModeEnabled();
 
 const stats = reactive<OverviewStats>({
   users: { total: 0, active: 0 },

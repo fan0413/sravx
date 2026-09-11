@@ -344,6 +344,7 @@ export interface AdminUserDetailResult {
 
 export interface CreateProductSpecInput {
   name: string;
+  sku?: string;
   image?: string;
   card_image?: string;
   price?: number;
@@ -840,6 +841,10 @@ export async function updateAdminUser(payload: {
 }
 
 export async function fetchCategories(): Promise<CategoryRow[]> {
+  if (targetAdminModeEnabled()) {
+    const { list } = await fetchAdminCategories({ is_show: 1 });
+    return list.sort((a, b) => a.sort_order - b.sort_order);
+  }
   const result = await callCloudFunction<CloudFunctionResponse<CloudCategory[]>>("category", {
     action: "list"
   });
@@ -1702,17 +1707,17 @@ export interface AdminBannerListResult {
 export interface AdminBannerInput {
   id?: number;
   title: string;
-  subtitle?: string;
+  subtitle?: string | null;
   image: string;
-  mobile_image?: string;
+  mobile_image?: string | null;
   link_type: BannerRow["link_type"];
-  link_value?: string;
+  link_value?: string | null;
   link_param?: unknown;
   position?: string;
   sort_order?: number;
   is_active?: number;
-  start_time?: string;
-  end_time?: string;
+  start_time?: string | null;
+  end_time?: string | null;
 }
 
 export async function fetchAdminBanners(query: AdminBannerQuery = {}): Promise<AdminBannerListResult> {
