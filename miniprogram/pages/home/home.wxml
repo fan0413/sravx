@@ -56,11 +56,17 @@
       <swiper class="banner-swiper" autoplay circular interval="4000" duration="500" bindchange="onSwiperChange">
         <swiper-item wx:for="{{banners}}" wx:key="id">
           <view class="banner-item" bindtap="onBrowseTap">
-            <image class="banner-img" src="{{item.image}}" mode="aspectFill" />
-            <view class="banner-copy">
-              <text class="banner-eyebrow">SRAVX PRO SERIES</text>
+            <view class="banner-media">
+              <image class="banner-img" src="{{item.image}}" mode="aspectFill" />
+            </view>
+            <view class="banner-detail">
+              <text class="banner-eyebrow">SRAVX PROFESSIONAL TOOLS</text>
               <text class="banner-title">{{item.title}}</text>
-              <text class="banner-action">探索系列</text>
+              <text class="banner-subtitle">{{item.subtitle || '为精准、稳定的专业工作而设计'}}</text>
+            </view>
+            <view class="banner-footer">
+              <text class="banner-price">专业美容工具系列</text>
+              <view class="banner-action"><text>查看系列</text></view>
             </view>
           </view>
         </swiper-item>

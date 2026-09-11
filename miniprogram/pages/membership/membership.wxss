@@ -91,7 +91,7 @@
 .member-card.level-1 .card-points-num,
 .member-card.level-1 .card-points-label,
 .member-card.level-1 .card-level-name,
-.member-card.level-1 .card-username { color: #1d1d1f; }
+.member-card.level-1 .card-username { color: #161616; }
 
 .member-card.level-2 .card-username,
 .member-card.level-2 .card-level-name,
@@ -101,7 +101,7 @@
 .member-card.level-2 .card-next-level,
 .member-card.level-2 .card-available-label,
 .member-card.level-2 .card-available-num,
-.member-card.level-2 .card-vip { color: #1d1d1f; }
+.member-card.level-2 .card-vip { color: #161616; }
 
 .member-card.level-3 .card-username,
 .member-card.level-3 .card-level-name,

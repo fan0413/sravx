@@ -25,7 +25,7 @@
 
 .skip-btn text {
   font-size: 24rpx;
-  color: #86868B;
+  color: #636366;
   font-weight: 400;
   letter-spacing: 1rpx;
 }

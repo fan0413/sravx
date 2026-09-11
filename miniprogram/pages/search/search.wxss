@@ -36,7 +36,7 @@
 .search-circle {
   width: 18rpx;
   height: 18rpx;
-  border: 3rpx solid #86868B;
+  border: 3rpx solid #636366;
   border-radius: 50%;
   position: absolute;
   top: 0;
@@ -46,7 +46,7 @@
 .search-handle {
   width: 10rpx;
   height: 3rpx;
-  background: #86868B;
+  background: #636366;
   border-radius: 2rpx;
   position: absolute;
   bottom: 2rpx;

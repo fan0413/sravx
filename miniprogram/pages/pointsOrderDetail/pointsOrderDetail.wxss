@@ -12,7 +12,7 @@
 
 .state-text {
   font-size: 28rpx;
-  color: #86868b;
+  color: #636366;
 }
 
 .retry {
@@ -40,7 +40,7 @@
 
 .title {
   font-size: 26rpx;
-  color: #1d1d1f;
+  color: #161616;
   font-weight: 600;
 }
 
@@ -60,7 +60,7 @@
 .section-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #1d1d1f;
+  color: #161616;
   margin-bottom: 20rpx;
 }
 
@@ -86,7 +86,7 @@
 
 .goods-name {
   font-size: 28rpx;
-  color: #1d1d1f;
+  color: #161616;
   font-weight: 600;
   line-height: 1.4;
 }
@@ -98,13 +98,13 @@
 
 .goods-price {
   font-size: 24rpx;
-  color: #1d1d1f;
+  color: #161616;
   font-weight: 600;
 }
 
 .line {
   font-size: 24rpx;
-  color: #1d1d1f;
+  color: #161616;
   margin-bottom: 10rpx;
 }
 
@@ -160,7 +160,7 @@
 
 .pay-label {
   font-size: 22rpx;
-  color: #86868b;
+  color: #636366;
 }
 
 .pay-amount {

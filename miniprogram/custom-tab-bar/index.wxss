@@ -36,14 +36,14 @@
 
 .tab-label {
   font-size: 22rpx;
-  color: #6E6E73;
+  color: #515154;
   font-weight: 500;
   letter-spacing: .5rpx;
   transition: color 0.2s ease;
 }
 
 .label-active {
-  color: #1D1D1F;
+  color: #161616;
   font-weight: 650;
 }
 
@@ -57,7 +57,7 @@
 .home-outline {
   width: 30rpx;
   height: 30rpx;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   border-radius: 6rpx 6rpx 0 0;
   position: absolute;
   bottom: 4rpx;
@@ -68,7 +68,7 @@
 .home-door {
   width: 12rpx;
   height: 14rpx;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   border-radius: 6rpx 6rpx 0 0;
   border-bottom: none;
   position: absolute;
@@ -78,12 +78,12 @@
 }
 
 .icon-active .home-outline {
-  border-color: #1D1D1F;
+  border-color: #161616;
   border-width: 3rpx;
 }
 
 .icon-active .home-door {
-  border-color: #1D1D1F;
+  border-color: #161616;
   border-width: 3rpx;
 }
 
@@ -107,12 +107,12 @@
 
 .shop-dot {
   border-radius: 6rpx;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   background: transparent;
 }
 
 .icon-active .shop-dot {
-  border-color: #1D1D1F;
+  border-color: #161616;
   border-width: 3rpx;
 }
 
@@ -127,7 +127,7 @@
   width: 16rpx;
   height: 16rpx;
   border-radius: 50%;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   position: absolute;
   top: 2rpx;
   left: 50%;
@@ -137,7 +137,7 @@
 .user-body {
   width: 30rpx;
   height: 16rpx;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   border-radius: 16rpx 16rpx 0 0;
   position: absolute;
   bottom: 4rpx;
@@ -147,12 +147,12 @@
 }
 
 .icon-active .user-head {
-  border-color: #1D1D1F;
+  border-color: #161616;
   border-width: 3rpx;
 }
 
 .icon-active .user-body {
-  border-color: #1D1D1F;
+  border-color: #161616;
   border-width: 3rpx;
 }
 
@@ -166,7 +166,7 @@
 .order-bag {
   width: 36rpx;
   height: 32rpx;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   border-radius: 0 0 8rpx 8rpx;
   position: absolute;
   bottom: 2rpx;
@@ -177,7 +177,7 @@
 .order-flap {
   width: 20rpx;
   height: 10rpx;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   border-radius: 10rpx 10rpx 0 0;
   border-bottom: none;
   position: absolute;
@@ -187,12 +187,12 @@
 }
 
 .icon-active .order-bag {
-  border-color: #1D1D1F;
+  border-color: #161616;
   border-width: 3rpx;
 }
 
 .icon-active .order-flap {
-  border-color: #1D1D1F;
+  border-color: #161616;
   border-width: 3rpx;
 }
 
@@ -218,7 +218,7 @@
   display: block;
   font-size: 36rpx;
   font-weight: 600;
-  color: #1D1D1F;
+  color: #161616;
 }
 
 .phone-auth-desc {
@@ -226,7 +226,7 @@
   margin-top: 16rpx;
   font-size: 28rpx;
   line-height: 1.6;
-  color: #6E6E73;
+  color: #515154;
 }
 
 .phone-auth-button {
@@ -234,7 +234,7 @@
   height: 88rpx;
   line-height: 88rpx;
   border-radius: 12rpx;
-  background: #1D1D1F;
+  background: #161616;
   color: #FFFFFF;
   font-size: 30rpx;
   font-weight: 500;
@@ -248,5 +248,5 @@
   margin-top: 24rpx;
   text-align: center;
   font-size: 28rpx;
-  color: #86868B;
+  color: #636366;
 }

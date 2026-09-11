@@ -604,7 +604,7 @@
 .home-outline-sm {
   width: 24rpx;
   height: 24rpx;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   border-radius: 4rpx 4rpx 0 0;
   position: absolute;
   bottom: 2rpx;
@@ -615,7 +615,7 @@
 .home-door-sm {
   width: 10rpx;
   height: 12rpx;
-  border: 2rpx solid #86868B;
+  border: 2rpx solid #636366;
   border-radius: 4rpx 4rpx 0 0;
   border-bottom: none;
   position: absolute;
@@ -636,7 +636,7 @@
 .phone-body {
   width: 24rpx;
   height: 22rpx;
-  border: 3rpx solid #86868B;
+  border: 3rpx solid #636366;
   border-radius: 6rpx 6rpx 10rpx 10rpx;
   border-top-width: 4rpx;
   position: relative;
@@ -650,7 +650,7 @@
   transform: translateX(-50%);
   width: 8rpx;
   height: 2rpx;
-  background: #86868B;
+  background: #636366;
   border-radius: 1rpx;
 }
 
@@ -663,7 +663,7 @@
 .share-dot {
   width: 8rpx;
   height: 8rpx;
-  border: 3rpx solid #86868B;
+  border: 3rpx solid #636366;
   border-radius: 50%;
   position: absolute;
   background: #FFFFFF;
@@ -688,7 +688,7 @@
 .share-line {
   width: 20rpx;
   height: 3rpx;
-  background: #86868B;
+  background: #636366;
   border-radius: 2rpx;
   position: absolute;
   top: 21rpx;
