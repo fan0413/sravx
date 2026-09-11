@@ -1,5 +1,5 @@
 import { callCloudFunction, getTempFileUrlMap, uploadFileToCloud } from "../lib/cloudbase";
-import { targetAdminModeEnabled, targetAdminRequest } from "../lib/target-admin-auth";
+import { targetAdminModeEnabled, targetAdminRequest, targetAdminUploadImage, targetMediaIntentId } from "../lib/target-admin-auth";
 import type {
   BannerRow,
   CategoryRow,
@@ -913,6 +913,10 @@ export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<A
 }
 
 export async function createAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
+  if (targetAdminModeEnabled()) {
+    if (payload.icon || payload.image) throw new Error("目标模式下分类图片需使用即将上线的分类上传控件");
+    return targetAdminRequest<{ id: number }>("/api/v1/admin/categories", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav }) });
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
     action: "create",
     ...payload
@@ -921,6 +925,11 @@ export async function createAdminCategory(payload: CategoryInput): Promise<{ id:
 }
 
 export async function updateAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
+  if (targetAdminModeEnabled()) {
+    if (!payload.id) throw new Error("缺少分类 ID");
+    if (payload.icon || payload.image) throw new Error("目标模式下分类图片需使用即将上线的分类上传控件");
+    return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${payload.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav }) });
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
     action: "update",
     ...payload
@@ -929,6 +938,13 @@ export async function updateAdminCategory(payload: CategoryInput): Promise<{ id:
 }
 
 export async function toggleAdminCategory(id: number, is_show: number): Promise<{ id: number; is_show: number }> {
+  if (targetAdminModeEnabled()) {
+    const { list } = await targetAdminRequest<AdminCategoryListResult>("/api/v1/admin/categories?pageSize=100");
+    const category = list.find((item) => item.id === id);
+    if (!category) throw new Error("分类不存在");
+    await updateAdminCategory({ id, name: category.name, parent_id: category.parent_id, description: category.description || "", sort_order: category.sort_order, is_show, is_nav: category.is_nav || 0 });
+    return { id, is_show };
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; is_show: number }>>("admin-category", {
     action: "toggle",
     id,
@@ -938,6 +954,7 @@ export async function toggleAdminCategory(id: number, is_show: number): Promise<
 }
 
 export async function deleteAdminCategory(id: number): Promise<{ id: number }> {
+  if (targetAdminModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
     action: "delete",
     id
@@ -1723,6 +1740,24 @@ export async function fetchAdminBannerDetail(id: number): Promise<BannerRow> {
 }
 
 export async function saveAdminBanner(payload: AdminBannerInput): Promise<{ id: number }> {
+  if (targetAdminModeEnabled()) {
+    const body = {
+      title: payload.title,
+      subtitle: payload.subtitle,
+      imageIntentId: targetMediaIntentId(payload.image),
+      mobileImageIntentId: targetMediaIntentId(payload.mobile_image),
+      linkType: payload.link_type,
+      linkValue: payload.link_value,
+      linkParam: payload.link_param,
+      position: payload.position,
+      sortOrder: payload.sort_order,
+      isActive: payload.is_active,
+      startTime: payload.start_time,
+      endTime: payload.end_time
+    };
+    if (!payload.id && !body.imageIntentId) throw new Error("请重新上传轮播封面图");
+    return targetAdminRequest<{ id: number }>(payload.id ? `/api/v1/admin/banners/${payload.id}` : "/api/v1/admin/banners", { method: payload.id ? "PUT" : "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  }
   const action = payload.id ? "update" : "create";
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-banner", {
     action,
@@ -1732,6 +1767,13 @@ export async function saveAdminBanner(payload: AdminBannerInput): Promise<{ id: 
 }
 
 export async function toggleAdminBanner(id: number, isActive: number): Promise<{ id: number; is_active: number }> {
+  if (targetAdminModeEnabled()) {
+    const { list } = await targetAdminRequest<AdminBannerListResult>("/api/v1/admin/banners?pageSize=100");
+    const banner = list.find((item) => item.id === id);
+    if (!banner) throw new Error("轮播图不存在");
+    await saveAdminBanner({ ...banner, is_active: isActive });
+    return { id, is_active: isActive };
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; is_active: number }>>(
     "admin-banner",
     {
@@ -1744,6 +1786,13 @@ export async function toggleAdminBanner(id: number, isActive: number): Promise<{
 }
 
 export async function updateAdminBannerSort(id: number, sortOrder: number): Promise<{ id: number; sort_order: number }> {
+  if (targetAdminModeEnabled()) {
+    const { list } = await targetAdminRequest<AdminBannerListResult>("/api/v1/admin/banners?pageSize=100");
+    const banner = list.find((item) => item.id === id);
+    if (!banner) throw new Error("轮播图不存在");
+    await saveAdminBanner({ ...banner, sort_order: sortOrder });
+    return { id, sort_order: sortOrder };
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; sort_order: number }>>(
     "admin-banner",
     {
@@ -1756,6 +1805,7 @@ export async function updateAdminBannerSort(id: number, sortOrder: number): Prom
 }
 
 export async function deleteAdminBanner(id: number): Promise<{ id: number }> {
+  if (targetAdminModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/banners/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-banner", {
     action: "delete",
     id
@@ -1818,6 +1868,9 @@ export async function restockAdminProduct(id: number, stock: number): Promise<{ 
 }
 
 export async function uploadAdminImages(files: File[], folder: string) {
+  if (targetAdminModeEnabled() && (folder.startsWith("banners/") || folder.startsWith("products/") || folder.startsWith("categories/"))) {
+    return Promise.all(files.map((file) => targetAdminUploadImage(file, folder)));
+  }
   const uploaded = await Promise.all(
     files.map((file) => {
       const ext = file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")) : "";
