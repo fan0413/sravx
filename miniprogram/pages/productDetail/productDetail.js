@@ -1,6 +1,7 @@
 const app = getApp()
 const api = require('../../utils/api')
 const share = require('../../utils/share')
+const cart = require('../../utils/cart')
 
 function hasPhoneAuthorized() {
   return typeof app.hasPhoneAuthorized === 'function'
@@ -23,6 +24,7 @@ Page({
     selectedQuantity: 1,
     pendingQuantity: 1,
     colorPopupVisible: false,
+    skuAction: 'buy',
     address: null,
     addressList: [],
     navBarHeight: 0,
@@ -221,6 +223,7 @@ Page({
   onColorMaskTap() {
     this.setData({
       colorPopupVisible: false,
+    skuAction: 'buy',
       pendingSelectedColor: '',
       pendingQuantity: 1
     })
@@ -252,7 +255,7 @@ Page({
 
   onBuyFromPopup() {
     if (!this.ensurePhoneAuthorized()) return
-    const { pendingSelectedColor, selectedColor, pendingQuantity } = this.data
+    const { pendingSelectedColor, selectedColor, pendingQuantity, skuAction } = this.data
     const finalColor = pendingSelectedColor || selectedColor
     const finalQuantity = Math.max(1, Number(pendingQuantity) || 1)
     this.setData({
@@ -262,8 +265,29 @@ Page({
       pendingSelectedColor: '',
       pendingQuantity: 1
     }, () => {
+      if (skuAction === 'bag') {
+        this.addCurrentProductToCart(finalColor, finalQuantity)
+        return
+      }
       this.goToConfirmOrder()
     })
+  },
+
+  addCurrentProductToCart(selectedColor, quantity) {
+    const { product, colorOptions } = this.data
+    if (!product) return
+    const selected = (colorOptions || []).find(item => item.name === selectedColor)
+    cart.addItem({
+      id: product.id,
+      name: product.name,
+      price: selected && selected.priceText ? selected.priceText : product.price,
+      cover_image: (selected && selected.image) || product.cover_image || (product.images && product.images[0]),
+      selectedColor: selectedColor || '',
+      spec: this.getSelectedSpecText(),
+      quantity,
+      allow_coupon: product.allow_coupon
+    })
+    wx.showToast({ title: '已加入购物袋', icon: 'success' })
   },
 
   onColorConfirm() {
@@ -272,6 +296,7 @@ Page({
       selectedColor: pendingSelectedColor || selectedColor,
       selectedQuantity: Math.max(1, Number(pendingQuantity) || 1),
       colorPopupVisible: false,
+    skuAction: 'buy',
       pendingSelectedColor: '',
       pendingQuantity: 1
     })
@@ -313,7 +338,7 @@ Page({
     })
   },
 
-  onBuyNow() {
+  openSkuPopup(skuAction) {
     if (!this.ensurePhoneAuthorized()) return
     const { colorOptions } = this.data
     if (!colorOptions || colorOptions.length === 0) {
@@ -323,8 +348,17 @@ Page({
     this.setData({
       colorPopupVisible: true,
       pendingSelectedColor: this.data.selectedColor || '',
-      pendingQuantity: 1
+      pendingQuantity: 1,
+      skuAction
     })
+  },
+
+  onBuyNow() {
+    this.openSkuPopup('buy')
+  },
+
+  onAddToBag() {
+    this.openSkuPopup('bag')
   },
 
   onGoHome() {

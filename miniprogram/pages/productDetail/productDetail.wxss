@@ -530,6 +530,7 @@
   -webkit-backdrop-filter: saturate(180%) blur(80rpx);
   border-top: 1rpx solid rgba(0, 0, 0, 0.04);
   z-index: 100;
+  gap: 12rpx;
 }
 
 .bottom-left {
@@ -538,7 +539,7 @@
   height: 84rpx;
   flex: 0 0 288rpx;
   flex-shrink: 0;
-  margin-right: 16rpx;
+  margin-right: 0;
   overflow: hidden;
 }
 
@@ -704,26 +705,18 @@
   transform: rotate(32deg);
 }
 
-.buy-btn {
+.bag-btn, .buy-btn {
   flex: 1;
   min-width: 0;
   height: 88rpx;
-  background: var(--color-primary);
   border-radius: 44rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 0;
   overflow: hidden;
 }
 
-.buy-btn:active {
-  opacity: 0.85;
-}
-
-.buy-btn text {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #FFFFFF;
-  letter-spacing: 2rpx;
-}
+.bag-btn { border: 1rpx solid #D1D1D6; background: #FFFFFF; color: var(--color-primary); }
+.buy-btn { background: var(--color-primary); color: #FFFFFF; }
+.bag-btn:active, .buy-btn:active { opacity: 0.75; }
+.bag-btn text, .buy-btn text { font-size: 27rpx; font-weight: 650; letter-spacing: .2rpx; }

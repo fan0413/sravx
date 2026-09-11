@@ -172,7 +172,7 @@
       </view>
       <view class="sku-footer">
         <view class="sku-confirm-btn" bindtap="onBuyFromPopup">
-          <text>确认下单</text>
+          <text>{{skuAction === 'bag' ? '加入购物袋' : '确认下单'}}</text>
         </view>
       </view>
     </view>
@@ -204,6 +204,9 @@
         </view>
         <text>分享</text>
       </button>
+    </view>
+    <view class="bag-btn" bindtap="onAddToBag">
+      <text>加入购物袋</text>
     </view>
     <view class="buy-btn" bindtap="onBuyNow">
       <text>立即下单</text>

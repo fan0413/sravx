@@ -1,0 +1,34 @@
+<view class="page">
+  <view wx:if="{{items.length > 0}}" class="bag-content">
+    <view class="bag-heading">
+      <text class="bag-title">购物袋</text>
+      <text class="bag-count">{{totalCount}} 件商品</text>
+    </view>
+    <view class="bag-list">
+      <view wx:for="{{items}}" wx:key="index" class="bag-card">
+        <image class="bag-image" src="{{item.cover_image}}" mode="aspectFill" />
+        <view class="bag-info">
+          <text class="bag-name ellipsis-2">{{item.name}}</text>
+          <text wx:if="{{item.selectedColor || item.spec}}" class="bag-spec ellipsis">{{item.selectedColor || item.spec}}</text>
+          <text class="bag-price">¥{{item.priceText}}</text>
+          <view class="bag-actions">
+            <view class="quantity-stepper">
+              <view class="quantity-button" bindtap="onDecrease" data-index="{{index}}"><text>−</text></view>
+              <text class="quantity-value">{{item.quantity}}</text>
+              <view class="quantity-button" bindtap="onIncrease" data-index="{{index}}"><text>＋</text></view>
+            </view>
+            <text class="remove-link" bindtap="onRemove" data-index="{{index}}">移除</text>
+          </view>
+        </view>
+        <view class="checkout-button" bindtap="onCheckout" data-index="{{index}}"><text>结算</text></view>
+      </view>
+    </view>
+    <view class="bag-total"><text>共计 {{totalCount}} 件</text><text>¥{{totalPrice}}</text></view>
+  </view>
+  <view wx:else class="empty-state">
+    <view class="bag-icon"><view class="bag-shape"></view><view class="bag-handle"></view></view>
+    <text class="empty-title">购物袋还是空的</text>
+    <text class="empty-desc">从产品页选择喜欢的专业工具</text>
+    <view class="go-products" bindtap="onGoProducts"><text>浏览产品</text></view>
+  </view>
+</view>

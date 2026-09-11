@@ -8,9 +8,9 @@ Component({
         icon: 'home'
       },
       {
-        pagePath: '/pages/shop/shop',
-        text: '商城',
-        icon: 'shop'
+        pagePath: '/pages/cart/cart',
+        text: '购物袋',
+        icon: 'bag'
       },
       {
         pagePath: '/pages/orderList/orderList',

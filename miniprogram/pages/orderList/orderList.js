@@ -335,6 +335,6 @@ Page({
   },
 
   onGoShop() {
-    wx.switchTab({ url: '/pages/shop/shop' })
+    wx.navigateTo({ url: '/pages/shop/shop' })
   }
 });

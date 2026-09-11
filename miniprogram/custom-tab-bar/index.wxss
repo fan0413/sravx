@@ -87,34 +87,11 @@
   border-width: 3rpx;
 }
 
-/* ====== Shop Icon ====== */
-.icon-shop {
-  width: 44rpx;
-  height: 44rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.shop-grid {
-  width: 36rpx;
-  height: 36rpx;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 6rpx;
-}
-
-.shop-dot {
-  border-radius: 6rpx;
-  border: 2rpx solid #636366;
-  background: transparent;
-}
-
-.icon-active .shop-dot {
-  border-color: #161616;
-  border-width: 3rpx;
-}
+/* ====== Shopping Bag Icon ====== */
+.icon-bag { width: 44rpx; height: 44rpx; position: relative; }
+.bag-outline { width: 32rpx; height: 28rpx; position: absolute; bottom: 3rpx; left: 50%; border: 2rpx solid #636366; border-radius: 0 0 8rpx 8rpx; transform: translateX(-50%); }
+.bag-handle { width: 18rpx; height: 11rpx; position: absolute; top: 8rpx; left: 50%; border: 2rpx solid #636366; border-bottom: none; border-radius: 12rpx 12rpx 0 0; transform: translateX(-50%); }
+.icon-active .bag-outline, .icon-active .bag-handle { border-color: #161616; border-width: 3rpx; }
 
 /* ====== User Icon ====== */
 .icon-user {

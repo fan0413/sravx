@@ -62,6 +62,6 @@ Page({
   },
 
   onUseCoupon() {
-    wx.switchTab({ url: '/pages/shop/shop' })
+    wx.navigateTo({ url: '/pages/shop/shop' })
   }
 });

@@ -13,14 +13,10 @@
       </view>
     </view>
 
-    <view wx:elif="{{item.icon === 'shop'}}" class="icon-wrap">
-      <view class="icon-shop {{active === index ? 'icon-active' : ''}}">
-        <view class="shop-grid">
-          <view class="shop-dot"></view>
-          <view class="shop-dot"></view>
-          <view class="shop-dot"></view>
-          <view class="shop-dot"></view>
-        </view>
+    <view wx:elif="{{item.icon === 'bag'}}" class="icon-wrap">
+      <view class="icon-bag {{active === index ? 'icon-active' : ''}}">
+        <view class="bag-outline"></view>
+        <view class="bag-handle"></view>
       </view>
     </view>
 

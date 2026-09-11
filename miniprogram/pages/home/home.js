@@ -87,7 +87,7 @@ Page({
   },
 
   onBrowseTap() {
-    wx.switchTab({ url: '/pages/shop/shop' })
+    wx.navigateTo({ url: '/pages/shop/shop' })
   },
 
   onProductTap(e) {
