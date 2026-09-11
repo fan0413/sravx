@@ -47,9 +47,10 @@
 .swiper-dots { display: flex; justify-content: center; gap: 12rpx; margin-top: 18rpx; }
 .dot { width: 12rpx; height: 12rpx; border-radius: 50%; background: #D2D2D7; transition: all .3s ease; }
 .dot-active { width: 32rpx; border-radius: 6rpx; background: #161616; }
-.product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18rpx; padding: 0 28rpx; }
-.product-card { overflow: hidden; border-radius: 24rpx; background: #FFF; box-shadow: 0 12rpx 28rpx rgba(29,29,31,.06); transition: opacity .2s ease; }
-.product-img-wrap { width: 100%; aspect-ratio: 1 / 1; position: relative; background: #ECEDEF; }
+.product-scroll { white-space: nowrap; }
+.product-track { display: flex; gap: 18rpx; padding: 0 28rpx 10rpx; }
+.product-card { width: 312rpx; min-width: 312rpx; overflow: hidden; border-radius: 28rpx; background: #FFF; box-shadow: 0 12rpx 28rpx rgba(29,29,31,.06); transition: opacity .2s ease; white-space: normal; }
+.product-img-wrap { width: 312rpx; height: 312rpx; position: relative; background: #ECEDEF; }
 .product-img { width: 100%; height: 100%; }
 .product-index { position: absolute; top: 14rpx; left: 14rpx; width: 36rpx; height: 36rpx; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.88); border-radius: 50%; }
 .product-index text { font-size: 18rpx; color: #161616; }
