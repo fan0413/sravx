@@ -119,8 +119,7 @@
                 <view class="laser-marker-frame"></view>
                 <view class="laser-marker-gantry"></view>
                 <view class="laser-marker-head"><view class="laser-marker-lens"></view></view>
-                <view class="laser-marker-beam"></view>
-                <view class="laser-marker-bed"><view class="laser-marker-workpiece"></view></view>
+                <view class="laser-marker-bed"><view class="laser-marker-workpiece"><view class="laser-marker-focus"><view class="laser-marker-focus-horizontal"></view><view class="laser-marker-focus-vertical"></view></view></view></view>
               </view>
               <text wx:else>{{item.symbol}}</text>
             </view>

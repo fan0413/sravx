@@ -48,9 +48,12 @@
 .laser-marker-gantry { position: absolute; left: 50%; top: 12rpx; width: 94rpx; height: 12rpx; border: 4rpx solid currentColor; border-radius: 7rpx; box-sizing: border-box; transform: translateX(-50%); }
 .laser-marker-head { position: absolute; left: 50%; top: 25rpx; width: 26rpx; height: 23rpx; border: 4rpx solid currentColor; border-radius: 6rpx; box-sizing: border-box; background: #F2F2F7; transform: translateX(-50%); }
 .laser-marker-lens { position: absolute; left: 50%; bottom: -9rpx; width: 7rpx; height: 7rpx; border: 3rpx solid currentColor; border-radius: 50%; background: #F2F2F7; transform: translateX(-50%); }
-.laser-marker-beam { position: absolute; left: 50%; top: 54rpx; width: 0; height: 14rpx; border-left: 2rpx dashed currentColor; opacity: .78; transform: translateX(-1rpx); }
 .laser-marker-bed { position: absolute; left: 50%; bottom: 12rpx; width: 94rpx; height: 16rpx; border: 4rpx solid currentColor; border-radius: 4rpx; box-sizing: border-box; transform: translateX(-50%); }
-.laser-marker-workpiece { position: absolute; left: 50%; top: 2rpx; width: 24rpx; height: 6rpx; border: 2rpx solid currentColor; border-radius: 2rpx; box-sizing: border-box; transform: translateX(-50%); }.feature-custom { background: #E9E0D3; color: #6E6256; }
+.laser-marker-workpiece { position: absolute; left: 50%; top: 2rpx; width: 24rpx; height: 6rpx; border: 2rpx solid currentColor; border-radius: 2rpx; box-sizing: border-box; transform: translateX(-50%); }
+.laser-marker-focus { position: absolute; left: 50%; top: 50%; width: 14rpx; height: 14rpx; transform: translate(-50%, -50%); }
+.laser-marker-focus-horizontal, .laser-marker-focus-vertical { position: absolute; left: 50%; top: 50%; border-radius: 2rpx; background: currentColor; transform: translate(-50%, -50%); }
+.laser-marker-focus-horizontal { width: 14rpx; height: 2rpx; }
+.laser-marker-focus-vertical { width: 2rpx; height: 14rpx; }.feature-custom { background: #E9E0D3; color: #6E6256; }
 .feature-protect { background: #1B1B1D; color: #D8BF92; }
 .feature-apprentice { background: #DDE8F0; color: #5C7184; }
 .feature-tradein { background: #E1E8DC; color: #61715D; }.section-header { display: flex; align-items: baseline; justify-content: space-between; padding: 60rpx 32rpx 26rpx; }
