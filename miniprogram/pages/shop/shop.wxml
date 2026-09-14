@@ -1,63 +1,55 @@
 <view class="shop-container">
-  <scroll-view scroll-y class="sidebar" enhanced show-scrollbar="{{false}}">
-    <view wx:if="{{categories.length === 0 && !loading}}" class="empty-sidebar">
-      <text>暂无分类</text>
-    </view>
-    <view
-      wx:for="{{categories}}"
-      wx:key="id"
-      class="sidebar-item {{activeCategory === index ? 'sidebar-active' : ''}}"
-      data-index="{{index}}"
-      bindtap="onCategoryTap"
-    >
-      <view wx:if="{{activeCategory === index}}" class="sidebar-indicator"></view>
-      <text>{{item.name}}</text>
-    </view>
-  </scroll-view>
+  <scroll-view scroll-y class="shop-scroll" enhanced show-scrollbar="{{false}}">
+    <view wx:if="{{loading}}" class="loading-state"><text>正在准备产品目录</text></view>
 
-  <scroll-view
-    scroll-y
-    class="product-area"
-    scroll-into-view="{{scrollToView}}"
-    scroll-with-animation
-    bindscroll="onProductScroll"
-    enhanced
-    show-scrollbar="{{false}}"
-  >
-    <view wx:if="{{loading}}" class="loading-state">
-      <text>加载中...</text>
-    </view>
-
-    <view wx:elif="{{sections.length === 0}}" class="empty-state">
-      <text>暂无商品</text>
-    </view>
-
-    <block wx:if="{{!loading && sections.length > 0}}" wx:for="{{sections}}" wx:key="id">
-      <view id="{{item.anchorId}}" class="section-anchor">
-        <text class="section-title">{{item.name}}</text>
+    <block wx:else>
+      <view class="shop-intro">
+        <text class="shop-title">产品目录</text>
+        <text class="shop-subtitle">为专业宠物美容师挑选</text>
       </view>
 
-      <view wx:if="{{item.products.length === 0}}" class="section-empty">
-        <text>暂无商品</text>
-      </view>
-
-      <view class="area-grid">
-        <view
-          wx:for="{{item.products}}"
-          wx:for-item="product"
-          wx:key="id"
-          class="shop-product-card"
-          bindtap="onProductTap"
-          data-id="{{product.id}}"
-        >
-          <view class="shop-product-img-wrap">
-            <image class="shop-product-img" src="{{product.image}}" mode="aspectFill" lazy-load />
+      <view class="series-section">
+        <view class="section-heading"><text>按系列选</text></view>
+        <scroll-view class="series-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+          <view class="series-row">
+            <view wx:for="{{seriesOptions}}" wx:key="key" class="series-card {{activeSeries === item.key ? 'series-active' : ''}}" bindtap="onSeriesTap" data-key="{{item.key}}">
+              <text class="series-material">{{item.material}}</text>
+              <text class="series-name">{{item.label}}</text>
+              <text class="series-caption">{{item.caption}}</text>
+            </view>
           </view>
-          <text class="shop-product-name">{{product.displayName}}</text>
+        </scroll-view>
+      </view>
+
+      <view class="tool-section">
+        <view class="section-heading"><text>按用途选</text></view>
+        <scroll-view class="tool-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+          <view class="tool-row">
+            <view wx:for="{{toolGroups}}" wx:key="key" class="tool-chip {{activeToolGroup === item.key ? 'tool-active' : ''}}" bindtap="onToolGroupTap" data-key="{{item.key}}"><text>{{item.label}}</text></view>
+          </view>
+        </scroll-view>
+        <scroll-view wx:if="{{subCategories.length > 0}}" class="sub-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+          <view class="sub-row">
+            <view wx:for="{{subCategories}}" wx:key="id" class="sub-chip {{String(activeSubCategory) === String(item.id) ? 'sub-active' : ''}}" bindtap="onSubCategoryTap" data-id="{{item.id}}"><text>{{item.name}}</text></view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="catalog-heading">
+        <text class="catalog-title">{{displayTitle}}</text>
+        <text class="catalog-count">{{visibleProducts.length}} 件</text>
+      </view>
+      <view wx:if="{{visibleProducts.length === 0}}" class="empty-state"><text>该分类暂未上架商品</text></view>
+      <view wx:else class="product-grid">
+        <view wx:for="{{visibleProducts}}" wx:key="id" class="shop-product-card" bindtap="onProductTap" data-id="{{item.id}}">
+          <view class="shop-product-img-wrap"><image class="shop-product-img" src="{{item.image}}" mode="aspectFill" lazy-load /></view>
+          <view class="product-copy">
+            <text class="product-category">{{item.categoryName}}</text>
+            <text class="shop-product-name ellipsis-2">{{item.displayName}}</text>
+          </view>
         </view>
       </view>
     </block>
-
     <view style="height: 240rpx;"></view>
   </scroll-view>
 </view>

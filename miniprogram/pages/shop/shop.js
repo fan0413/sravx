@@ -1,17 +1,51 @@
 const preload = require('../../utils/preload')
 const share = require('../../utils/share')
 
+const SERIES_OPTIONS = [
+  { key: 'all', label: '全部系列', material: '专业工具目录', caption: '按用途浏览' },
+  { key: 'basic', label: 'Basic', material: '9Cr', caption: '入门专业款' },
+  { key: 'pro', label: 'Pro', material: '440C', caption: '专业主力款' },
+  { key: 'master', label: 'Master', material: 'VG10', caption: '高阶专业款' }
+]
+
+const GROUPS = [
+  { key: 'all', label: '全部' },
+  { key: 'straight', label: '直剪' },
+  { key: 'curved', label: '弯剪' },
+  { key: 'texturizing', label: '造型剪' },
+  { key: 'accessories', label: '套装与配件' },
+  { key: 'other', label: '其他工具' }
+]
+
+function groupKeyForCategory(name) {
+  const text = String(name || '')
+  if (/直剪/.test(text)) return 'straight'
+  if (/弯剪/.test(text)) return 'curved'
+  if (/(牙剪|鱼骨剪|柳叶剪|莲蓬剪|魔术剪)/.test(text)) return 'texturizing'
+  if (/(套装|配件|服务)/.test(text)) return 'accessories'
+  return 'other'
+}
+
+function matchesSeries(product, series) {
+  if (series === 'all') return true
+  const text = `${product.displayName || ''} ${product.name || ''} ${product.desc || ''} ${product.description || ''} ${product.series || ''} ${product.series_name || ''}`.toLowerCase()
+  return text.includes(series)
+}
+
 Page({
   data: {
     categories: [],
-    activeCategory: 0,
     sections: [],
-    scrollToView: '',
-    isClickScroll: false,
+    toolGroups: [],
+    subCategories: [],
+    seriesOptions: SERIES_OPTIONS,
+    activeToolGroup: 'all',
+    activeSubCategory: 'all',
+    activeSeries: 'all',
+    visibleProducts: [],
+    displayTitle: '全部专业工具',
     loading: true
   },
-
-  sectionOffsets: [],
 
   onLoad() {
     share.showShareMenu()
@@ -22,14 +56,12 @@ Page({
     this.setData({
       categories: data.categories || [],
       sections: data.sections || [],
-      activeCategory: data.activeCategory || 0,
       loading: false
-    })
-    setTimeout(() => this.calcSectionOffsets(), 300)
+    }, () => this.rebuildCatalog())
   },
 
   refreshShopInBackground() {
-    preload.preloadShop({ force: true }).then((fresh) => {
+    preload.preloadShop({ force: true }).then(fresh => {
       if (fresh) this.applyShopData(fresh)
     })
   },
@@ -41,11 +73,9 @@ Page({
       this.refreshShopInBackground()
       return
     }
-
     try {
       wx.showLoading({ title: '加载中...', mask: true })
       this.setData({ loading: true })
-
       const data = await preload.preloadShop({ force: true })
       if (!data) throw new Error('加载失败')
       this.applyShopData(data)
@@ -58,70 +88,73 @@ Page({
     }
   },
 
-  onReady() {
-    setTimeout(() => this.calcSectionOffsets(), 300)
-  },
-
-  onShow() {
-    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ active: 1 })
-    }
-  },
-
-  async calcSectionOffsets() {
-    const query = wx.createSelectorQuery().in(this)
-    this.data.sections.forEach(section => {
-      query.select('#' + section.anchorId).boundingClientRect()
+  rebuildCatalog() {
+    const sections = this.data.sections || []
+    const grouped = new Map()
+    GROUPS.forEach(group => grouped.set(group.key, []))
+    sections.forEach(section => {
+      const category = (this.data.categories || []).find(item => Number(item.id) === Number(section.id)) || section
+      const key = groupKeyForCategory(section.name || category.name)
+      grouped.get(key).push({ id: section.id, name: section.name || category.name || '未命名分类' })
     })
-    query.select('.product-area').boundingClientRect()
-    query.exec(res => {
-      if (!res) return
-      const containerRect = res[res.length - 1]
-      if (!containerRect) return
-      const containerTop = containerRect.top
-      this.sectionOffsets = res.slice(0, -1)
-        .filter(r => r)
-        .map((r, i) => ({
-          index: i,
-          top: r.top - containerTop
-        }))
-    })
+
+    const toolGroups = GROUPS.filter(group => group.key === 'all' || grouped.get(group.key).length > 0).map(group => ({
+      ...group,
+      count: group.key === 'all' ? sections.length : grouped.get(group.key).length
+    }))
+    const activeToolGroup = toolGroups.some(group => group.key === this.data.activeToolGroup) ? this.data.activeToolGroup : 'all'
+    const subCategories = activeToolGroup === 'all'
+      ? []
+      : [{ id: 'all', name: `全部${toolGroups.find(group => group.key === activeToolGroup)?.label || ''}` }, ...grouped.get(activeToolGroup)]
+    const activeSubCategory = subCategories.length === 0 || subCategories.some(item => String(item.id) === String(this.data.activeSubCategory))
+      ? this.data.activeSubCategory
+      : 'all'
+
+    this.setData({ toolGroups, subCategories, activeToolGroup, activeSubCategory }, () => this.applyFilters())
   },
 
-  onCategoryTap(e) {
-    const index = e.currentTarget.dataset.index
-    const section = this.data.sections[index]
-    if (!section) return
-
+  applyFilters() {
+    const { sections, activeToolGroup, activeSubCategory, activeSeries, toolGroups } = this.data
+    const selectedGroup = toolGroups.find(group => group.key === activeToolGroup)
+    const allowedSections = (sections || []).filter(section => {
+      if (activeToolGroup !== 'all' && groupKeyForCategory(section.name) !== activeToolGroup) return false
+      if (activeSubCategory !== 'all' && String(section.id) !== String(activeSubCategory)) return false
+      return true
+    })
+    const seen = new Set()
+    const visibleProducts = []
+    allowedSections.forEach(section => {
+      ;(section.products || []).forEach(product => {
+        if (!matchesSeries(product, activeSeries)) return
+        const key = String(product.id)
+        if (seen.has(key)) return
+        seen.add(key)
+        visibleProducts.push({ ...product, categoryName: section.name })
+      })
+    })
+    const seriesLabel = SERIES_OPTIONS.find(series => series.key === activeSeries)?.label || ''
+    const groupLabel = selectedGroup?.label || '全部'
     this.setData({
-      activeCategory: index,
-      isClickScroll: true,
-      scrollToView: section.anchorId
+      visibleProducts,
+      displayTitle: activeSeries === 'all' ? `${groupLabel}专业工具` : `${seriesLabel} · ${groupLabel}`
     })
-
-    setTimeout(() => {
-      this.setData({ isClickScroll: false })
-    }, 600)
   },
 
-  onProductScroll(e) {
-    if (this.data.isClickScroll) return
+  onSeriesTap(e) {
+    const key = e.currentTarget.dataset.key
+    if (!SERIES_OPTIONS.some(item => item.key === key)) return
+    this.setData({ activeSeries: key }, () => this.applyFilters())
+  },
 
-    const scrollTop = e.detail.scrollTop
-    const offsets = this.sectionOffsets
-    if (!offsets || offsets.length === 0) return
+  onToolGroupTap(e) {
+    const key = e.currentTarget.dataset.key
+    if (!this.data.toolGroups.some(item => item.key === key)) return
+    this.setData({ activeToolGroup: key, activeSubCategory: 'all' }, () => this.rebuildCatalog())
+  },
 
-    let active = 0
-    for (let i = offsets.length - 1; i >= 0; i--) {
-      if (scrollTop >= offsets[i].top - 20) {
-        active = i
-        break
-      }
-    }
-
-    if (active !== this.data.activeCategory) {
-      this.setData({ activeCategory: active })
-    }
+  onSubCategoryTap(e) {
+    const id = e.currentTarget.dataset.id
+    this.setData({ activeSubCategory: id }, () => this.applyFilters())
   },
 
   onProductTap(e) {
@@ -130,15 +163,10 @@ Page({
   },
 
   onShareAppMessage() {
-    return share.createShareAppMessage({
-      title: 'Sravx 商城',
-      path: '/pages/shop/shop'
-    })
+    return share.createShareAppMessage({ title: 'Sravx 产品目录', path: '/pages/shop/shop' })
   },
 
   onShareTimeline() {
-    return share.createShareTimeline({
-      title: 'Sravx 商城'
-    })
+    return share.createShareTimeline({ title: 'Sravx 产品目录' })
   }
-});
+})
