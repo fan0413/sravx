@@ -112,18 +112,19 @@
         <text class="section-kicker">SRAVX EXPERIENCE</text>
         <text class="section-title">SRAVX 有特色</text>
       </view>
-      <scroll-view class="service-feature-scroll" scroll-x show-scrollbar="{{false}}" enhanced>
-        <view class="service-feature-track">
-          <view wx:for="{{serviceFeatures}}" wx:key="key" class="service-feature-card {{item.theme}}">
-            <view class="service-feature-symbol"><text>{{item.symbol}}</text></view>
-            <view class="service-feature-copy">
-              <text class="service-feature-title">{{item.title}}</text>
-              <text class="service-feature-description">{{item.description}}</text>
-            </view>
-            <text class="service-feature-status">进一步了解</text>
+      <swiper class="service-feature-swiper" circular duration="360" bindchange="onFeatureChange">
+        <swiper-item wx:for="{{serviceFeatures}}" wx:key="key">
+          <view class="service-feature-slide">
+            <view class="service-feature-symbol {{item.theme}}"><text>{{item.symbol}}</text></view>
+            <text class="service-feature-title">{{item.title}}</text>
+            <text class="service-feature-description">{{item.description}}</text>
+            <view class="service-feature-link"><text>进一步了解</text><view class="service-feature-arrow"></view></view>
           </view>
-        </view>
-      </scroll-view>
+        </swiper-item>
+      </swiper>
+      <view class="service-feature-dots">
+        <view wx:for="{{serviceFeatures}}" wx:key="key" class="service-feature-dot {{featureCurrent === index ? 'service-feature-dot-active' : ''}}"></view>
+      </view>
     </view>
     <view style="height: 240rpx;"></view>
   </scroll-view>

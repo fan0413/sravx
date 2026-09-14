@@ -33,6 +33,7 @@ Page({
         categories:  [],
         homeSeries:  [],
         serviceFeatures:  SERVICE_FEATURES,
+        featureCurrent:  0,
         swiperCurrent:  0,
         navBarTop:  0,
         navBarHeight:  64,
@@ -108,6 +109,10 @@ Page({
 
     onSwiperChange(e)  {
         this.setData({  swiperCurrent:  e.detail.current  })
+    },
+
+    onFeatureChange(e)  {
+        this.setData({  featureCurrent:  e.detail.current  })
     },
 
     onSearchTap()  {
