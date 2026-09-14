@@ -2,7 +2,7 @@ const  preload  =  require('../../utils/preload')
 const  share  =  require('../../utils/share')
 
 const  SERVICE_FEATURES  =  [
-  { key: 'custom', kicker: '激光刻字服务', title: '定制刻字', description: '留下文字或图案，制作独属于你的剪刀。' },
+  { key: 'custom', kicker: '激光雕刻', title: '定制服务', description: '通过精密激光热加工，在剪刀上留下文字或图案，制作独属于你的工具。' },
   { key: 'protect', kicker: '工具服务计划', title: 'SRAVX Protect', description: '工具档案、保修状态与售后服务，集中查看。' },
   { key: 'apprentice', kicker: '专业成长支持', title: 'SRAVX 学徒支持', description: '为进阶中的宠物美容师，准备清晰的工具选择建议。' },
   { key: 'tradein', kicker: '换购服务', title: 'SRAVX 换购优惠', description: '旧工具换购权益，以后续官方活动规则为准。' }
