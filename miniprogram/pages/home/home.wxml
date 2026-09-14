@@ -19,15 +19,17 @@
 
     </view>
 
-    <scroll-view wx:if="{{categories.length}}" class="category-scroll" scroll-x show-scrollbar="{{false}}" enhanced>
-      <view class="category-row">
-        <view wx:for="{{categories}}" wx:key="id" class="category-card" bindtap="onBrowseTap">
-          <image class="category-image" src="{{item.image || '/images/logo.png'}}" mode="aspectFit" lazy-load />
-          <text class="category-name ellipsis">{{item.name}}</text>
-        </view>
-        <view class="category-card all-products" bindtap="onBrowseTap">
-          <text class="all-products-title">全部</text>
-          <text class="all-products-caption">浏览商城</text>
+    <scroll-view class="series-scroll" scroll-x show-scrollbar="{{false}}" enhanced>
+      <view class="series-row">
+        <view wx:for="{{homeSeries}}" wx:key="key" class="series-card" bindtap="onSeriesTap" data-series="{{item.key}}">
+          <view class="series-image-wrap">
+            <image class="series-image" src="{{item.image}}" mode="aspectFit" lazy-load />
+          </view>
+          <view class="series-copy">
+            <text class="series-material">{{item.material}}</text>
+            <text class="series-name">{{item.name}}</text>
+            <text class="series-caption">{{item.caption}}</text>
+          </view>
         </view>
       </view>
     </scroll-view>
