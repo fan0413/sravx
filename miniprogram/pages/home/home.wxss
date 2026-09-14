@@ -28,7 +28,8 @@
 .filter-chip:active { transform: scale(.94); opacity: .76; }
 .chip-selected { border-color: var(--color-accent); background: #F7F5F2; color: var(--color-accent-dark); font-weight: 650; }
 .service-feature-section { padding: 84rpx 0 12rpx; }
-.service-feature-head { padding: 0 32rpx 22rpx; }
+.service-feature-head { padding: 0 32rpx 22rpx; text-align: center; }
+.service-feature-heading { display: block; font-size: 32rpx; line-height: 1.2; font-weight: 650; letter-spacing: -.4rpx; color: var(--color-primary); }
 .service-feature-swiper { height: 500rpx; }
 .service-feature-slide { height: 500rpx; padding: 10rpx 68rpx 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .service-feature-symbol { width: 104rpx; height: 104rpx; display: flex; align-items: center; justify-content: center; border-radius: 28rpx; }
