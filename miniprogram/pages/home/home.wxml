@@ -109,7 +109,7 @@
     </scroll-view>
     <view class="service-feature-section">
       <view class="service-feature-head">
-        <text class="service-feature-heading">SRAVX 有特色</text>
+        <text class="service-feature-heading">Hello <text class="service-feature-heading-brand">SRAVX</text></text>
       </view>
       <swiper class="service-feature-swiper" circular duration="360" bindchange="onFeatureChange">
         <swiper-item wx:for="{{serviceFeatures}}" wx:key="key">
