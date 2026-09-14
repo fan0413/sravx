@@ -24,6 +24,21 @@
     </view>
   </view>
 
+  <view wx:if="{{showWelcome}}" class="welcome-mask" bindtap="onWelcomeContinue">
+    <view class="welcome-panel" catchtap="">
+      <view class="welcome-orbit welcome-orbit-one"></view>
+      <view class="welcome-orbit welcome-orbit-two"></view>
+      <view class="welcome-mark-wrap">
+        <image class="welcome-mark" src="/images/logo.png" mode="aspectFit" />
+        <view class="welcome-check"><text>✓</text></view>
+      </view>
+      <text class="welcome-kicker">WELCOME, SRAVX OWNER</text>
+      <text class="welcome-title">工具已加入你的档案</text>
+      <text class="welcome-tool ellipsis">{{welcomeToolName}}</text>
+      <text class="welcome-copy">专属工具信息与保修服务现已可用</text>
+      <view class="welcome-continue" bindtap="onWelcomeContinue"><text>继续</text></view>
+    </view>
+  </view>
   <view wx:if="{{showBindModal}}" class="modal-mask" bindtap="onCloseBindModal">
     <view class="modal-content" catchtap="">
       <text class="modal-title">绑定剪刀</text>

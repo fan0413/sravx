@@ -33,11 +33,17 @@ Page({
     showBindModal: false,
     snInput: '',
     binding: false,
-    loading: true
+    loading: true,
+    showWelcome: false,
+    welcomeToolName: ''
   },
 
   onLoad() {
     this.loadScissors()
+  },
+
+  onUnload() {
+    if (this.welcomeTimer) clearTimeout(this.welcomeTimer)
   },
 
   onShow() {
@@ -58,9 +64,11 @@ Page({
     return left - right
       })
       this.setData({ scissors, loading: false })
+      return scissors
     } catch (err) {
       console.error('[myScissors] loadScissors error:', err)
       this.setData({ loading: false, scissors: [] })
+      return []
     }
   },
 
@@ -105,9 +113,10 @@ Page({
       wx.showLoading({ title: '绑定中...', mask: true })
       await api.bindScissors(sn)
       wx.hideLoading()
-      wx.showToast({ title: '绑定成功', icon: 'success' })
-      this.setData({ showBindModal: false, snInput: '' })
-      this.loadScissors()
+      this.setData({ showBindModal: false, snInput: '', binding: false })
+      const scissors = await this.loadScissors()
+      const boundTool = (scissors || []).find(item => String(item.sn || '').toUpperCase() === sn.toUpperCase())
+      this.showWelcome(boundTool && boundTool.name ? boundTool.name : 'SRAVX 专业工具')
     } catch (err) {
       wx.hideLoading()
       this.setData({ binding: false })
@@ -115,6 +124,19 @@ Page({
     }
   },
 
+  showWelcome(toolName) {
+    if (this.welcomeTimer) clearTimeout(this.welcomeTimer)
+    this.setData({ showWelcome: true, welcomeToolName: toolName })
+    this.welcomeTimer = setTimeout(() => this.onWelcomeContinue(), 2600)
+  },
+
+  onWelcomeContinue() {
+    if (this.welcomeTimer) {
+      clearTimeout(this.welcomeTimer)
+      this.welcomeTimer = null
+    }
+    if (this.data.showWelcome) this.setData({ showWelcome: false })
+  },
   onDeleteDevice(e) {
     const id = e.currentTarget.dataset.id
     wx.showModal({
