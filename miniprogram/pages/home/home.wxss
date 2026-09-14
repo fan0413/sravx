@@ -12,7 +12,7 @@
 .intro-block { padding: 58rpx 32rpx 42rpx; }
 .page-title { display: block; font-size: 68rpx; line-height: 1.08; font-weight: 720; letter-spacing: -2rpx; color: var(--color-primary); }
 .page-subtitle { display: block; margin-top: 16rpx; font-size: 28rpx; color: var(--color-secondary); font-weight: 450; }
-.series-scroll, .chip-scroll { white-space: nowrap; }
+.series-scroll { white-space: nowrap; }
 .series-row { display: flex; gap: 20rpx; padding: 0 28rpx 36rpx; }
 .series-card { width: 316rpx; min-width: 316rpx; overflow: hidden; border-radius: 34rpx; background: #FFF; box-shadow: 0 14rpx 30rpx rgba(29,29,31,.06); white-space: normal; }
 .series-card:active, .product-card:active { opacity: .72; transform: scale(.985); }
@@ -21,12 +21,7 @@
 .series-copy { min-height: 164rpx; padding: 24rpx 26rpx 28rpx; display: flex; flex-direction: column; background: #FFF; }
 .series-material { font-size: 19rpx; font-weight: 700; letter-spacing: 1.5rpx; color: var(--color-accent); }
 .series-name { margin-top: 8rpx; font-size: 36rpx; line-height: 1.15; font-weight: 720; color: var(--color-primary); letter-spacing: -.6rpx; }
-.series-caption { margin-top: 8rpx; font-size: 22rpx; color: var(--color-secondary); }.accessory-block { padding: 20rpx 0 18rpx; }
-.section-label { display: block; padding: 0 32rpx 20rpx; font-size: 32rpx; font-weight: 700; letter-spacing: -.5rpx; color: var(--color-primary); }
-.chip-row { display: flex; gap: 14rpx; padding: 0 28rpx; }
-.filter-chip { min-width: max-content; padding: 17rpx 24rpx; border: 1rpx solid transparent; border-radius: 99rpx; background: #FFF; color: #3A3A3C; font-size: 23rpx; transition: transform .16s ease, opacity .16s ease, border-color .16s ease, background .16s ease; }
-.filter-chip:active { transform: scale(.94); opacity: .76; }
-.chip-selected { border-color: var(--color-accent); background: #F7F5F2; color: var(--color-accent-dark); font-weight: 650; }
+.series-caption { margin-top: 8rpx; font-size: 22rpx; color: var(--color-secondary); }
 .service-feature-section { padding: 112rpx 0 20rpx; }
 .service-feature-swiper { height: 424rpx; }
 .service-feature-slide { height: 424rpx; padding: 52rpx 68rpx 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; }

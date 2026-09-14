@@ -34,18 +34,6 @@
       </view>
     </scroll-view>
 
-    <view class="accessory-block">
-      <text class="section-label">按需求选购</text>
-      <scroll-view class="chip-scroll" scroll-x show-scrollbar="{{false}}" enhanced>
-        <view class="chip-row">
-          <view class="filter-chip chip-selected" bindtap="onBrowseTap"><text>专业剪刀</text></view>
-          <view class="filter-chip" bindtap="onBrowseTap"><text>日常护理</text></view>
-          <view class="filter-chip" bindtap="onBrowseTap"><text>收纳与保养</text></view>
-          <view class="filter-chip" bindtap="onBrowseTap"><text>新品上架</text></view>
-        </view>
-      </scroll-view>
-    </view>
-
     <view class="section-header feature-header">
       <view>
         <text class="section-kicker">FEATURED FOR GROOMERS</text>
