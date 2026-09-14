@@ -7,7 +7,7 @@
   </view>
 
   <scroll-view scroll-y class="detail-scroll" style="padding-top: {{navBarHeight}}rpx;" enhanced show-scrollbar="{{false}}">
-    <!-- 顶部：商品多图轮播 -->
+    <!-- 产品主视觉：保留完整工具构图，信息与图片独立分层 -->
     <view class="gallery">
       <swiper
         class="gallery-swiper"
@@ -16,21 +16,25 @@
         bindchange="onSwiperChange"
       >
         <swiper-item wx:for="{{images}}" wx:key="*this">
-          <image class="gallery-img" src="{{item}}" mode="aspectFill" />
+          <view class="gallery-frame">
+            <image class="gallery-img" src="{{item}}" mode="aspectFit" />
+          </view>
         </swiper-item>
       </swiper>
-      <view class="gallery-counter">
-        <text>{{swiperCurrent + 1}}/{{images.length}}</text>
+      <view wx:if="{{images.length > 1}}" class="gallery-counter">
+        <text>{{swiperCurrent + 1}} / {{images.length}}</text>
       </view>
     </view>
 
-    <!-- 信息层 -->
+    <!-- 产品信息：苹果式独立文字层级 -->
     <view class="info-section">
-      <view class="price-row">
-        <text class="price">¥{{product.price}}</text>
-      </view>
+      <text class="product-eyebrow">SRAVX PROFESSIONAL TOOLS</text>
       <text class="product-title">{{product.name}}</text>
       <text class="product-subtitle">{{product.desc}}</text>
+      <view class="price-row">
+        <text class="price-label">售价</text>
+        <text class="price">¥{{product.price}} 起</text>
+      </view>
     </view>
 
     <view class="divider-thick"></view>
@@ -90,7 +94,7 @@
 
     <!-- 详情层：参数 -->
     <view class="spec-section">
-      <view class="spec-header">
+      <view class="spec-header"><text class="product-eyebrow">TECHNICAL DETAILS</text>
         <text class="spec-title">主要参数</text>
       </view>
       <view class="spec-table">
@@ -119,7 +123,7 @@
 
     <view wx:if="{{detailImages.length > 0}}" class="divider-thick"></view>
     <view wx:if="{{detailImages.length > 0}}" class="detail-image-section">
-      <view class="detail-image-header">
+      <view class="detail-image-header"><text class="product-eyebrow">PRODUCT STORY</text>
         <text class="detail-image-title">详情展示</text>
       </view>
       <view class="detail-image-list">
