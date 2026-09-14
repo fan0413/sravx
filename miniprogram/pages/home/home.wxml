@@ -78,6 +78,24 @@
       </view>
     </view>
 
+    <view class="service-feature-section">
+      <view class="service-feature-head">
+        <text class="section-kicker">SRAVX EXPERIENCE</text>
+        <text class="section-title">SRAVX 有特色</text>
+      </view>
+      <scroll-view class="service-feature-scroll" scroll-x show-scrollbar="{{false}}" enhanced>
+        <view class="service-feature-track">
+          <view wx:for="{{serviceFeatures}}" wx:key="key" class="service-feature-card {{item.theme}}">
+            <view class="service-feature-symbol"><text>{{item.symbol}}</text></view>
+            <view class="service-feature-copy">
+              <text class="service-feature-title">{{item.title}}</text>
+              <text class="service-feature-description">{{item.description}}</text>
+            </view>
+            <text class="service-feature-status">敬请期待</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
     <view class="section-header product-header">
       <view>
         <text class="section-kicker">CURATED TOOLS</text>

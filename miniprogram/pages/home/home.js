@@ -1,6 +1,12 @@
 const  preload  =  require('../../utils/preload')
 const  share  =  require('../../utils/share')
 
+const  SERVICE_FEATURES  =  [
+  { key: 'custom', symbol: '✦', title: '定制服务', description: '根据你的使用习惯，选择更适合的专业工具配置。', theme: 'feature-custom' },
+  { key: 'protect', symbol: '⌁', title: 'SRAVX Protect', description: '工具档案、保修状态与售后服务，集中查看。', theme: 'feature-protect' },
+  { key: 'apprentice', symbol: '↗', title: 'SRAVX 学徒支持', description: '为进阶中的宠物美容师，准备清晰的工具选择建议。', theme: 'feature-apprentice' },
+  { key: 'tradein', symbol: '⇄', title: 'SRAVX 换购优惠', description: '旧工具换购权益，以后续官方活动规则为准。', theme: 'feature-tradein' }
+]
 const  HOME_SERIES  =  [
     {  key:  'basic',  name:  'Basic',  material:  '9Cr',  caption:  '入门专业款'  },
     {  key:  'pro',  name:  'Pro',  material:  '440C',  caption:  '专业主力款'  },
@@ -26,6 +32,7 @@ Page({
         products:  [],
         categories:  [],
         homeSeries:  [],
+        serviceFeatures:  SERVICE_FEATURES,
         swiperCurrent:  0,
         navBarTop:  0,
         navBarHeight:  64,
