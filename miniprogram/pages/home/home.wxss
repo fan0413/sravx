@@ -30,10 +30,10 @@
 .service-feature-section { padding: 84rpx 0 12rpx; }
 .service-feature-head { padding: 0 32rpx 22rpx; text-align: center; }
 .service-feature-heading { display: block; height: 62rpx; overflow: hidden; font-family: Georgia, 'Times New Roman', serif; font-size: 48rpx; font-style: italic; line-height: 1.15; font-weight: 500; letter-spacing: -.9rpx; color: var(--color-primary); white-space: nowrap; transform: translateX(-4rpx); }
-.service-feature-heading-letter { display: inline-block; opacity: 0; transform: translateY(14rpx) rotate(-3deg); animation: service-heading-write 5.2s cubic-bezier(.2, .72, .3, 1) infinite both; }
+.service-feature-heading-letter { display: inline-block; opacity: 0; transform: translateY(14rpx) rotate(-3deg); animation: service-heading-write 1.2s cubic-bezier(.2, .72, .3, 1) 1 both; }
 .service-feature-heading-space { display: inline-block; width: 14rpx; }
 .letter-1 { animation-delay: 0s; }.letter-2 { animation-delay: .12s; }.letter-3 { animation-delay: .24s; }.letter-4 { animation-delay: .36s; }.letter-5 { animation-delay: .48s; }.letter-6 { animation-delay: .70s; }.letter-7 { animation-delay: .82s; }.letter-8 { animation-delay: .94s; }.letter-9 { animation-delay: 1.06s; }.letter-10 { animation-delay: 1.18s; }
-@keyframes service-heading-write { 0% { opacity: 0; transform: translateY(14rpx) rotate(-3deg); } 8% { opacity: 1; transform: translateY(0) rotate(0); } 76% { opacity: 1; transform: translateY(0) rotate(0); } 88%, 100% { opacity: 0; transform: translateY(-8rpx) rotate(2deg); } }
+@keyframes service-heading-write { 0% { opacity: 0; transform: translateY(14rpx) rotate(-3deg); } 36%, 100% { opacity: 1; transform: translateY(0) rotate(0); } }
 .service-feature-swiper { height: 500rpx; }
 .service-feature-slide { height: 500rpx; padding: 10rpx 68rpx 0; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; }
 .service-feature-symbol { width: 104rpx; height: 104rpx; display: flex; align-items: center; justify-content: center; border-radius: 28rpx; }
