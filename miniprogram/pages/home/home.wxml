@@ -115,13 +115,15 @@
         <swiper-item wx:for="{{serviceFeatures}}" wx:key="key">
           <view class="service-feature-slide">
             <view class="service-feature-symbol {{item.theme}}">
-              <view wx:if="{{item.key === 'custom'}}" class="lithography-icon" aria-label="定制加工设备">
-                <view class="lithography-body"></view>
-                <view class="lithography-chamber"></view>
-                <view class="lithography-rail"></view>
-                <view class="lithography-head"></view>
-                <view class="lithography-beam"></view>
-                <view class="lithography-base"></view>
+              <view wx:if="{{item.key === 'custom'}}" class="laser-marker-icon" aria-label="激光打标机">
+                <view class="laser-marker-gantry"></view>
+                <view class="laser-marker-post laser-marker-post-left"></view>
+                <view class="laser-marker-post laser-marker-post-right"></view>
+                <view class="laser-marker-head"><view class="laser-marker-lens"></view></view>
+                <view class="laser-marker-beam"></view>
+                <view class="laser-marker-bed"><view class="laser-marker-workpiece"></view></view>
+                <view class="laser-marker-foot laser-marker-foot-left"></view>
+                <view class="laser-marker-foot laser-marker-foot-right"></view>
               </view>
               <text wx:else>{{item.symbol}}</text>
             </view>
