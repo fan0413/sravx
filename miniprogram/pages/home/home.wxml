@@ -109,7 +109,19 @@
     </scroll-view>
     <view class="service-feature-section">
       <view class="service-feature-head">
-        <text class="service-feature-heading">Hello <text class="service-feature-heading-brand">SRAVX</text></text>
+        <view class="service-feature-heading" aria-label="Hello SRAVX">
+          <text class="service-feature-heading-letter letter-1">H</text>
+          <text class="service-feature-heading-letter letter-2">e</text>
+          <text class="service-feature-heading-letter letter-3">l</text>
+          <text class="service-feature-heading-letter letter-4">l</text>
+          <text class="service-feature-heading-letter letter-5">o</text>
+          <text class="service-feature-heading-space"> </text>
+          <text class="service-feature-heading-letter letter-6">S</text>
+          <text class="service-feature-heading-letter letter-7">R</text>
+          <text class="service-feature-heading-letter letter-8">A</text>
+          <text class="service-feature-heading-letter letter-9">V</text>
+          <text class="service-feature-heading-letter letter-10">X</text>
+        </view>
       </view>
       <swiper class="service-feature-swiper" circular duration="360" bindchange="onFeatureChange">
         <swiper-item wx:for="{{serviceFeatures}}" wx:key="key">
