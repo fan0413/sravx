@@ -32,7 +32,7 @@
         <image class="welcome-mark" src="/images/logo.png" mode="aspectFit" />
         <view class="welcome-check"><text>✓</text></view>
       </view>
-      <text class="welcome-kicker">WELCOME, SRAVX OWNER</text>
+      <text class="welcome-kicker">THE TOOLS YOU DESERVE.</text>
       <text class="welcome-title">工具已加入你的档案</text>
       <text class="welcome-tool ellipsis">{{welcomeToolName}}</text>
       <text class="welcome-copy">专属工具信息与保修服务现已可用</text>
