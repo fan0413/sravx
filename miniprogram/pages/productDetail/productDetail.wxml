@@ -74,7 +74,7 @@
   <view class="bottom-bar safe-bottom">
     <view class="bottom-left">
       <view class="bottom-icon-btn" bindtap="onGoHome">
-        <view class="action-icon action-home-icon"><view class="action-home-roof"></view><view class="action-home-body"></view><view class="action-home-door"></view></view>
+        <view class="action-icon action-catalog-icon"><view class="catalog-shell"></view><view class="catalog-tile catalog-tile-one"></view><view class="catalog-tile catalog-tile-two"></view><view class="catalog-mark"></view></view>
         <text>首页</text>
       </view>
       <button class="bottom-icon-btn contact-btn" open-type="contact" session-from="product_{{product.id}}">
@@ -82,7 +82,7 @@
         <text>客服</text>
       </button>
       <button class="bottom-icon-btn share-btn" open-type="share">
-        <view class="action-icon action-share-icon"><view class="action-share-box"></view><view class="action-share-stem"></view><view class="action-share-head"></view></view>
+        <view class="action-icon action-recommend-icon"><view class="recommend-node recommend-node-one"></view><view class="recommend-node recommend-node-two"></view><view class="recommend-node recommend-node-three"></view><view class="recommend-link recommend-link-one"></view><view class="recommend-link recommend-link-two"></view></view>
         <text>分享</text>
       </button>
     </view>

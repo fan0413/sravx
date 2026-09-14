@@ -794,13 +794,12 @@
 .bottom-icon-btn { width: 72rpx !important; min-width: 72rpx !important; max-width: 72rpx !important; gap: 6rpx; }
 .bottom-icon-btn text { color: #6E6E73; font-size: 19rpx; font-weight: 500; }
 .action-icon { position: relative; width: 38rpx; height: 38rpx; color: #4A4A4D; }
-.action-home-roof { position: absolute; left: 8rpx; top: 5rpx; width: 20rpx; height: 20rpx; border-left: 3rpx solid currentColor; border-top: 3rpx solid currentColor; border-radius: 3rpx; transform: rotate(45deg); }
-.action-home-body { position: absolute; left: 8rpx; bottom: 4rpx; width: 22rpx; height: 20rpx; border: 3rpx solid currentColor; border-radius: 3rpx 3rpx 5rpx 5rpx; box-sizing: border-box; }
-.action-home-door { position: absolute; left: 16rpx; bottom: 4rpx; width: 7rpx; height: 10rpx; border: 2rpx solid currentColor; border-bottom: 0; border-radius: 3rpx 3rpx 0 0; }
 .action-chat-bubble { position: absolute; left: 4rpx; top: 7rpx; width: 30rpx; height: 23rpx; border: 3rpx solid currentColor; border-radius: 12rpx; box-sizing: border-box; }
 .action-chat-bubble::after { content: ''; position: absolute; left: 5rpx; bottom: -6rpx; width: 8rpx; height: 8rpx; border-left: 3rpx solid currentColor; border-bottom: 3rpx solid currentColor; background: #FFF; transform: skewY(-30deg); }
 .action-chat-dot { position: absolute; top: 17rpx; width: 3rpx; height: 3rpx; border-radius: 50%; background: currentColor; }.action-chat-dot-a { left: 12rpx; }.action-chat-dot-b { left: 18rpx; }.action-chat-dot-c { left: 24rpx; }
-.action-share-box { position: absolute; left: 7rpx; bottom: 4rpx; width: 24rpx; height: 18rpx; border: 3rpx solid currentColor; border-radius: 4rpx; box-sizing: border-box; }
-.action-share-stem { position: absolute; left: 17rpx; top: 4rpx; width: 3rpx; height: 19rpx; border-radius: 2rpx; background: currentColor; }
-.action-share-head { position: absolute; left: 12rpx; top: 5rpx; width: 11rpx; height: 11rpx; border-left: 3rpx solid currentColor; border-top: 3rpx solid currentColor; transform: rotate(45deg); }
+.catalog-shell { position: absolute; left: 4rpx; top: 6rpx; width: 30rpx; height: 26rpx; border: 3rpx solid currentColor; border-radius: 7rpx; box-sizing: border-box; }
+.catalog-tile { position: absolute; top: 12rpx; width: 7rpx; height: 13rpx; border-radius: 3rpx; background: currentColor; }.catalog-tile-one { left: 11rpx; }.catalog-tile-two { left: 22rpx; opacity: .48; }
+.catalog-mark { position: absolute; left: 11rpx; top: 9rpx; width: 18rpx; height: 3rpx; border-radius: 2rpx; background: currentColor; }
+.recommend-node { position: absolute; width: 9rpx; height: 9rpx; border: 3rpx solid currentColor; border-radius: 50%; box-sizing: border-box; background: #FFF; z-index: 2; }.recommend-node-one { left: 5rpx; top: 16rpx; }.recommend-node-two { right: 4rpx; top: 5rpx; }.recommend-node-three { right: 4rpx; bottom: 5rpx; }
+.recommend-link { position: absolute; left: 12rpx; width: 17rpx; height: 3rpx; border-radius: 3rpx; background: currentColor; transform-origin: left center; }.recommend-link-one { top: 19rpx; transform: rotate(-30deg); }.recommend-link-two { top: 21rpx; transform: rotate(30deg); }
 .bag-btn-primary { flex: 1; height: 88rpx; border-radius: 44rpx; }
