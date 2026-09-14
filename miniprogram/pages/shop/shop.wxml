@@ -30,7 +30,7 @@
         </scroll-view>
         <scroll-view wx:if="{{subCategories.length > 0}}" class="sub-scroll" scroll-x enhanced show-scrollbar="{{false}}">
           <view class="sub-row">
-            <view wx:for="{{subCategories}}" wx:key="id" class="sub-chip {{String(activeSubCategory) === String(item.id) ? 'sub-active' : ''}}" bindtap="onSubCategoryTap" data-id="{{item.id}}"><text>{{item.name}}</text></view>
+            <view wx:for="{{subCategories}}" wx:key="id" class="sub-chip {{activeSubCategory === item.id ? 'sub-active' : ''}}" bindtap="onSubCategoryTap" data-id="{{item.id}}"><text>{{item.name}}</text></view>
           </view>
         </scroll-view>
       </view>
