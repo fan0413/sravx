@@ -74,7 +74,7 @@
   <view class="bottom-bar safe-bottom">
     <view class="bottom-left">
       <view class="bottom-icon-btn" bindtap="onGoHome">
-        <view class="action-icon action-catalog-icon"><view class="catalog-shell"></view><view class="catalog-tile catalog-tile-one"></view><view class="catalog-tile catalog-tile-two"></view><view class="catalog-mark"></view></view>
+        <view class="action-icon action-home-grid"><view class="home-grid-cell home-grid-cell-a"></view><view class="home-grid-cell home-grid-cell-b"></view><view class="home-grid-cell home-grid-cell-c"></view><view class="home-grid-cell home-grid-cell-d"></view></view>
         <text>首页</text>
       </view>
       <button class="bottom-icon-btn contact-btn" open-type="contact" session-from="product_{{product.id}}">
