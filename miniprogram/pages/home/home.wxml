@@ -114,7 +114,17 @@
       <swiper class="service-feature-swiper" circular duration="360" bindchange="onFeatureChange">
         <swiper-item wx:for="{{serviceFeatures}}" wx:key="key">
           <view class="service-feature-slide">
-            <view class="service-feature-symbol {{item.theme}}"><text>{{item.symbol}}</text></view>
+            <view class="service-feature-symbol {{item.theme}}">
+              <view wx:if="{{item.key === 'custom'}}" class="lithography-icon" aria-label="定制加工设备">
+                <view class="lithography-body"></view>
+                <view class="lithography-chamber"></view>
+                <view class="lithography-rail"></view>
+                <view class="lithography-head"></view>
+                <view class="lithography-beam"></view>
+                <view class="lithography-base"></view>
+              </view>
+              <text wx:else>{{item.symbol}}</text>
+            </view>
             <text class="service-feature-title">{{item.title}}</text>
             <text class="service-feature-description">{{item.description}}</text>
             <view class="service-feature-link"><text>进一步了解</text><view class="service-feature-arrow"></view></view>

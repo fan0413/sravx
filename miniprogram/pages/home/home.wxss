@@ -42,7 +42,14 @@
 .service-feature-dots { display: flex; justify-content: center; align-items: center; gap: 16rpx; margin-top: 12rpx; }
 .service-feature-dot { width: 14rpx; height: 14rpx; border-radius: 50%; background: #D1D1D6; transition: transform .22s ease, background .22s ease; }
 .service-feature-dot-active { background: #161616; transform: scale(1.08); }
-.feature-custom { background: #E9E0D3; color: #6E6256; }
+.service-feature-symbol.feature-custom { background: transparent; border-radius: 0; }
+.lithography-icon { position: relative; width: 118rpx; height: 88rpx; color: #6E6256; }
+.lithography-body { position: absolute; left: 12rpx; top: 16rpx; width: 76rpx; height: 48rpx; border: 4rpx solid currentColor; border-radius: 10rpx; box-sizing: border-box; }
+.lithography-chamber { position: absolute; left: 27rpx; top: 29rpx; width: 20rpx; height: 20rpx; border: 4rpx solid currentColor; border-radius: 50%; box-sizing: border-box; }
+.lithography-rail { position: absolute; right: 8rpx; top: 10rpx; width: 12rpx; height: 58rpx; border-left: 4rpx solid currentColor; border-right: 4rpx solid currentColor; box-sizing: border-box; }
+.lithography-head { position: absolute; right: 0; top: 7rpx; width: 28rpx; height: 18rpx; border: 4rpx solid currentColor; border-radius: 7rpx; box-sizing: border-box; }
+.lithography-beam { position: absolute; right: 10rpx; top: 30rpx; width: 3rpx; height: 23rpx; background: currentColor; border-radius: 2rpx; }
+.lithography-base { position: absolute; left: 0; bottom: 8rpx; width: 112rpx; height: 4rpx; border-radius: 3rpx; background: currentColor; }.feature-custom { background: #E9E0D3; color: #6E6256; }
 .feature-protect { background: #1B1B1D; color: #D8BF92; }
 .feature-apprentice { background: #DDE8F0; color: #5C7184; }
 .feature-tradein { background: #E1E8DC; color: #61715D; }.section-header { display: flex; align-items: baseline; justify-content: space-between; padding: 60rpx 32rpx 26rpx; }
