@@ -8,7 +8,9 @@ function normalizeItem(item) {
     name: String(item.name || '未命名商品'),
     price,
     cover_image: item.cover_image || '/images/logo.png',
+    selectedModel: String(item.selectedModel || ''),
     selectedColor: String(item.selectedColor || ''),
+    protectSelected: item.protectSelected === true,
     spec: String(item.spec || ''),
     allow_coupon: item.allow_coupon,
     quantity
@@ -29,7 +31,7 @@ function saveCart(items) {
 }
 
 function itemKey(item) {
-  return `${item.id}:${item.selectedColor || item.spec || 'default'}`
+  return `${item.id}:${item.selectedModel || 'default'}:${item.selectedColor || 'default'}:${item.protectSelected ? 'protect' : 'standard'}`
 }
 
 function addItem(item) {

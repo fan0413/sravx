@@ -68,7 +68,9 @@ Page({
       name: item.name,
       price: item.price,
       cover_image: item.cover_image,
+      selectedModel: item.selectedModel,
       selectedColor: item.selectedColor,
+      protectSelected: item.protectSelected,
       spec: item.spec,
       quantity: item.quantity,
       allow_coupon: item.allow_coupon

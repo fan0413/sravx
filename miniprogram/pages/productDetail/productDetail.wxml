@@ -1,219 +1,82 @@
 <view class="container">
-  <!-- 自定义导航栏（纯白背景，动态高度） -->
   <view class="nav-bar" style="height: {{navBarHeight}}rpx;">
-    <view class="nav-back" bindtap="onBack">
-      <view class="back-arrow"></view>
-    </view>
+    <view class="nav-back" bindtap="onBack"><view class="back-arrow"></view></view>
   </view>
 
   <scroll-view scroll-y class="detail-scroll" style="padding-top: {{navBarHeight}}rpx;" enhanced show-scrollbar="{{false}}">
-    <!-- 产品主视觉：保留完整工具构图，信息与图片独立分层 -->
     <view class="gallery">
-      <swiper
-        class="gallery-swiper"
-        autoplay="{{false}}"
-        circular
-        bindchange="onSwiperChange"
-      >
-        <swiper-item wx:for="{{images}}" wx:key="*this">
-          <view class="gallery-frame">
-            <image class="gallery-img" src="{{item}}" mode="aspectFit" />
-          </view>
-        </swiper-item>
+      <swiper class="gallery-swiper" autoplay="{{false}}" circular bindchange="onSwiperChange">
+        <swiper-item wx:for="{{images}}" wx:key="*this"><view class="gallery-frame"><image class="gallery-img" src="{{item}}" mode="aspectFit" /></view></swiper-item>
       </swiper>
-      <view wx:if="{{images.length > 1}}" class="gallery-counter">
-        <text>{{swiperCurrent + 1}} / {{images.length}}</text>
-      </view>
+      <view wx:if="{{images.length > 1}}" class="gallery-counter"><text>{{swiperCurrent + 1}} / {{images.length}}</text></view>
     </view>
 
-    <!-- 产品信息：苹果式独立文字层级 -->
     <view class="info-section">
       <text class="product-eyebrow">SRAVX PROFESSIONAL TOOLS</text>
       <text class="product-title">{{product.name}}</text>
       <text class="product-subtitle">{{product.desc}}</text>
-      <view class="price-row">
-        <text class="price-label">售价</text>
-        <text class="price">¥{{product.price}} 起</text>
-      </view>
+      <view class="price-row"><text class="price-label">售价</text><text class="price">¥{{displayPrice}}</text></view>
     </view>
 
-    <view class="divider-thick"></view>
-
-    <!-- 交互层：规格 & 地址 -->
-    <view class="action-section">
-      <view class="action-row" bindtap="onSpecTap">
-        <text class="action-label">已选</text>
-        <text class="action-value ellipsis">{{selectedColor || selectedSpec || '默认规格'}}</text>
-        <view class="action-arrow"></view>
+    <view class="configuration-section">
+      <view class="configuration-head"><text class="configuration-title">型号：选择适合你的工具。</text></view>
+      <view class="model-list">
+        <view wx:for="{{modelOptions}}" wx:key="name" class="model-option {{selectedModel === item.name ? 'model-option-selected' : ''}}" data-index="{{index}}" bindtap="onModelTap">
+          <view><text class="model-name">{{item.name}}</text><text wx:if="{{item.sku}}" class="model-sku">{{item.sku}}</text></view>
+          <text class="model-price">¥{{item.priceText}}</text>
+        </view>
       </view>
-      <view class="action-line"></view>
-      <view class="action-row" bindtap="onAddressTap">
-        <text class="action-label">送至</text>
-        <block wx:if="{{address}}">
-          <text class="action-value ellipsis">{{address.province}}{{address.city}}{{address.district}}{{address.detail}}</text>
-          <text class="action-sub">{{address.name}} {{address.phone}}</text>
-        </block>
-        <text wx:else class="action-value placeholder">请选择收货地址</text>
-        <view class="action-arrow"></view>
+
+      <view class="configuration-block">
+        <text class="configuration-title">外观：选择你喜欢的颜色。</text>
+        <view class="color-list">
+          <view wx:for="{{colorOptions}}" wx:key="name" class="color-option {{selectedColor === item.name ? 'color-option-selected' : ''}}" data-index="{{index}}" bindtap="onColorOptionTap">
+            <view class="color-swatch" style="background: {{item.swatch}};"></view>
+            <text>{{item.name}}</text>
+          </view>
+        </view>
       </view>
-    </view>
 
-    <view class="divider-thick"></view>
-
-    <!-- 背书层 -->
-    <view class="badge-section">
-      <view class="badge-row">
-        <view class="badge-item">
-          <view class="badge-icon-wrap">
-            <view class="badge-icon badge-icon-circle"><text class="badge-icon-text">正</text></view>
-          </view>
-          <text class="badge-text">官方正品</text>
+      <view class="configuration-block protect-block">
+        <text class="configuration-title">SRAVX Protect</text>
+        <text class="protect-intro">延长保修期，获得专属换购权益。</text>
+        <view class="protect-option {{protectSelected ? '' : 'protect-option-selected'}}" data-value="false" bindtap="onProtectTap">
+          <view><text class="protect-option-title">不添加 SRAVX Protect</text><text class="protect-option-desc">保留产品原有保修服务。</text></view>
+          <view class="option-radio"></view>
         </view>
-        <view class="badge-item">
-          <view class="badge-icon-wrap">
-            <view class="badge-icon badge-icon-square"><text class="badge-icon-text">保</text></view>
-          </view>
-          <text class="badge-text">价格保护</text>
-        </view>
-        <view class="badge-item">
-          <view class="badge-icon-wrap">
-            <view class="badge-icon badge-icon-circle"><text class="badge-icon-text">7</text></view>
-          </view>
-          <text class="badge-text">7天无理由</text>
-        </view>
-        <view class="badge-item">
-          <view class="badge-icon-wrap">
-            <view class="badge-icon badge-icon-square"><text class="badge-icon-text">顺</text></view>
-          </view>
-          <text class="badge-text">顺丰发货</text>
+        <view class="protect-option {{protectSelected ? 'protect-option-selected' : ''}}" data-value="true" bindtap="onProtectTap">
+          <view><text class="protect-option-title">添加 SRAVX Protect</text><text class="protect-option-desc">具体适用条件与服务规则以下单页公示为准。</text></view>
+          <view class="option-radio"></view>
         </view>
       </view>
     </view>
 
     <view class="divider-thick"></view>
-
-    <!-- 详情层：参数 -->
     <view class="spec-section">
-      <view class="spec-header"><text class="product-eyebrow">TECHNICAL DETAILS</text>
-        <text class="spec-title">主要参数</text>
-      </view>
+      <view class="spec-header"><text class="product-eyebrow">TECHNICAL DETAILS</text><text class="spec-title">主要参数</text></view>
       <view class="spec-table">
-        <view class="spec-row">
-          <text class="spec-label">核心材质</text>
-          <text class="spec-value">{{mainParams.coreMaterial}}</text>
-        </view>
-        <view class="spec-row">
-          <text class="spec-label">手柄材质</text>
-          <text class="spec-value">{{mainParams.handleMaterial}}</text>
-        </view>
-        <view class="spec-row">
-          <text class="spec-label">尺寸</text>
-          <text class="spec-value">{{mainParams.size}}</text>
-        </view>
-        <view class="spec-row">
-          <text class="spec-label">重量</text>
-          <text class="spec-value">{{mainParams.weight}}</text>
-        </view>
-        <view class="spec-row">
-          <text class="spec-label">保修期</text>
-          <text class="spec-value">{{mainParams.warrantyPeriod}}</text>
-        </view>
+        <view class="spec-row"><text class="spec-label">核心材质</text><text class="spec-value">{{mainParams.coreMaterial}}</text></view>
+        <view class="spec-row"><text class="spec-label">手柄材质</text><text class="spec-value">{{mainParams.handleMaterial}}</text></view>
+        <view class="spec-row"><text class="spec-label">尺寸</text><text class="spec-value">{{mainParams.size}}</text></view>
+        <view class="spec-row"><text class="spec-label">重量</text><text class="spec-value">{{mainParams.weight}}</text></view>
+        <view class="spec-row"><text class="spec-label">保修期</text><text class="spec-value">{{mainParams.warrantyPeriod}}</text></view>
       </view>
     </view>
 
     <view wx:if="{{detailImages.length > 0}}" class="divider-thick"></view>
     <view wx:if="{{detailImages.length > 0}}" class="detail-image-section">
-      <view class="detail-image-header"><text class="product-eyebrow">PRODUCT STORY</text>
-        <text class="detail-image-title">详情展示</text>
-      </view>
-      <view class="detail-image-list">
-        <image wx:for="{{detailImages}}" wx:key="*this" class="detail-image-item" src="{{item}}" mode="widthFix" lazy-load />
-      </view>
+      <view class="detail-image-header"><text class="product-eyebrow">PRODUCT STORY</text><text class="detail-image-title">详情展示</text></view>
+      <view class="detail-image-list"><image wx:for="{{detailImages}}" wx:key="*this" class="detail-image-item" src="{{item}}" mode="widthFix" lazy-load /></view>
     </view>
-
-    <view style="height: 200rpx;"></view>
+    <view style="height: 190rpx;"></view>
   </scroll-view>
 
-  <view wx:if="{{colorPopupVisible}}" class="color-popup-mask" bindtap="onColorMaskTap">
-    <view class="color-popup-panel" catchtap="onColorPanelTap">
-      <view class="color-popup-head taobao-head">
-        <image class="sku-cover" src="{{product.cover_image || (images[0] || '/images/logo.png')}}" mode="aspectFill" />
-        <view class="sku-info">
-          <text class="sku-price">¥{{product.price}}</text>
-          <text class="sku-selected">已选：{{pendingSelectedColor || selectedColor || '请选择商品规格'}}</text>
-          <view class="qty-stepper">
-            <view class="qty-btn {{pendingQuantity <= 1 ? 'disabled' : ''}}" bindtap="onDecreasePendingQty">
-              <text>-</text>
-            </view>
-            <view class="qty-value">
-              <text>{{pendingQuantity}}</text>
-            </view>
-            <view class="qty-btn" bindtap="onIncreasePendingQty">
-              <text>+</text>
-            </view>
-          </view>
-        </view>
-        <view class="sku-close" bindtap="onColorMaskTap">×</view>
-      </view>
-      <view class="sku-section">
-        <text class="sku-section-title">商品规格</text>
-        <view class="sku-option-wrap">
-          <view
-            wx:for="{{colorOptions}}"
-            wx:key="name"
-            class="sku-option {{(pendingSelectedColor || selectedColor) === item.name ? 'selected' : ''}}"
-            data-index="{{index}}"
-            bindtap="onColorOptionTap"
-          >
-            <view class="sku-option-main">
-              <image class="sku-option-image" src="{{item.image}}" mode="aspectFill" />
-              <text class="sku-option-text">{{item.name}}</text>
-              <text wx:if="{{item.sku}}" class="sku-option-code">SKU：{{item.sku}}</text>
-              <text class="sku-option-price">¥{{item.priceText}}</text>
-            </view>
-          </view>
-        </view>
-      </view>
-      <view class="sku-footer">
-        <view class="sku-confirm-btn" bindtap="onBuyFromPopup">
-          <text>{{skuAction === 'bag' ? '加入购物袋' : '确认下单'}}</text>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 底部操作栏 -->
   <view class="bottom-bar safe-bottom">
     <view class="bottom-left">
-      <view class="bottom-icon-btn" bindtap="onGoHome">
-        <view class="icon-home-sm">
-          <view class="home-outline-sm"></view>
-          <view class="home-door-sm"></view>
-        </view>
-        <text>首页</text>
-      </view>
-      <button class="bottom-icon-btn contact-btn" open-type="contact" session-from="product_{{product.id}}">
-        <view class="icon-phone-sm">
-          <view class="phone-body"></view>
-        </view>
-        <text>客服</text>
-      </button>
-      <button class="bottom-icon-btn share-btn" open-type="share">
-        <view class="icon-share-sm">
-          <view class="share-dot share-dot-top"></view>
-          <view class="share-dot share-dot-left"></view>
-          <view class="share-dot share-dot-right"></view>
-          <view class="share-line share-line-a"></view>
-          <view class="share-line share-line-b"></view>
-        </view>
-        <text>分享</text>
-      </button>
+      <view class="bottom-icon-btn" bindtap="onGoHome"><view class="icon-home-sm"><view class="home-outline-sm"></view><view class="home-door-sm"></view></view><text>首页</text></view>
+      <button class="bottom-icon-btn contact-btn" open-type="contact" session-from="product_{{product.id}}"><view class="icon-phone-sm"><view class="phone-body"></view></view><text>客服</text></button>
+      <button class="bottom-icon-btn share-btn" open-type="share"><view class="icon-share-sm"><view class="share-dot share-dot-top"></view><view class="share-dot share-dot-left"></view><view class="share-dot share-dot-right"></view><view class="share-line share-line-a"></view><view class="share-line share-line-b"></view></view><text>分享</text></button>
     </view>
-    <view class="bag-btn" bindtap="onAddToBag">
-      <text>加入购物袋</text>
-    </view>
-    <view class="buy-btn" bindtap="onBuyNow">
-      <text>立即下单</text>
-    </view>
+    <view class="bag-btn bag-btn-primary" bindtap="onAddToBag"><text>加入购物袋</text></view>
   </view>
 </view>

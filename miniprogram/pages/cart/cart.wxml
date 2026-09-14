@@ -9,7 +9,10 @@
         <image class="bag-image" src="{{item.cover_image}}" mode="aspectFill" />
         <view class="bag-info">
           <text class="bag-name ellipsis-2">{{item.name}}</text>
-          <text wx:if="{{item.selectedColor || item.spec}}" class="bag-spec ellipsis">{{item.selectedColor || item.spec}}</text>
+          <text wx:if="{{item.selectedModel}}" class="bag-spec ellipsis">型号：{{item.selectedModel}}</text>
+          <text wx:if="{{item.selectedColor}}" class="bag-spec ellipsis">颜色：{{item.selectedColor}}</text>
+          <text wx:if="{{item.protectSelected}}" class="bag-protect">已选 SRAVX Protect</text>
+          <text wx:if="{{!item.selectedModel && !item.selectedColor && item.spec}}" class="bag-spec ellipsis">{{item.spec}}</text>
           <text class="bag-price">¥{{item.priceText}}</text>
           <view class="bag-actions">
             <view class="quantity-stepper">
@@ -20,7 +23,7 @@
             <text class="remove-link" bindtap="onRemove" data-index="{{index}}">移除</text>
           </view>
         </view>
-        <view class="checkout-button" bindtap="onCheckout" data-index="{{index}}"><text>结算</text></view>
+        <view class="checkout-button" bindtap="onCheckout" data-index="{{index}}"><text>结账</text></view>
       </view>
     </view>
     <view class="bag-total"><text>共计 {{totalCount}} 件</text><text>¥{{totalPrice}}</text></view>

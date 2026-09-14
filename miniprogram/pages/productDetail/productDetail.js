@@ -3,30 +3,54 @@ const api = require('../../utils/api')
 const share = require('../../utils/share')
 const cart = require('../../utils/cart')
 
+const COLOR_SWATCHES = ['#B7B4AE', '#2C2C2E', '#D9D6CF', '#7C8D96', '#8E7665', '#6D8373']
+
 function hasPhoneAuthorized() {
   return typeof app.hasPhoneAuthorized === 'function'
     ? app.hasPhoneAuthorized()
     : !!(app.globalData.userInfo && app.globalData.userInfo.phone)
 }
 
+function parseColorSource(value) {
+  if (Array.isArray(value)) return value
+  if (typeof value !== 'string') return []
+  const text = value.trim()
+  if (!text) return []
+  try {
+    const parsed = JSON.parse(text)
+    return Array.isArray(parsed) ? parsed : []
+  } catch (error) {
+    return text.split(/[，,、/]/).map(item => item.trim()).filter(Boolean)
+  }
+}
+
+function normalizeColor(item, index) {
+  if (item && typeof item === 'object') {
+    return {
+      name: String(item.name || item.label || item.value || '默认颜色'),
+      swatch: String(item.swatch || item.color || COLOR_SWATCHES[index % COLOR_SWATCHES.length])
+    }
+  }
+  return {
+    name: String(item || '默认颜色'),
+    swatch: COLOR_SWATCHES[index % COLOR_SWATCHES.length]
+  }
+}
+
 Page({
   data: {
     product: null,
     productId: '',
-    specs: [],
     swiperCurrent: 0,
     images: [],
     detailImages: [],
-    selectedSpec: null,
+    modelOptions: [],
+    selectedModel: '',
     colorOptions: [],
     selectedColor: '',
-    pendingSelectedColor: '',
+    displayPrice: '0.00',
+    protectSelected: false,
     selectedQuantity: 1,
-    pendingQuantity: 1,
-    colorPopupVisible: false,
-    skuAction: 'buy',
-    address: null,
-    addressList: [],
     navBarHeight: 0,
     loading: true,
     mainParams: {
@@ -43,88 +67,45 @@ Page({
     this.initNavLayout()
     const productId = options.id
     this.setData({ productId: productId || '' })
-    if (productId) {
-      this.loadProduct(productId)
-    } else {
-      this.setData({ loading: false })
-    }
-  },
-
-  onShow() {
-    // 从地址选择页返回时，address 已被 addressManage 页面通过页面栈设置
-    // 无需额外处理，setData 已在对方页面完成
+    if (productId) this.loadProduct(productId)
+    else this.setData({ loading: false })
   },
 
   initNavLayout() {
     const menuRect = wx.getMenuButtonBoundingClientRect()
     const sysInfo = wx.getSystemInfoSync()
     const ratio = 750 / sysInfo.screenWidth
-    const navBarHeight = Math.ceil((menuRect.bottom + 8) * ratio)
-    this.setData({ navBarHeight })
-  },
-
-  ensurePhoneAuthorized() {
-    if (hasPhoneAuthorized()) return true
-    wx.navigateTo({ url: '/pages/register/register' })
-    return false
+    this.setData({ navBarHeight: Math.ceil((menuRect.bottom + 8) * ratio) })
   },
 
   async loadProduct(productId) {
     try {
       wx.showLoading({ title: '加载中...', mask: true })
       this.setData({ loading: true })
-
       const productData = await api.getProductDetail(Number(productId))
-
       if (!productData) {
         wx.showToast({ title: '商品不存在', icon: 'none' })
         this.setData({ loading: false })
         return
       }
 
-      // 处理图片（可能是字符串或数组）
-      let images = []
-      if (productData.images && Array.isArray(productData.images)) {
-        images = productData.images
-      } else if (productData.cover_image) {
-        images = [productData.cover_image]
-      }
-
-      // 如果没有图片，使用默认
-      if (images.length === 0) {
-        images = ['/images/logo.png']
-      }
-
-      // 处理规格
-      const detailImages = this.parseDetailImages(productData.detail_images)
-      const specs = productData.specs || []
-      let selectedSpec = specs.length > 0 ? specs[0].name : null
-      const colorOptions = this.extractColorOptions(productData, specs)
+      const images = Array.isArray(productData.images) && productData.images.length
+        ? productData.images
+        : [productData.cover_image || '/images/logo.png']
+      const modelOptions = this.extractModelOptions(productData, productData.specs || [])
+      const colorOptions = this.extractColorOptions(productData)
+      const selectedModel = modelOptions[0] ? modelOptions[0].name : ''
       const selectedColor = colorOptions[0] ? colorOptions[0].name : ''
-
-      // 获取默认收货地址
-      let defaultAddress = null
-      if (hasPhoneAuthorized()) {
-        try {
-          const addressList = await api.getAddressList()
-          if (addressList && addressList.length > 0) {
-            defaultAddress = addressList.find(a => a.is_default === 1) || addressList[0]
-          }
-        } catch (e) {
-          console.error('Load address failed:', e)
-        }
-      }
 
       this.setData({
         product: productData,
-        specs,
         images,
-        detailImages,
-        selectedSpec,
+        detailImages: this.parseDetailImages(productData.detail_images),
+        modelOptions,
+        selectedModel,
         colorOptions,
         selectedColor,
-        addressList: [],
-        address: defaultAddress,
+        displayPrice: modelOptions[0] ? modelOptions[0].priceText : (Number(productData.price) || 0).toFixed(2),
         mainParams: {
           coreMaterial: productData.core_material || '--',
           handleMaterial: productData.handle_material || '--',
@@ -134,61 +115,74 @@ Page({
         },
         loading: false
       })
-
       wx.hideLoading()
-    } catch (err) {
+    } catch (error) {
       wx.hideLoading()
-      console.error('LoadProduct error:', err)
+      console.error('LoadProduct error:', error)
       this.setData({ loading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })
     }
   },
 
-  parseDetailImages(rawDetailImages) {
-    if (!rawDetailImages) return []
-    if (Array.isArray(rawDetailImages)) {
-      return rawDetailImages.map(item => String(item || '').trim()).filter(Boolean)
+  parseDetailImages(raw) {
+    if (!raw) return []
+    if (Array.isArray(raw)) return raw.map(item => String(item || '').trim()).filter(Boolean)
+    if (typeof raw !== 'string') return []
+    const text = raw.trim()
+    if (!text) return []
+    try {
+      const parsed = JSON.parse(text)
+      return Array.isArray(parsed) ? parsed.map(item => String(item || '').trim()).filter(Boolean) : [text]
+    } catch (error) {
+      return [text]
     }
-    if (typeof rawDetailImages === 'string') {
-      const trimmed = rawDetailImages.trim()
-      if (!trimmed) return []
-      try {
-        const parsed = JSON.parse(trimmed)
-        if (Array.isArray(parsed)) {
-          return parsed.map(item => String(item || '').trim()).filter(Boolean)
-        }
-      } catch (e) { }
-      return [trimmed]
-    }
-    return []
   },
 
-  extractColorOptions(productData, specs) {
-    const basePrice = Number(productData && productData.price) || 0
-    const fallbackImage = productData && (productData.cover_image || (Array.isArray(productData.images) ? productData.images[0] : ''))
-
-    if (!specs || specs.length === 0) {
-      return [{
-        name: '默认规格',
-        image: fallbackImage || '/images/logo.png',
-        priceText: basePrice.toFixed(2),
-        sku: ''
-      }]
+  extractModelOptions(product, specs) {
+    const fallbackImage = product.cover_image || (Array.isArray(product.images) && product.images[0]) || '/images/logo.png'
+    const basePrice = Number(product.price) || 0
+    if (!Array.isArray(specs) || !specs.length) {
+      return [{ name: product.model || '标准型号', image: fallbackImage, price: basePrice, priceText: basePrice.toFixed(2), sku: '' }]
     }
+    return specs.map(spec => {
+      const price = Number(spec.price) > 0 ? Number(spec.price) : basePrice
+      return {
+        name: String(spec.name || product.model || '标准型号'),
+        image: spec.image || fallbackImage,
+        price,
+        priceText: price.toFixed(2),
+        sku: String(spec.sku || '')
+      }
+    })
+  },
 
-    return specs.map(spec => ({
-      name: spec.name,
-      image: spec.image || fallbackImage || '/images/logo.png',
-      priceText: (spec.price > 0 ? spec.price : basePrice).toFixed(2),
-      sku: String(spec.sku || '')
-    }))
+  extractColorOptions(product) {
+    let params = product.params || {}
+    if (typeof params === 'string') {
+      try { params = JSON.parse(params) } catch (error) { params = {} }
+    }
+    const raw = product.colors || product.color_options || product.colorOptions || params['颜色'] || params.color || params.colors || []
+    const choices = parseColorSource(raw).map(normalizeColor)
+    return choices.length ? choices : [{ name: product.color || '默认颜色', swatch: '#AAA39A' }]
+  },
+
+  selectedModelOption() {
+    const { modelOptions, selectedModel } = this.data
+    return modelOptions.find(item => item.name === selectedModel) || modelOptions[0] || null
+  },
+
+  selectedPrice() {
+    const model = this.selectedModelOption()
+    return model ? model.price : Number(this.data.product && this.data.product.price) || 0
   },
 
   getSelectedSpecText() {
-    const { selectedColor, selectedSpec } = this.data
-    if (selectedColor) return `商品规格：${selectedColor}`
-    if (selectedSpec) return String(selectedSpec)
-    return '默认规格'
+    const { selectedModel, selectedColor, protectSelected } = this.data
+    const entries = []
+    if (selectedModel) entries.push(`型号：${selectedModel}`)
+    if (selectedColor) entries.push(`颜色：${selectedColor}`)
+    if (protectSelected) entries.push('SRAVX Protect：已选')
+    return entries.join('；')
   },
 
   onSwiperChange(e) {
@@ -199,166 +193,45 @@ Page({
     wx.navigateBack()
   },
 
-  onAddressTap() {
-    if (!this.ensurePhoneAuthorized()) return
-    const addressId = this.data.address ? this.data.address.id : ''
-    wx.navigateTo({
-      url: `/pages/addressManage/addressManage?from=detail&selectedId=${addressId}`
-    })
-  },
-
-  onSpecTap() {
-    const { colorOptions } = this.data
-    if (!colorOptions || colorOptions.length === 0) {
-      wx.showToast({ title: '暂无可选商品规格', icon: 'none' })
-      return
-    }
-    this.setData({
-      colorPopupVisible: true,
-      pendingSelectedColor: this.data.selectedColor || '',
-      pendingQuantity: 1
-    })
-  },
-
-  onColorMaskTap() {
-    this.setData({
-      colorPopupVisible: false,
-    skuAction: 'buy',
-      pendingSelectedColor: '',
-      pendingQuantity: 1
-    })
-  },
-
-  onColorPanelTap() {
-    // 阻止冒泡，避免点击面板内容关闭弹层
+  onModelTap(e) {
+    const index = Number(e.currentTarget.dataset.index)
+    const option = this.data.modelOptions[index]
+    if (!option) return
+    this.setData({ selectedModel: option.name, displayPrice: option.priceText })
   },
 
   onColorOptionTap(e) {
     const index = Number(e.currentTarget.dataset.index)
-    const { colorOptions } = this.data
-    if (Number.isNaN(index) || !colorOptions[index]) return
-    this.setData({
-      pendingSelectedColor: colorOptions[index].name
-    })
+    const option = this.data.colorOptions[index]
+    if (!option) return
+    this.setData({ selectedColor: option.name })
   },
 
-  onDecreasePendingQty() {
-    const current = Math.max(1, Number(this.data.pendingQuantity) || 1)
-    if (current <= 1) return
-    this.setData({ pendingQuantity: current - 1 })
-  },
-
-  onIncreasePendingQty() {
-    const current = Math.max(1, Number(this.data.pendingQuantity) || 1)
-    this.setData({ pendingQuantity: current + 1 })
-  },
-
-  onBuyFromPopup() {
-    if (!this.ensurePhoneAuthorized()) return
-    const { pendingSelectedColor, selectedColor, pendingQuantity, skuAction } = this.data
-    const finalColor = pendingSelectedColor || selectedColor
-    const finalQuantity = Math.max(1, Number(pendingQuantity) || 1)
-    this.setData({
-      selectedColor: finalColor,
-      selectedQuantity: finalQuantity,
-      colorPopupVisible: false,
-      pendingSelectedColor: '',
-      pendingQuantity: 1
-    }, () => {
-      if (skuAction === 'bag') {
-        this.addCurrentProductToCart(finalColor, finalQuantity)
-        return
-      }
-      this.goToConfirmOrder()
-    })
-  },
-
-  addCurrentProductToCart(selectedColor, quantity) {
-    const { product, colorOptions } = this.data
-    if (!product) return
-    const selected = (colorOptions || []).find(item => item.name === selectedColor)
-    cart.addItem({
-      id: product.id,
-      name: product.name,
-      price: selected && selected.priceText ? selected.priceText : product.price,
-      cover_image: (selected && selected.image) || product.cover_image || (product.images && product.images[0]),
-      selectedColor: selectedColor || '',
-      spec: this.getSelectedSpecText(),
-      quantity,
-      allow_coupon: product.allow_coupon
-    })
-    wx.showToast({ title: '已加入购物袋', icon: 'success' })
-  },
-
-  onColorConfirm() {
-    const { pendingSelectedColor, selectedColor, pendingQuantity } = this.data
-    this.setData({
-      selectedColor: pendingSelectedColor || selectedColor,
-      selectedQuantity: Math.max(1, Number(pendingQuantity) || 1),
-      colorPopupVisible: false,
-    skuAction: 'buy',
-      pendingSelectedColor: '',
-      pendingQuantity: 1
-    })
-  },
-
-  goToConfirmOrder() {
-    if (!this.ensurePhoneAuthorized()) return
-    const { product, selectedColor, colorOptions } = this.data
-
-    if (!product) {
-      wx.showToast({ title: '商品信息异常', icon: 'none' })
-      return
-    }
-
-    // 匹配选中的颜色选项获取它的价格
-    let passPrice = product.price
-    if (selectedColor && colorOptions && colorOptions.length > 0) {
-      const opt = colorOptions.find(o => o.name === selectedColor)
-      if (opt && opt.priceText) {
-        passPrice = opt.priceText
-      }
-    }
-
-    // 跳转确认订单页，传递商品数据
-    const productData = encodeURIComponent(JSON.stringify({
-      id: product.id,
-      name: product.name,
-      desc: product.desc,
-      price: passPrice,
-      cover_image: product.cover_image || (product.images && product.images[0]),
-      selectedColor: selectedColor || '',
-      spec: this.getSelectedSpecText(),
-      quantity: this.data.selectedQuantity || 1,
-      allow_coupon: product.allow_coupon
-    }))
-
-    wx.navigateTo({
-      url: `/pages/confirmOrder/confirmOrder?productData=${productData}`
-    })
-  },
-
-  openSkuPopup(skuAction) {
-    if (!this.ensurePhoneAuthorized()) return
-    const { colorOptions } = this.data
-    if (!colorOptions || colorOptions.length === 0) {
-      wx.showToast({ title: '暂无可选商品规格', icon: 'none' })
-      return
-    }
-    this.setData({
-      colorPopupVisible: true,
-      pendingSelectedColor: this.data.selectedColor || '',
-      pendingQuantity: 1,
-      skuAction
-    })
-  },
-
-  onBuyNow() {
-    this.openSkuPopup('buy')
+  onProtectTap(e) {
+    this.setData({ protectSelected: e.currentTarget.dataset.value === 'true' })
   },
 
   onAddToBag() {
-    this.openSkuPopup('bag')
+    const { product, selectedModel, selectedColor, protectSelected, selectedQuantity } = this.data
+    if (!product || !selectedModel || !selectedColor) {
+      wx.showToast({ title: '请完成型号与颜色选择', icon: 'none' })
+      return
+    }
+    const model = this.selectedModelOption()
+    cart.addItem({
+      id: product.id,
+      name: product.name,
+      price: this.selectedPrice(),
+      cover_image: (model && model.image) || product.cover_image || this.data.images[0],
+      selectedModel,
+      selectedColor,
+      protectSelected,
+      spec: this.getSelectedSpecText(),
+      quantity: selectedQuantity,
+      allow_coupon: product.allow_coupon
+    })
+    wx.showToast({ title: '已加入购物袋', icon: 'success', duration: 700 })
+    setTimeout(() => wx.switchTab({ url: '/pages/cart/cart' }), 700)
   },
 
   onGoHome() {
@@ -384,4 +257,4 @@ Page({
       imageUrl: product.cover_image || (Array.isArray(product.images) && product.images[0])
     })
   }
-});
+})
