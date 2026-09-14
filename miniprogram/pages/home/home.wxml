@@ -108,40 +108,10 @@
       </view>
     </scroll-view>
     <view class="service-feature-section">
-      <view class="service-feature-head">
-        <view class="service-feature-heading" aria-label="Hello SRAVX">
-          <text class="service-feature-heading-letter letter-1">H</text>
-          <text class="service-feature-heading-letter letter-2">e</text>
-          <text class="service-feature-heading-letter letter-3">l</text>
-          <text class="service-feature-heading-letter letter-4">l</text>
-          <text class="service-feature-heading-letter letter-5">o</text>
-          <text class="service-feature-heading-space"> </text>
-          <text class="service-feature-heading-letter letter-6">S</text>
-          <text class="service-feature-heading-letter letter-7">R</text>
-          <text class="service-feature-heading-letter letter-8">A</text>
-          <text class="service-feature-heading-letter letter-9">V</text>
-          <text class="service-feature-heading-letter letter-10">X</text>
-        </view>
-      </view>
       <swiper class="service-feature-swiper" circular duration="360" bindchange="onFeatureChange">
         <swiper-item wx:for="{{serviceFeatures}}" wx:key="key">
           <view class="service-feature-slide">
-            <view class="service-feature-symbol {{item.theme}}">
-              <view wx:if="{{item.key === 'custom'}}" class="laser-marker-icon" aria-label="激光打标机">
-                <view class="laser-marker-frame"></view>
-                <view class="laser-marker-gantry"></view>
-                <view class="laser-marker-head"><view class="laser-marker-lens"></view></view>
-                <view class="laser-marker-bed"><view class="laser-marker-workpiece"><view class="laser-marker-focus"><view class="laser-marker-focus-horizontal"></view><view class="laser-marker-focus-vertical"></view></view></view></view>
-              </view>
-              <view wx:elif="{{item.key === 'protect'}}" class="protect-mark" aria-label="SRAVX Protect">
-                <view class="protect-mark-card"></view>
-                <view class="protect-mark-pivot"></view>
-                <view class="protect-mark-line protect-mark-line-one"></view>
-                <view class="protect-mark-line protect-mark-line-two"></view>
-                <view class="protect-mark-check"></view>
-              </view>
-              <text wx:else>{{item.symbol}}</text>
-            </view>
+            <text class="service-feature-kicker">{{item.kicker}}</text>
             <text class="service-feature-title">{{item.title}}</text>
             <text class="service-feature-description">{{item.description}}</text>
             <view class="service-feature-link"><text>进一步了解</text><view class="service-feature-arrow"></view></view>
