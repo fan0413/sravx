@@ -35,15 +35,12 @@ Page({
     binding: false,
     loading: true,
     showWelcome: false,
-    welcomeToolName: ''
+    welcomeToolName: '',
+    welcomeBindingId: 0
   },
 
   onLoad() {
     this.loadScissors()
-  },
-
-  onUnload() {
-    if (this.welcomeTimer) clearTimeout(this.welcomeTimer)
   },
 
   onShow() {
@@ -116,7 +113,7 @@ Page({
       this.setData({ showBindModal: false, snInput: '', binding: false })
       const scissors = await this.loadScissors()
       const boundTool = (scissors || []).find(item => String(item.sn || '').toUpperCase() === sn.toUpperCase())
-      this.showWelcome(boundTool && boundTool.name ? boundTool.name : 'SRAVX 专业工具')
+      this.showWelcome(boundTool && boundTool.name ? boundTool.name : 'SRAVX 专业工具', boundTool && boundTool.id)
     } catch (err) {
       wx.hideLoading()
       this.setData({ binding: false })
@@ -124,18 +121,21 @@ Page({
     }
   },
 
-  showWelcome(toolName) {
-    if (this.welcomeTimer) clearTimeout(this.welcomeTimer)
-    this.setData({ showWelcome: true, welcomeToolName: toolName })
-    this.welcomeTimer = setTimeout(() => this.onWelcomeContinue(), 2600)
+  showWelcome(toolName, bindingId) {
+    this.setData({
+      showWelcome: true,
+      welcomeToolName: toolName,
+      welcomeBindingId: Number(bindingId) || 0
+    })
   },
 
   onWelcomeContinue() {
-    if (this.welcomeTimer) {
-      clearTimeout(this.welcomeTimer)
-      this.welcomeTimer = null
-    }
-    if (this.data.showWelcome) this.setData({ showWelcome: false })
+    const bindingId = Number(this.data.welcomeBindingId)
+    this.setData({ showWelcome: false, welcomeBindingId: 0 }, () => {
+      if (bindingId) {
+        wx.navigateTo({ url: `/pages/scissorsAfterSale/scissorsAfterSale?bindingId=${bindingId}` })
+      }
+    })
   },
   onDeleteDevice(e) {
     const id = e.currentTarget.dataset.id
