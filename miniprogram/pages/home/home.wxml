@@ -122,8 +122,10 @@
                 <view class="laser-marker-bed"><view class="laser-marker-workpiece"><view class="laser-marker-focus"><view class="laser-marker-focus-horizontal"></view><view class="laser-marker-focus-vertical"></view></view></view></view>
               </view>
               <view wx:elif="{{item.key === 'protect'}}" class="protect-mark" aria-label="SRAVX Protect">
-                <view class="protect-mark-shield"></view>
-                <view class="protect-mark-crest"></view>
+                <view class="protect-mark-card"></view>
+                <view class="protect-mark-pivot"></view>
+                <view class="protect-mark-line protect-mark-line-one"></view>
+                <view class="protect-mark-line protect-mark-line-two"></view>
                 <view class="protect-mark-check"></view>
               </view>
               <text wx:else>{{item.symbol}}</text>
