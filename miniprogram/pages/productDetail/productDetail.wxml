@@ -72,11 +72,7 @@
   </scroll-view>
 
   <view class="bottom-bar safe-bottom">
-    <view class="bottom-left">
-      <view class="bottom-icon-btn" bindtap="onGoHome"><view class="icon-home-sm"><view class="home-outline-sm"></view><view class="home-door-sm"></view></view><text>首页</text></view>
-      <button class="bottom-icon-btn contact-btn" open-type="contact" session-from="product_{{product.id}}"><view class="icon-phone-sm"><view class="phone-body"></view></view><text>客服</text></button>
-      <button class="bottom-icon-btn share-btn" open-type="share"><view class="icon-share-sm"><view class="share-dot share-dot-top"></view><view class="share-dot share-dot-left"></view><view class="share-dot share-dot-right"></view><view class="share-line share-line-a"></view><view class="share-line share-line-b"></view></view><text>分享</text></button>
-    </view>
+    <view class="bottom-price-summary"><text class="bottom-price-label">已选价格</text><text class="bottom-price">¥{{displayPrice}}</text></view>
     <view class="bag-btn bag-btn-primary" bindtap="onAddToBag"><text>加入购物袋</text></view>
   </view>
 </view>

@@ -786,3 +786,8 @@
 .protect-option-selected .option-radio { border: 8rpx solid var(--color-primary); }
 .bag-btn-primary { border: 0; background: var(--color-primary); color: #FFFFFF; }
 .bag-btn-primary text { color: #FFFFFF; }
+.bottom-bar { min-height: 118rpx; gap: 24rpx; }
+.bottom-price-summary { min-width: 190rpx; padding-left: 12rpx; display: flex; flex-direction: column; justify-content: center; }
+.bottom-price-label { color: var(--color-secondary); font-size: 21rpx; line-height: 1.2; }
+.bottom-price { margin-top: 8rpx; color: var(--color-primary); font-size: 32rpx; line-height: 1; font-weight: 720; letter-spacing: -.5rpx; }
+.bag-btn-primary { flex: 1; height: 88rpx; border-radius: 44rpx; }
