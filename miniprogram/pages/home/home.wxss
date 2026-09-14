@@ -54,7 +54,12 @@
 .laser-marker-focus-horizontal, .laser-marker-focus-vertical { position: absolute; left: 50%; top: 50%; border-radius: 2rpx; background: currentColor; transform: translate(-50%, -50%); }
 .laser-marker-focus-horizontal { width: 14rpx; height: 2rpx; }
 .laser-marker-focus-vertical { width: 2rpx; height: 14rpx; }.feature-custom { background: #E9E0D3; color: #6E6256; }
-.feature-protect { background: #1B1B1D; color: #D8BF92; }
+.service-feature-symbol.feature-protect { background: transparent; border-radius: 0; }
+.protect-mark { position: relative; width: 92rpx; height: 98rpx; color: #6E6256; }
+.protect-mark-shield { position: absolute; left: 50%; top: 3rpx; width: 62rpx; height: 76rpx; border: 4rpx solid currentColor; border-radius: 18rpx 18rpx 28rpx 28rpx; box-sizing: border-box; transform: translateX(-50%); }
+.protect-mark-shield::after { content: ''; position: absolute; left: 50%; bottom: -10rpx; width: 28rpx; height: 28rpx; border-right: 4rpx solid currentColor; border-bottom: 4rpx solid currentColor; background: #F2F2F7; transform: translateX(-50%) rotate(45deg); }
+.protect-mark-crest { position: absolute; left: 50%; top: 18rpx; width: 34rpx; height: 4rpx; border-radius: 3rpx; background: currentColor; transform: translateX(-50%); }
+.protect-mark-check { position: absolute; left: 50%; top: 39rpx; width: 24rpx; height: 13rpx; border-left: 4rpx solid currentColor; border-bottom: 4rpx solid currentColor; transform: translateX(-50%) rotate(-45deg); }.feature-protect { background: #1B1B1D; color: #D8BF92; }
 .feature-apprentice { background: #DDE8F0; color: #5C7184; }
 .feature-tradein { background: #E1E8DC; color: #61715D; }.section-header { display: flex; align-items: baseline; justify-content: space-between; padding: 60rpx 32rpx 26rpx; }
 .feature-header { padding-top: 34rpx; }
