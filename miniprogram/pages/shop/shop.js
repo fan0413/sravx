@@ -116,7 +116,7 @@ Page({
     const products = allCatalogProducts(sections)
     const seriesCards = SERIES_OPTIONS.filter(series => series.key !== 'all').map(series => {
       const matches = products.filter(product => matchesSeries(product, series.key))
-      const cover = (matches[0] || products[0] || {}).image || '/images/logo.png'
+      const cover = (matches[0] || {}).image || '/images/logo.png'
       return { ...series, coverImage: cover, productCount: matches.length }
     })
     this.setData({ toolGroups, subCategories, activeToolGroup, activeSubCategory, seriesCards }, () => this.applyFilters())
