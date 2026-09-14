@@ -2,7 +2,7 @@ const preload = require('../../utils/preload')
 const share = require('../../utils/share')
 
 const SERIES_OPTIONS = [
-  { key: 'all', label: '全部系列', material: '专业工具目录', caption: '按用途浏览' },
+  { key: 'all', label: '全部工具', material: '专业工具目录', caption: '按用途浏览' },
   { key: 'basic', label: 'Basic', material: '9Cr', caption: '入门专业款' },
   { key: 'pro', label: 'Pro', material: '440C', caption: '专业主力款' },
   { key: 'master', label: 'Master', material: 'VG10', caption: '高阶专业款' }
@@ -32,13 +32,28 @@ function matchesSeries(product, series) {
   return text.includes(series)
 }
 
+function allCatalogProducts(sections) {
+  const seen = new Set()
+  const products = []
+  ;(sections || []).forEach(section => {
+    ;(section.products || []).forEach(product => {
+      const key = String(product.id)
+      if (seen.has(key)) return
+      seen.add(key)
+      products.push({ ...product, categoryName: section.name })
+    })
+  })
+  return products
+}
+
 Page({
   data: {
     categories: [],
     sections: [],
     toolGroups: [],
     subCategories: [],
-    seriesOptions: SERIES_OPTIONS,
+    seriesCards: [],
+    viewMode: 'series',
     activeToolGroup: 'all',
     activeSubCategory: 'all',
     activeSeries: 'all',
@@ -53,17 +68,11 @@ Page({
   },
 
   applyShopData(data) {
-    this.setData({
-      categories: data.categories || [],
-      sections: data.sections || [],
-      loading: false
-    }, () => this.rebuildCatalog())
+    this.setData({ categories: data.categories || [], sections: data.sections || [], loading: false }, () => this.rebuildCatalog())
   },
 
   refreshShopInBackground() {
-    preload.preloadShop({ force: true }).then(fresh => {
-      if (fresh) this.applyShopData(fresh)
-    })
+    preload.preloadShop({ force: true }).then(fresh => { if (fresh) this.applyShopData(fresh) })
   },
 
   async loadData(options = {}) {
@@ -97,20 +106,20 @@ Page({
       const key = groupKeyForCategory(section.name || category.name)
       grouped.get(key).push({ id: section.id, name: section.name || category.name || '未命名分类' })
     })
-
     const toolGroups = GROUPS.filter(group => group.key === 'all' || grouped.get(group.key).length > 0).map(group => ({
       ...group,
       count: group.key === 'all' ? sections.length : grouped.get(group.key).length
     }))
     const activeToolGroup = toolGroups.some(group => group.key === this.data.activeToolGroup) ? this.data.activeToolGroup : 'all'
-    const subCategories = activeToolGroup === 'all'
-      ? []
-      : [{ id: 'all', name: `全部${toolGroups.find(group => group.key === activeToolGroup)?.label || ''}` }, ...grouped.get(activeToolGroup)]
-    const activeSubCategory = subCategories.length === 0 || subCategories.some(item => String(item.id) === String(this.data.activeSubCategory))
-      ? this.data.activeSubCategory
-      : 'all'
-
-    this.setData({ toolGroups, subCategories, activeToolGroup, activeSubCategory }, () => this.applyFilters())
+    const subCategories = activeToolGroup === 'all' ? [] : [{ id: 'all', name: `全部${toolGroups.find(group => group.key === activeToolGroup)?.label || ''}` }, ...grouped.get(activeToolGroup)]
+    const activeSubCategory = subCategories.length === 0 || subCategories.some(item => item.id === this.data.activeSubCategory) ? this.data.activeSubCategory : 'all'
+    const products = allCatalogProducts(sections)
+    const seriesCards = SERIES_OPTIONS.filter(series => series.key !== 'all').map(series => {
+      const matches = products.filter(product => matchesSeries(product, series.key))
+      const cover = (matches[0] || products[0] || {}).image || '/images/logo.png'
+      return { ...series, coverImage: cover, productCount: matches.length }
+    })
+    this.setData({ toolGroups, subCategories, activeToolGroup, activeSubCategory, seriesCards }, () => this.applyFilters())
   },
 
   applyFilters() {
@@ -118,32 +127,26 @@ Page({
     const selectedGroup = toolGroups.find(group => group.key === activeToolGroup)
     const allowedSections = (sections || []).filter(section => {
       if (activeToolGroup !== 'all' && groupKeyForCategory(section.name) !== activeToolGroup) return false
-      if (activeSubCategory !== 'all' && String(section.id) !== String(activeSubCategory)) return false
-      return true
+      return activeSubCategory === 'all' || section.id === activeSubCategory
     })
-    const seen = new Set()
-    const visibleProducts = []
-    allowedSections.forEach(section => {
-      ;(section.products || []).forEach(product => {
-        if (!matchesSeries(product, activeSeries)) return
-        const key = String(product.id)
-        if (seen.has(key)) return
-        seen.add(key)
-        visibleProducts.push({ ...product, categoryName: section.name })
-      })
-    })
+    const visibleProducts = allCatalogProducts(allowedSections).filter(product => matchesSeries(product, activeSeries))
     const seriesLabel = SERIES_OPTIONS.find(series => series.key === activeSeries)?.label || ''
     const groupLabel = selectedGroup?.label || '全部'
-    this.setData({
-      visibleProducts,
-      displayTitle: activeSeries === 'all' ? `${groupLabel}专业工具` : `${seriesLabel} · ${groupLabel}`
-    })
+    this.setData({ visibleProducts, displayTitle: activeSeries === 'all' ? `${groupLabel}专业工具` : `${seriesLabel} · ${groupLabel}` })
   },
 
   onSeriesTap(e) {
     const key = e.currentTarget.dataset.key
     if (!SERIES_OPTIONS.some(item => item.key === key)) return
-    this.setData({ activeSeries: key }, () => this.applyFilters())
+    this.setData({ viewMode: 'catalog', activeSeries: key, activeToolGroup: 'all', activeSubCategory: 'all' }, () => this.rebuildCatalog())
+  },
+
+  onExploreAll() {
+    this.setData({ viewMode: 'catalog', activeSeries: 'all', activeToolGroup: 'all', activeSubCategory: 'all' }, () => this.rebuildCatalog())
+  },
+
+  onBackToSeries() {
+    this.setData({ viewMode: 'series' })
   },
 
   onToolGroupTap(e) {
@@ -153,20 +156,13 @@ Page({
   },
 
   onSubCategoryTap(e) {
-    const id = e.currentTarget.dataset.id
-    this.setData({ activeSubCategory: id }, () => this.applyFilters())
+    this.setData({ activeSubCategory: e.currentTarget.dataset.id }, () => this.applyFilters())
   },
 
   onProductTap(e) {
-    const id = e.currentTarget.dataset.id
-    wx.navigateTo({ url: `/pages/productDetail/productDetail?id=${id}` })
+    wx.navigateTo({ url: `/pages/productDetail/productDetail?id=${e.currentTarget.dataset.id}` })
   },
 
-  onShareAppMessage() {
-    return share.createShareAppMessage({ title: 'Sravx 产品目录', path: '/pages/shop/shop' })
-  },
-
-  onShareTimeline() {
-    return share.createShareTimeline({ title: 'Sravx 产品目录' })
-  }
+  onShareAppMessage() { return share.createShareAppMessage({ title: 'Sravx 产品目录', path: '/pages/shop/shop' }) },
+  onShareTimeline() { return share.createShareTimeline({ title: 'Sravx 产品目录' }) }
 })

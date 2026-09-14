@@ -2,53 +2,49 @@
   <scroll-view scroll-y class="shop-scroll" enhanced show-scrollbar="{{false}}">
     <view wx:if="{{loading}}" class="loading-state"><text>正在准备产品目录</text></view>
 
-    <block wx:else>
+    <block wx:elif="{{viewMode === 'series'}}">
       <view class="shop-intro">
-        <text class="shop-title">产品目录</text>
-        <text class="shop-subtitle">为专业宠物美容师挑选</text>
+        <text class="shop-title">选购 Sravx</text>
+        <text class="shop-subtitle">从适合您的专业系列开始</text>
       </view>
-
-      <view class="series-section">
-        <view class="section-heading"><text>按系列选</text></view>
-        <scroll-view class="series-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-          <view class="series-row">
-            <view wx:for="{{seriesOptions}}" wx:key="key" class="series-card {{activeSeries === item.key ? 'series-active' : ''}}" bindtap="onSeriesTap" data-key="{{item.key}}">
+      <scroll-view class="series-showcase-scroll" scroll-x enhanced show-scrollbar="{{false}}">
+        <view class="series-showcase-row">
+          <view wx:for="{{seriesCards}}" wx:key="key" class="series-showcase-card" bindtap="onSeriesTap" data-key="{{item.key}}">
+            <view class="series-media"><image class="series-image" src="{{item.coverImage}}" mode="aspectFill" lazy-load /></view>
+            <view class="series-copy">
               <text class="series-material">{{item.material}}</text>
-              <text class="series-name">{{item.label}}</text>
+              <text class="series-name">{{item.label}} 系列</text>
               <text class="series-caption">{{item.caption}}</text>
+              <text class="series-count">{{item.productCount}} 件产品</text>
             </view>
-          </view>
-        </scroll-view>
-      </view>
-
-      <view class="tool-section">
-        <view class="section-heading"><text>按用途选</text></view>
-        <scroll-view class="tool-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-          <view class="tool-row">
-            <view wx:for="{{toolGroups}}" wx:key="key" class="tool-chip {{activeToolGroup === item.key ? 'tool-active' : ''}}" bindtap="onToolGroupTap" data-key="{{item.key}}"><text>{{item.label}}</text></view>
-          </view>
-        </scroll-view>
-        <scroll-view wx:if="{{subCategories.length > 0}}" class="sub-scroll" scroll-x enhanced show-scrollbar="{{false}}">
-          <view class="sub-row">
-            <view wx:for="{{subCategories}}" wx:key="id" class="sub-chip {{activeSubCategory === item.id ? 'sub-active' : ''}}" bindtap="onSubCategoryTap" data-id="{{item.id}}"><text>{{item.name}}</text></view>
-          </view>
-        </scroll-view>
-      </view>
-
-      <view class="catalog-heading">
-        <text class="catalog-title">{{displayTitle}}</text>
-        <text class="catalog-count">{{visibleProducts.length}} 件</text>
-      </view>
-      <view wx:if="{{visibleProducts.length === 0}}" class="empty-state"><text>该分类暂未上架商品</text></view>
-      <view wx:else class="product-grid">
-        <view wx:for="{{visibleProducts}}" wx:key="id" class="shop-product-card" bindtap="onProductTap" data-id="{{item.id}}">
-          <view class="shop-product-img-wrap"><image class="shop-product-img" src="{{item.image}}" mode="aspectFill" lazy-load /></view>
-          <view class="product-copy">
-            <text class="product-category">{{item.categoryName}}</text>
-            <text class="shop-product-name ellipsis-2">{{item.displayName}}</text>
+            <view class="series-action"><text>查看系列</text></view>
           </view>
         </view>
+      </scroll-view>
+      <view class="explore-section">
+        <text class="explore-title">深入探索</text>
+        <view class="explore-card" bindtap="onExploreAll">
+          <view class="explore-icon"><view class="explore-grid"></view></view>
+          <view class="explore-copy"><text>按用途浏览全部工具</text><text>直剪、弯剪、造型剪与配件</text></view>
+          <view class="explore-arrow"></view>
+        </view>
       </view>
+    </block>
+
+    <block wx:else>
+      <view class="catalog-nav" bindtap="onBackToSeries"><view class="catalog-back"></view><text>全部系列</text></view>
+      <view class="catalog-intro">
+        <text class="catalog-series">{{activeSeries === 'all' ? '全部专业工具' : (activeSeries === 'basic' ? 'Basic 系列' : (activeSeries === 'pro' ? 'Pro 系列' : 'Master 系列'))}}</text>
+        <text class="catalog-material">{{activeSeries === 'all' ? '按用途选择专业工具' : (activeSeries === 'basic' ? '9Cr · 入门专业款' : (activeSeries === 'pro' ? '440C · 专业主力款' : 'VG10 · 高阶专业款'))}}</text>
+      </view>
+      <view class="tool-section">
+        <text class="section-heading">按用途选</text>
+        <scroll-view class="tool-scroll" scroll-x enhanced show-scrollbar="{{false}}"><view class="tool-row"><view wx:for="{{toolGroups}}" wx:key="key" class="tool-chip {{activeToolGroup === item.key ? 'tool-active' : ''}}" bindtap="onToolGroupTap" data-key="{{item.key}}"><text>{{item.label}}</text></view></view></scroll-view>
+        <scroll-view wx:if="{{subCategories.length > 0}}" class="sub-scroll" scroll-x enhanced show-scrollbar="{{false}}"><view class="sub-row"><view wx:for="{{subCategories}}" wx:key="id" class="sub-chip {{activeSubCategory === item.id ? 'sub-active' : ''}}" bindtap="onSubCategoryTap" data-id="{{item.id}}"><text>{{item.name}}</text></view></view></scroll-view>
+      </view>
+      <view class="catalog-heading"><text class="catalog-title">{{displayTitle}}</text><text class="catalog-count">{{visibleProducts.length}} 件</text></view>
+      <view wx:if="{{visibleProducts.length === 0}}" class="empty-state"><text>该分类暂未上架商品</text></view>
+      <view wx:else class="product-grid"><view wx:for="{{visibleProducts}}" wx:key="id" class="shop-product-card" bindtap="onProductTap" data-id="{{item.id}}"><view class="shop-product-img-wrap"><image class="shop-product-img" src="{{item.image}}" mode="aspectFill" lazy-load /></view><view class="product-copy"><text class="product-category">{{item.categoryName}}</text><text class="shop-product-name ellipsis-2">{{item.displayName}}</text></view></view></view>
     </block>
     <view style="height: 240rpx;"></view>
   </scroll-view>
