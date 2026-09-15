@@ -297,7 +297,7 @@ function login(phoneData = {}) {
  * @param {Object} params - 可选参数
  */
 function getUserInfo(params = {}) {
-  return callFunction('user', { action: 'getInfo', ...params }, true)
+  return authenticatedMigrationRequest('/api/v1/me', 'GET', undefined, () => callFunction('user', { action: 'getInfo', ...params }, true))
 }
 
 /**
@@ -312,7 +312,7 @@ function updateUserInfo(params = {}) {
  * 获取用户积分（需要登录）
  */
 function getUserPoints() {
-  return callFunction('user', { action: 'getPoints' }, true)
+  return authenticatedMigrationRequest('/api/v1/me/points', 'GET', undefined, () => callFunction('user', { action: 'getPoints' }, true))
 }
 
 /**
