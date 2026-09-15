@@ -729,7 +729,7 @@ function setDefaultAddress(id) {
  * 获取我的剪刀列表（需要登录）
  */
 function getMyScissors() {
-  return callFunction('scissors', { action: 'list' }, true)
+  return authenticatedMigrationRequest('/api/v1/tools', 'GET', undefined, () => callFunction('scissors', { action: 'list' }, true))
 }
 
 /**
@@ -737,7 +737,7 @@ function getMyScissors() {
  * @param {string} sn - 剪刀序列号
  */
 function bindScissors(sn) {
-  return callFunction('scissors', { action: 'bind', sn }, true)
+  return authenticatedMigrationRequest('/api/v1/tools', 'POST', { sn }, () => callFunction('scissors', { action: 'bind', sn }, true))
 }
 
 /**
@@ -745,7 +745,7 @@ function bindScissors(sn) {
  * @param {number} id - 绑定记录ID
  */
 function unbindScissors(id) {
-  return callFunction('scissors', { action: 'unbind', id }, true)
+  return authenticatedMigrationRequest(`/api/v1/tools/${Number(id)}`, 'DELETE', undefined, () => callFunction('scissors', { action: 'unbind', id }, true))
 }
 
 /**
@@ -761,7 +761,7 @@ function getWarrantyInfo(sn) {
  * @param {number} bindingId 用户剪刀绑定记录 ID
  */
 function getScissorsAfterSale(bindingId) {
-  return callFunction('scissors', { action: 'afterSaleDetail', bindingId }, true)
+  return authenticatedMigrationRequest(`/api/v1/tools/${Number(bindingId)}/after-sales`, 'GET', undefined, () => callFunction('scissors', { action: 'afterSaleDetail', bindingId }, true))
 }
 
 /**
@@ -769,11 +769,15 @@ function getScissorsAfterSale(bindingId) {
  * @param {Object} params - { bindingId, serviceType, description }
  */
 function applyScissorsAfterSale(params) {
-  return callFunction('scissors', { action: 'afterSaleApply', ...params }, true)
+  const bindingId = Number(params && params.bindingId)
+  if (!bindingId) return Promise.reject({ message: '剪刀信息无效', code: 'INVALID_TOOL' })
+  return authenticatedMigrationRequest(`/api/v1/tools/${bindingId}/after-sales`, 'POST', params, () => callFunction('scissors', { action: 'afterSaleApply', ...params }, true))
 }
 
 function submitScissorsAfterSaleShipping(params) {
-  return callFunction('scissors', { action: 'afterSaleShip', ...params }, true)
+  const requestId = Number(params && params.requestId)
+  if (!requestId) return Promise.reject({ message: '售后单信息无效', code: 'INVALID_AFTER_SALE' })
+  return authenticatedMigrationRequest(`/api/v1/after-sales/${requestId}/shipment`, 'POST', params, () => callFunction('scissors', { action: 'afterSaleShip', ...params }, true))
 }
 
 /**
