@@ -13,6 +13,7 @@ import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
 import { createMysqlToolRepository } from '../src/repositories/mysql-tool-repository.js';
 import { createMysqlAfterSaleRepository } from '../src/repositories/mysql-after-sale-repository.js';
+import { createMysqlOrderReadRepository } from '../src/repositories/mysql-order-read-repository.js';
 import { issueSession } from '../src/security/session.js';
 import { createUploadIntent } from '../src/media/upload-policy.js';
 import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
@@ -561,6 +562,26 @@ test('after-sale repository never selects recipient contact details for a user r
   assert.doesNotMatch(queries[0].sql, /recipient_phone|recipient_address_text/);
   assert.match(queries[0].sql, /us\.user_id = \?/);
   assert.deepEqual(queries[0].values, [7, 3]);
+});
+
+test('order read routes scope list and detail to the signed user', async (t) => {
+  const calls = [];
+  const server = createServer({ sessionSecret: secret, orderReadRepository: { list: async (userId, query) => { calls.push(['list', userId, query]); return []; }, get: async (userId, query) => { calls.push(['get', userId, query]); return null; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 48, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}` };
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/orders?status=pending&page=2&pageSize=5&userId=forged`, { headers })).status, 200);
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/orders/9`, { headers })).status, 404);
+  assert.deepEqual(calls, [['list', 48, { status: 'pending', page: '2', pageSize: '5' }], ['get', 48, { id: 9 }]]);
+});
+
+test('order read repository binds user scope and removes legacy cloud image identifiers', async () => {
+  const calls = [];
+  const repository = createMysqlOrderReadRepository({ execute: async (sql, values) => { calls.push({ sql, values }); if (/FROM orders o/.test(sql)) return [[{ id: 2, order_no: 'SO1' }]]; if (/FROM order_items/.test(sql)) return [[{ order_id: 2, product_name: '测试剪刀', product_image: 'cloud://legacy', quantity: 1 }]]; if (/FROM order_addresses/.test(sql)) return [[{ order_id: 2, province: '江苏', city: '苏州', district: '', detail: '示例路' }]]; if (/order_refund_requests/.test(sql)) return [[]]; throw new Error('unexpected query'); } });
+  const data = await repository.list(5, { status: 'pending', page: 1, pageSize: 10 });
+  assert.equal(data[0].product_image, '');
+  assert.match(calls[0].sql, /o\.user_id = \?/);
+  assert.equal(calls[0].values[0], 5);
 });
 
 test('media intent policy generates only controlled catalog keys', () => {

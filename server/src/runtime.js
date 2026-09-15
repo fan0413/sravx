@@ -6,6 +6,7 @@ import { createMysqlCatalogRepository } from './repositories/mysql-catalog-repos
 import { createMysqlAddressRepository } from './repositories/mysql-address-repository.js';
 import { createMysqlToolRepository } from './repositories/mysql-tool-repository.js';
 import { createMysqlAfterSaleRepository } from './repositories/mysql-after-sale-repository.js';
+import { createMysqlOrderReadRepository } from './repositories/mysql-order-read-repository.js';
 import { createMysqlSessionRepository } from './repositories/mysql-session-repository.js';
 import { createMysqlAdminRepository } from './repositories/mysql-admin-repository.js';
 import { createMysqlAdminSessionRepository } from './repositories/mysql-admin-session-repository.js';
@@ -59,6 +60,7 @@ export async function createRuntimeServer(environment = process.env) {
   const addressRepository = createMysqlAddressRepository(pool);
   const toolRepository = createMysqlToolRepository(pool);
   const afterSaleRepository = createMysqlAfterSaleRepository(pool);
+  const orderReadRepository = createMysqlOrderReadRepository(pool);
   const sessionRepository = createMysqlSessionRepository(pool);
   const adminRepository = createMysqlAdminRepository(pool);
   const adminSessionRepository = createMysqlAdminSessionRepository(pool);
@@ -76,5 +78,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); } });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); } });
 }
