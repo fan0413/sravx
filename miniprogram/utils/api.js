@@ -457,7 +457,8 @@ function getOrderList(status, page = 1, pageSize = 10) {
   if (status !== undefined && status !== null && status !== '') {
     data.status = status
   }
-  return callFunction('order', data, true)
+  const query = Object.entries({ status: data.status, page: data.page, pageSize: data.pageSize }).filter(([, value]) => value !== undefined && value !== '').map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&')
+  return authenticatedMigrationRequest(`/api/v1/orders?${query}`, 'GET', undefined, () => callFunction('order', data, true))
 }
 
 /**
@@ -470,9 +471,9 @@ function getOrderDetail(orderIdOrNo) {
   }
   const raw = String(orderIdOrNo).trim()
   if (/^\d+$/.test(raw)) {
-    return callFunction('order', { action: 'detail', orderId: parseInt(raw, 10) }, true)
+    return authenticatedMigrationRequest(`/api/v1/orders/${parseInt(raw, 10)}`, 'GET', undefined, () => callFunction('order', { action: 'detail', orderId: parseInt(raw, 10) }, true))
   }
-  return callFunction('order', { action: 'detail', orderNo: raw }, true)
+  return authenticatedMigrationRequest(`/api/v1/orders?orderNo=${encodeURIComponent(raw)}`, 'GET', undefined, () => callFunction('order', { action: 'detail', orderNo: raw }, true))
 }
 
 /**
@@ -508,7 +509,8 @@ function getPointsOrderList(status, page = 1, pageSize = 10) {
     pageSize: Number(pageSize) > 0 ? Number(pageSize) : 10
   }
   if (status !== undefined && status !== null && status !== '') data.status = status
-  return callFunction('order', data, true)
+  const query = Object.entries({ status: data.status, page: data.page, pageSize: data.pageSize }).filter(([, value]) => value !== undefined && value !== '').map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&')
+  return authenticatedMigrationRequest(`/api/v1/points-orders?${query}`, 'GET', undefined, () => callFunction('order', data, true))
     .catch((err) => {
       if (isUnknownActionError(err)) {
         console.warn('[API] order listPointsOrders 未发布，降级为空列表')
@@ -528,21 +530,21 @@ function getPointsOrderDetail(orderIdOrNo) {
   }
   const raw = String(orderIdOrNo).trim()
   if (/^\d+$/.test(raw)) {
-    return callFunction('order', { action: 'getPointsOrderDetail', orderId: parseInt(raw, 10) }, true)
+    return authenticatedMigrationRequest(`/api/v1/points-orders/${parseInt(raw, 10)}`, 'GET', undefined, () => callFunction('order', { action: 'getPointsOrderDetail', orderId: parseInt(raw, 10) }, true)
       .catch((err) => {
         if (isUnknownActionError(err)) {
           throw { message: '积分订单接口未发布，请先部署 order 云函数', code: 'POINTS_API_NOT_DEPLOYED' }
         }
         throw err
-      })
+    }))
   }
-  return callFunction('order', { action: 'getPointsOrderDetail', orderNo: raw }, true)
+  return authenticatedMigrationRequest(`/api/v1/points-orders?orderNo=${encodeURIComponent(raw)}`, 'GET', undefined, () => callFunction('order', { action: 'getPointsOrderDetail', orderNo: raw }, true)
     .catch((err) => {
       if (isUnknownActionError(err)) {
         throw { message: '积分订单接口未发布，请先部署 order 云函数', code: 'POINTS_API_NOT_DEPLOYED' }
       }
       throw err
-    })
+    }))
 }
 
 /**
