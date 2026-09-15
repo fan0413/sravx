@@ -3,9 +3,9 @@
 新增 `server/scripts/create-release-manifest.mjs`，在本地受控工作树中输出：
 
 - 完整与短 Git 提交号；
-- `server/package-lock.json` 与 `server/src/server.js` 的 SHA-256、字节数；
+- `server/package.json`、锁定依赖文件及 `server/src/` 下全部 JavaScript 运行时源文件的 SHA-256、字节数；
 - 清单格式版本和生成时间。
 
 用途是补足服务器 `/opt/sravx-api` 不保留 `.git` 时的部署可追溯性。发布负责人应在部署前生成清单，将其与不可变制品一起保存在受控发布记录中；不得将 `.env`、数据库备份、访问令牌或支付材料写入清单。
 
-本工具只在本地读取版本控制信息和已列出的源码文件，不连接服务器、数据库、对象存储或外部平台。
+本地 `npm start` 也已统一使用线上 systemd 服务的入口 `src/main.js`。本工具只在本地读取版本控制信息和已列出的源码文件，不连接服务器、数据库、对象存储或外部平台。

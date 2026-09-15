@@ -1,14 +1,27 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, '../..');
+async function sourceFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = await Promise.all(entries.map(async (entry) => {
+    const path = resolve(directory, entry.name);
+    if (entry.isDirectory()) return sourceFiles(path);
+    return entry.isFile() && entry.name.endsWith('.js') ? [path] : [];
+  }));
+  return files.flat();
+}
+
 const artifactFiles = [
   'server/package-lock.json',
-  'server/src/server.js'
+  'server/package.json',
+  ...(await sourceFiles(resolve(repositoryRoot, 'server/src')))
+    .map((path) => relative(repositoryRoot, path).replaceAll('\\', '/'))
+    .sort()
 ];
 
 function sha256(value) {
