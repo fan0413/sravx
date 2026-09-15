@@ -12,6 +12,7 @@
 |---|---|---|---|
 | 微信身份会话 | `POST /api/v1/auth/wechat/session` | 为已接入接口获取并缓存短期会话 | 仅服务端使用微信凭据；客户端不传 OpenID。 |
 | 个人资料与积分读取 | `GET /api/v1/me`、`GET /api/v1/me/points` | 已接入开关 | 查询身份来自签名会话。 |
+| 个人资料修改 | `PUT /api/v1/me` | 已接入开关 | 强制每月一次；依赖未执行的 `005_user_profile_monthly_limit.sql` 草案。 |
 | 地址簿 | `GET/POST /api/v1/addresses`、`PUT/DELETE /api/v1/addresses/{id}`、`PUT /api/v1/addresses/{id}/default` | 已接入开关 | 所有增删改查按会话用户归属；默认地址更新使用事务。 |
 | 工具档案 | `GET/POST /api/v1/tools`、`GET/DELETE /api/v1/tools/{id}` | 已接入开关 | SN 绑定锁定剪刀记录；保修快照与积分奖励同一事务。 |
 | 工具售后 | `GET/POST /api/v1/tools/{id}/after-sales`、`POST /api/v1/after-sales/{id}/shipment` | 已接入开关 | 仅返回用户可见的记录与留言，不返回收件地址或手机号。 |
@@ -20,7 +21,7 @@
 
 ## 明确未迁移/未放行
 
-- 用户资料修改：原链路含“每月一次修改”规则，目标服务尚无等价实现。
+- 资料字段 `profile_updated_at`：迁移草案已写入仓库，但尚未在目标库执行。
 - 普通订单创建、取消、确认收货、库存变更、优惠券、积分抵扣、支付、退款和支付回调。
 - 积分订单、礼品卡、用户优惠券、物流下单、管理端订单/售后操作。
 - 任何真实登录、小程序请求域名配置、Nginx 路由发布、数据导入、域名/DNS/备案或 CloudBase 配置变更。
