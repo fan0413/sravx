@@ -269,6 +269,18 @@ test('profile route uses only the signed session subject', async (t) => {
   assert.equal((await response.json()).data.id, 27);
 });
 
+test('profile update uses the signed user and preserves the monthly limit response', async (t) => {
+  let request;
+  const server = createServer({ sessionSecret: secret, userRepository: { updateProfile: async (userId, input) => { request = { userId, input }; return { updated: false, nextAvailableDate: '2026-10-01' }; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 28, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/me?userId=forged`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ username: '测试用户' }) });
+  assert.equal(response.status, 409);
+  assert.equal(request.userId, 28);
+  assert.deepEqual(request.input, { username: '测试用户' });
+  assert.equal((await response.json()).error.code, 'PROFILE_MONTHLY_LIMIT');
+});
+
 test('points route uses only the signed session subject', async (t) => {
   let requestedUserId;
   const userRepository = { getPoints: async (userId) => {

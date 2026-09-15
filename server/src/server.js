@@ -164,6 +164,21 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       return send(response, 200, { success: true, data: profile });
     }
 
+    if (request.method === 'PUT' && url.pathname === '/api/v1/me') {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!userRepository || typeof userRepository.updateProfile !== 'function') { const result = error('USER_PROFILE_NOT_READY', '用户服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        const update = await userRepository.updateProfile(session.subject, await readJsonBody(request));
+        if (!update.updated) { const result = error('PROFILE_MONTHLY_LIMIT', `本月已修改过资料，请于 ${update.nextAvailableDate || '下个月'} 后再试`, 409); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data: { message: '更新成功' } });
+      } catch (cause) {
+        const invalid = cause instanceof Error && ['INVALID_JSON', 'REQUEST_TOO_LARGE', 'Invalid profile input.'].includes(cause.message);
+        const result = error(invalid ? 'INVALID_REQUEST' : 'USER_PROFILE_OPERATION_FAILED', invalid ? '资料信息无效' : '用户服务暂不可用', invalid ? 400 : 503);
+        return send(response, result.status, result.body);
+      }
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/v1/me/points') {
       const session = await authenticatedSession();
       if (!session) {

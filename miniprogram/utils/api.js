@@ -305,7 +305,7 @@ function getUserInfo(params = {}) {
  * @param {Object} params - { nickname, avatar, phone, gender, birthday, occupation }
  */
 function updateUserInfo(params = {}) {
-  return callFunction('user', { action: 'updateInfo', ...params }, false)
+  return authenticatedMigrationRequest('/api/v1/me', 'PUT', params, () => callFunction('user', { action: 'updateInfo', ...params }, false))
 }
 
 /**
