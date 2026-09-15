@@ -11,6 +11,7 @@ import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-adm
 import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { collectGiftCardIntegrity } from '../scripts/check-gift-card-integrity.mjs';
+import { compareRowEvidence } from '../scripts/compare-row-evidence.mjs';
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
 import { createMysqlToolRepository } from '../src/repositories/mysql-tool-repository.js';
 import { createMysqlAfterSaleRepository } from '../src/repositories/mysql-after-sale-repository.js';
@@ -485,6 +486,15 @@ test('row digest is stable for JSON key order and distinguishes null from empty 
   const left = digestRows([{ id: '1', payload: '{"b":2,"a":1}' }], columns);
   const right = digestRows([{ id: '1', payload: '{"a":1,"b":2}' }], columns);
   assert.equal(left, right);
+});
+
+test('row evidence comparator reports metadata and digest differences without business rows', () => {
+  const source = { schema: 'source', tables: [{ table: 'users', primaryKey: ['id'], rowCount: 2, minimumPrimaryKey: 1, maximumPrimaryKey: 2, columns: ['id', 'openid'], chunks: [{ offset: 0, rowCount: 2, digest: 'a' }] }] };
+  const target = { schema: 'target', tables: [{ table: 'users', primaryKey: ['id'], rowCount: 2, minimumPrimaryKey: 1, maximumPrimaryKey: 2, columns: ['id', 'openid'], chunks: [{ offset: 0, rowCount: 2, digest: 'a' }] }] };
+  assert.deepEqual(compareRowEvidence(source, target), { sourceSchema: 'source', targetSchema: 'target', tablesCompared: 1, differences: [], matches: true });
+  const mismatched = compareRowEvidence(source, { ...target, tables: [{ ...target.tables[0], chunks: [{ offset: 0, rowCount: 2, digest: 'b' }] }] });
+  assert.equal(mismatched.matches, false);
+  assert.deepEqual(mismatched.differences, [{ table: 'users', issue: 'CHUNK_DIGEST_MISMATCH' }]);
 });
 
 test('points catalog uses bound category filters and returns an empty compatible structure', async () => {
