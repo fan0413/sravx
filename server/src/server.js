@@ -56,7 +56,7 @@ function addressInput(value) {
   return Object.freeze({ contact, phone, province: text('province', 50), city: text('city', 50), district: text('district', 50), detail: text('detail', 200, { required: true }), tag: text('tag', 20), isDefault });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, toolRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
     const authenticatedSession = async () => {
@@ -233,6 +233,40 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       }
       const result = error('ADDRESS_NOT_READY', '地址服务尚未配置', 503);
       return send(response, result.status, result.body);
+    }
+
+    if (url.pathname === '/api/v1/tools' || /^\/api\/v1\/tools\/\d+$/.test(url.pathname)) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!toolRepository) { const result = error('TOOL_NOT_READY', '工具档案服务尚未配置', 503); return send(response, result.status, result.body); }
+      const match = /^\/api\/v1\/tools\/(\d+)$/.exec(url.pathname);
+      const bindingId = match ? positiveInteger(match[1]) : null;
+      try {
+        if (request.method === 'GET' && url.pathname === '/api/v1/tools' && typeof toolRepository.list === 'function') return send(response, 200, { success: true, data: await toolRepository.list(session.subject) });
+        if (request.method === 'POST' && url.pathname === '/api/v1/tools' && typeof toolRepository.bind === 'function') {
+          const payload = await readJsonBody(request);
+          const sn = typeof payload?.sn === 'string' ? payload.sn.trim().toUpperCase() : '';
+          if (!/^[A-Z0-9-]{8,32}$/.test(sn)) throw new Error('INVALID_TOOL_SN');
+          return send(response, 201, { success: true, data: await toolRepository.bind(session.subject, sn) });
+        }
+        if (request.method === 'GET' && bindingId && typeof toolRepository.get === 'function') {
+          const tool = await toolRepository.get(session.subject, bindingId);
+          if (!tool) { const result = error('TOOL_NOT_FOUND', '工具档案不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: tool });
+        }
+        if (request.method === 'DELETE' && bindingId && typeof toolRepository.remove === 'function') {
+          const removed = await toolRepository.remove(session.subject, bindingId);
+          if (!removed) { const result = error('TOOL_NOT_FOUND', '工具档案不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: bindingId } });
+        }
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        if (['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_TOOL_SN'].includes(code)) { const result = error('INVALID_REQUEST', 'SN 码格式无效', 400); return send(response, result.status, result.body); }
+        if (code === 'TOOL_NOT_FOUND') { const result = error('TOOL_NOT_FOUND', 'SN 码不存在', 404); return send(response, result.status, result.body); }
+        if (code === 'TOOL_ALREADY_BOUND') { const result = error('TOOL_ALREADY_BOUND', '该工具已被绑定', 409); return send(response, result.status, result.body); }
+        const result = error('TOOL_OPERATION_FAILED', '工具档案服务暂不可用', 503); return send(response, result.status, result.body);
+      }
+      const result = error('TOOL_NOT_READY', '工具档案服务尚未配置', 503); return send(response, result.status, result.body);
     }
 
     if (request.method === 'GET') {

@@ -11,6 +11,7 @@ import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-adm
 import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
+import { createMysqlToolRepository } from '../src/repositories/mysql-tool-repository.js';
 import { issueSession } from '../src/security/session.js';
 import { createUploadIntent } from '../src/media/upload-policy.js';
 import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
@@ -506,6 +507,39 @@ test('address repository joins users by the server-side user id', async () => {
   assert.match(query.sql, /INNER JOIN users u ON u\.openid = a\.openid/);
   assert.deepEqual(query.values, [5]);
   assert.match(query.sql.trim(), /^SELECT\b/i);
+});
+
+test('tool archive routes scope every operation to the signed user', async (t) => {
+  const calls = [];
+  const toolRepository = {
+    list: async (userId) => { calls.push(['list', userId]); return []; },
+    bind: async (userId, sn) => { calls.push(['bind', userId, sn]); return { id: 8, sn }; },
+    get: async (userId, id) => { calls.push(['get', userId, id]); return null; },
+    remove: async (userId, id) => { calls.push(['remove', userId, id]); return false; }
+  };
+  const server = createServer({ sessionSecret: secret, toolRepository });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 46, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tools`, { headers })).status, 200);
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tools`, { method: 'POST', headers, body: JSON.stringify({ sn: 'sv-test-001' }) })).status, 201);
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tools/7?userId=forged`, { headers })).status, 404);
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tools/7`, { method: 'DELETE', headers })).status, 404);
+  assert.deepEqual(calls, [['list', 46], ['bind', 46, 'SV-TEST-001'], ['get', 46, 7], ['remove', 46, 7]]);
+});
+
+test('tool repository locks the SN record before binding and never resolves legacy cloud images', async () => {
+  const calls = [];
+  const connection = {
+    beginTransaction: async () => calls.push('begin'), commit: async () => calls.push('commit'), rollback: async () => calls.push('rollback'), release: () => calls.push('release'),
+    execute: async (sql, values) => { calls.push({ sql, values }); if (/FROM scissors s/.test(sql)) return [[{ id: 3, sn: 'SV-TEST-001', model: 'Pro', points_value: 0, created_at: '2026-09-01T00:00:00Z', product_name: '测试工具', warranty_months: 12, card_image: 'cloud://legacy' }]]; if (/FROM user_scissors/.test(sql)) return [[]]; if (/FROM users WHERE id/.test(sql)) return [[{ points: 0, total_points: 0 }]]; if (/INSERT INTO user_scissors/.test(sql)) return [{ insertId: 7 }]; throw new Error(`Unexpected SQL ${sql}`); }
+  };
+  const repository = createMysqlToolRepository({ getConnection: async () => connection }, { now: () => new Date('2026-09-15T00:00:00Z') });
+  const result = await repository.bind(4, 'SV-TEST-001');
+  assert.equal(result.id, 7);
+  assert.equal(result.card_image, '');
+  assert.match(calls.find((item) => item.sql && /FROM scissors s/.test(item.sql)).sql, /FOR UPDATE/);
+  assert.deepEqual(calls.filter((value) => typeof value === 'string'), ['begin', 'commit', 'release']);
 });
 
 test('media intent policy generates only controlled catalog keys', () => {
