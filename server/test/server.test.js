@@ -428,6 +428,11 @@ test('login service refuses a provider response without a trusted identity', asy
   await assert.rejects(() => codeExchange.exchange('valid-wechat-login-code'), /valid user identity/);
 });
 
+test('session services reject unsafe configured lifetimes', () => {
+  assert.throws(() => createLoginService({ codeExchange: { exchange: async () => ({}) }, resolveUser: async () => ({ id: 1 }), createSession: async () => {}, sessionSecret: secret, sessionTtlSeconds: 31 * 24 * 60 * 60 }), /30 days/);
+  assert.throws(() => createAdminLoginService({ authenticate: async () => ({ id: 1 }), createSession: async () => {}, sessionSecret: secret, sessionTtlSeconds: 24 * 60 * 60 + 1 }), /24 hours/);
+});
+
 test('identity requester uses HTTPS and does not expose provider errors', async () => {
   let requestUrl;
   const requester = createWechatIdentityRequester({

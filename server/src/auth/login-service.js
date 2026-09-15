@@ -1,10 +1,12 @@
 import { issueSession, verifySession } from '../security/session.js';
 
+const MAX_CUSTOMER_SESSION_TTL_SECONDS = 30 * 24 * 60 * 60;
+
 export function createLoginService({ codeExchange, resolveUser, createSession, sessionSecret, now = () => Math.floor(Date.now() / 1000), sessionTtlSeconds = 7 * 24 * 60 * 60 }) {
   if (!codeExchange || typeof codeExchange.exchange !== 'function') throw new Error('codeExchange.exchange is required.');
   if (typeof resolveUser !== 'function') throw new Error('resolveUser must be a function.');
   if (typeof createSession !== 'function') throw new Error('createSession must be a function.');
-  if (!Number.isInteger(sessionTtlSeconds) || sessionTtlSeconds < 300) throw new Error('sessionTtlSeconds must be at least five minutes.');
+  if (!Number.isInteger(sessionTtlSeconds) || sessionTtlSeconds < 300 || sessionTtlSeconds > MAX_CUSTOMER_SESSION_TTL_SECONDS) throw new Error('sessionTtlSeconds must be between five minutes and 30 days.');
 
   return Object.freeze({
     async login(code) {
