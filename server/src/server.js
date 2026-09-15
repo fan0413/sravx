@@ -197,6 +197,25 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       return send(response, 200, { success: true, data: points });
     }
 
+    if (request.method === 'GET' && url.pathname === '/api/v1/me/points/logs') {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!userRepository || typeof userRepository.getPointsLogs !== 'function') { const result = error('POINTS_NOT_READY', '积分服务尚未配置', 503); return send(response, result.status, result.body); }
+      try { return send(response, 200, { success: true, data: await userRepository.getPointsLogs(session.subject, { page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) }); }
+      catch { const result = error('POINTS_OPERATION_FAILED', '积分记录暂不可用', 503); return send(response, result.status, result.body); }
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/v1/me/membership') {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!userRepository || typeof userRepository.getMemberLevel !== 'function') { const result = error('USER_NOT_READY', '用户服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        const membership = await userRepository.getMemberLevel(session.subject);
+        if (!membership) { const result = error('USER_NOT_FOUND', '用户不存在', 404); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data: membership });
+      } catch { const result = error('USER_OPERATION_FAILED', '会员信息暂不可用', 503); return send(response, result.status, result.body); }
+    }
+
     if (request.method === 'GET' && url.pathname === '/api/v1/addresses') {
       const session = await authenticatedSession();
       if (!session) {

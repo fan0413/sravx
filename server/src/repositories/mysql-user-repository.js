@@ -30,6 +30,16 @@ function identityBindings({ openid, unionid }) {
   return bindings;
 }
 
+function memberLevel(totalPoints) {
+  const points = Number.parseInt(totalPoints, 10) || 0;
+  if (points >= 40000) return 6;
+  if (points >= 20000) return 5;
+  if (points >= 8000) return 4;
+  if (points >= 3000) return 3;
+  if (points >= 1200) return 2;
+  return 1;
+}
+
 async function bindIdentities(connection, userId, bindings) {
   for (const binding of bindings) {
     await connection.execute(
@@ -58,6 +68,27 @@ export function createMysqlUserRepository(pool) {
         [userId]
       );
       return rows.length === 1 ? rows[0] : null;
+    },
+    async getPointsLogs(userId, { page = 1, pageSize = 20 } = {}) {
+      if (!Number.isInteger(userId) || userId <= 0) throw new Error('A valid user id is required.');
+      const limit = Math.min(100, Number.isInteger(Number(pageSize)) && Number(pageSize) > 0 ? Number(pageSize) : 20);
+      const offset = ((Number.isInteger(Number(page)) && Number(page) > 0 ? Number(page) : 1) - 1) * limit;
+      const [rows] = await pool.execute(
+        `SELECT id, change_type, points, balance, order_id, remark, created_at
+           FROM points_logs
+          WHERE user_id = ?
+          ORDER BY created_at DESC, id DESC
+          LIMIT ? OFFSET ?`,
+        [userId, limit, offset]
+      );
+      return rows;
+    },
+    async getMemberLevel(userId) {
+      if (!Number.isInteger(userId) || userId <= 0) throw new Error('A valid user id is required.');
+      const [rows] = await pool.execute('SELECT total_points, total_spent, order_count FROM users WHERE id = ? LIMIT 1', [userId]);
+      if (rows.length !== 1) return null;
+      const user = rows[0];
+      return { member_level: memberLevel(user.total_points), total_points: Number(user.total_points) || 0, total_spent: Number(user.total_spent) || 0, order_count: Number(user.order_count) || 0 };
     },
     async updateProfile(userId, input) {
       if (!Number.isInteger(userId) || userId <= 0) throw new Error('A valid user id is required.');

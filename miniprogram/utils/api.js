@@ -321,14 +321,14 @@ function getUserPoints() {
  * @param {number} pageSize - 每页数量
  */
 function getPointsLogs(page = 1, pageSize = 20) {
-  return callFunction('user', { action: 'getPointsLogs', page, pageSize }, true)
+  return authenticatedMigrationRequest(`/api/v1/me/points/logs?page=${encodeURIComponent(String(page))}&pageSize=${encodeURIComponent(String(pageSize))}`, 'GET', undefined, () => callFunction('user', { action: 'getPointsLogs', page, pageSize }, true))
 }
 
 /**
  * 获取会员等级信息（需要登录）
  */
 function getMemberLevel() {
-  return callFunction('user', { action: 'getMemberLevel' }, true)
+  return authenticatedMigrationRequest('/api/v1/me/membership', 'GET', undefined, () => callFunction('user', { action: 'getMemberLevel' }, true))
 }
 
 // ==================== 商品模块 ====================

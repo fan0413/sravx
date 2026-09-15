@@ -301,6 +301,22 @@ test('points route uses only the signed session subject', async (t) => {
   assert.deepEqual((await response.json()).data, { points: 12, total_points: 36 });
 });
 
+test('points logs and membership routes use only the signed session subject', async (t) => {
+  const calls = [];
+  const server = createServer({ sessionSecret: secret, userRepository: {
+    getPointsLogs: async (userId, query) => { calls.push(['logs', userId, query]); return []; },
+    getMemberLevel: async (userId) => { calls.push(['membership', userId]); return { member_level: 2, total_points: 1200, total_spent: 0, order_count: 0 }; }
+  } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 32, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}` };
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/me/points/logs?page=2&pageSize=5&userId=forged`, { headers })).status, 200);
+  const membership = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/me/membership?userId=forged`, { headers });
+  assert.equal(membership.status, 200);
+  assert.equal((await membership.json()).data.member_level, 2);
+  assert.deepEqual(calls, [['logs', 32, { page: '2', pageSize: '5' }], ['membership', 32]]);
+});
+
 test('login service issues a customer session only after a trusted identity exchange', async () => {
   let receivedRequest;
   let storedSession;
@@ -404,6 +420,23 @@ test('user repository creates a new user with the mandatory identity columns', a
   assert.match(calls[3].sql, /openid, unionid, _openid, status, last_login_at/);
   assert.deepEqual(calls[3].values, ['trusted-openid', null, 'trusted-openid']);
   assert.deepEqual(calls[4].values, [19, 'wechat_miniprogram_openid', 'trusted-openid']);
+});
+
+test('user read repository scopes points logs and membership by user id', async () => {
+  const calls = [];
+  const repository = createMysqlUserRepository({ getConnection: async () => { throw new Error('not used'); }, execute: async (sql, values) => {
+    calls.push({ sql, values });
+    if (sql.includes('FROM points_logs')) return [[{ id: 1, change_type: 'bind', points: 10, balance: 10, order_id: null, remark: '绑定工具', created_at: '2026-09-15' }]];
+    return [[{ total_points: 1200, total_spent: 0, order_count: 1 }]];
+  } });
+  const logs = await repository.getPointsLogs(33, { page: 2, pageSize: 999 });
+  const membership = await repository.getMemberLevel(33);
+  assert.equal(logs.length, 1);
+  assert.deepEqual(membership, { member_level: 2, total_points: 1200, total_spent: 0, order_count: 1 });
+  assert.match(calls[0].sql, /WHERE user_id = \?/);
+  assert.doesNotMatch(calls[0].sql, /openid/);
+  assert.deepEqual(calls[0].values, [33, 100, 100]);
+  assert.deepEqual(calls[1].values, [33]);
 });
 
 test('catalog repository binds filters and caps pagination without writing', async () => {
