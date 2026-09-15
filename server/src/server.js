@@ -326,6 +326,27 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body);
     }
 
+    const pointsOrderMatch = /^\/api\/v1\/points-orders\/(\d+)$/.exec(url.pathname);
+    if ((request.method === 'GET' && url.pathname === '/api/v1/points-orders') || (request.method === 'GET' && pointsOrderMatch)) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!orderReadRepository) { const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        if (pointsOrderMatch && typeof orderReadRepository.getPoints === 'function') {
+          const order = await orderReadRepository.getPoints(session.subject, { id: positiveInteger(pointsOrderMatch[1]) });
+          if (!order) { const result = error('ORDER_NOT_FOUND', '积分订单不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: order });
+        }
+        if (!pointsOrderMatch && url.searchParams.get('orderNo') && typeof orderReadRepository.getPoints === 'function') {
+          const order = await orderReadRepository.getPoints(session.subject, { orderNo: url.searchParams.get('orderNo') });
+          if (!order) { const result = error('ORDER_NOT_FOUND', '积分订单不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: order });
+        }
+        if (typeof orderReadRepository.listPoints === 'function') return send(response, 200, { success: true, data: await orderReadRepository.listPoints(session.subject, { status: url.searchParams.get('status') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      } catch { const result = error('ORDER_OPERATION_FAILED', '订单服务暂不可用', 503); return send(response, result.status, result.body); }
+      const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body);
+    }
+
     if (request.method === 'GET') {
       const catalog = await catalogResponse(url.pathname, url.searchParams, catalogRepository);
       if (catalog) {

@@ -584,6 +584,16 @@ test('order read repository binds user scope and removes legacy cloud image iden
   assert.equal(calls[0].values[0], 5);
 });
 
+test('points order read route scopes records to the signed user', async (t) => {
+  let request;
+  const server = createServer({ sessionSecret: secret, orderReadRepository: { listPoints: async (userId, query) => { request = { userId, query }; return { list: [], userAvailablePoints: 0 }; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 49, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/points-orders?status=pending&page=2&pageSize=4&userId=forged`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(request, { userId: 49, query: { status: 'pending', page: '2', pageSize: '4' } });
+});
+
 test('media intent policy generates only controlled catalog keys', () => {
   const intent = createUploadIntent({ mediaType: 'product', contentType: 'image/webp', byteSize: 42, sha256: 'a'.repeat(64) }, new Date('2026-09-10T00:00:00Z'), 'intent-1');
   assert.deepEqual(intent, { id: 'intent-1', objectKey: 'catalog/products/intent-1.webp', contentType: 'image/webp', byteSize: 42, contentSha256: 'a'.repeat(64), expiresAt: new Date('2026-09-10T00:10:00Z') });

@@ -64,6 +64,41 @@ export function createMysqlOrderReadRepository(pool) {
         pool.execute('SELECT status FROM order_refund_requests WHERE order_id = ? ORDER BY id DESC LIMIT 1', [order.id])
       ]);
       return { ...order, items: items.map((item) => ({ ...item, product_image: safeImage(item.product_image) })), address: addresses[0] || null, latest_refund_status: refunds[0]?.status || '' };
+    },
+    async listPoints(userId, { status = '', page = 1, pageSize = 10 } = {}) {
+      if (!positiveInteger(userId)) throw new Error('A valid user id is required.');
+      const limit = Math.min(100, positiveInteger(pageSize, 10));
+      const offset = (positiveInteger(page, 1) - 1) * limit;
+      let statusSql = '';
+      const values = [userId];
+      if (status === 'pending') statusSql = " AND status IN ('pending_payment', 'paid', 'pending_send', 'refunding')";
+      else if (status === 'finished') statusSql = " AND status IN ('completed', 'cancelled', 'refunded')";
+      else if (['pending_payment', 'paid', 'pending_send', 'shipped', 'completed', 'cancelled', 'refunding', 'refunded'].includes(status)) { statusSql = ' AND status = ?'; values.push(status); }
+      else if (status) statusSql = ' AND 1 = 0';
+      const [rows] = await pool.execute(
+        `SELECT id, order_no, points_product_id, product_id, product_name_snapshot, product_image_snapshot, selected_spec_snapshot, quantity, unit_points, total_points, unit_cash, total_cash, payable_cash, status, payment_status, payment_channel, logistics_company, logistics_no, created_at, updated_at FROM points_orders WHERE user_id = ?${statusSql} ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?`,
+        [...values, limit, offset]
+      );
+      const [users] = await pool.execute('SELECT points FROM users WHERE id = ? LIMIT 1', [userId]);
+      return { list: rows.map((row) => ({ ...row, product_image_snapshot: safeImage(row.product_image_snapshot) })), userAvailablePoints: Number(users[0]?.points) || 0 };
+    },
+    async getPoints(userId, { id, orderNo } = {}) {
+      if (!positiveInteger(userId)) throw new Error('A valid user id is required.');
+      const numericId = positiveInteger(id);
+      const normalizedNo = typeof orderNo === 'string' ? orderNo.trim().slice(0, 64) : '';
+      if (!numericId && !normalizedNo) throw new Error('A valid order identifier is required.');
+      const [rows] = await pool.execute(
+        `SELECT id, order_no, user_id, points_product_id, product_id, product_name_snapshot, product_image_snapshot, selected_spec_snapshot, quantity, unit_points, total_points, unit_cash, total_cash, payable_cash, status, payment_status, payment_channel, receiver_name, receiver_phone, address_text, logistics_company, logistics_no, ship_time, created_at, updated_at FROM points_orders WHERE ${numericId ? 'id = ?' : 'order_no = ?'} AND user_id = ? LIMIT 1`,
+        [numericId || normalizedNo, userId]
+      );
+      if (rows.length !== 1) return null;
+      const order = rows[0];
+      const [[users], [logs]] = await Promise.all([
+        pool.execute('SELECT points FROM users WHERE id = ? LIMIT 1', [userId]),
+        pool.execute('SELECT direction, biz_type, points_change, cash_change, balance_before, balance_after, payment_channel, pay_transaction_id, created_at FROM points_payment_logs WHERE order_id = ? ORDER BY id ASC', [order.id])
+      ]);
+      const image = safeImage(order.product_image_snapshot);
+      return { ...order, user_available_points: Number(users[0]?.points) || 0, product_image_snapshot: image, items: [{ id: order.points_product_id, product_id: order.product_id, product_name: order.product_name_snapshot, product_image: image, spec_text: order.selected_spec_snapshot, quantity: order.quantity, points_price: order.unit_points }], payment_detail: { payment_status: order.payment_status, payment_channel: order.payment_channel, payable_cash: Number(order.payable_cash) || 0 }, logistics: { logistics_company: order.logistics_company || '', logistics_no: order.logistics_no || '', ship_time: order.ship_time || null }, flow_logs: logs };
     }
   });
 }
