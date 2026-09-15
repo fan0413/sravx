@@ -17,10 +17,10 @@ async function sourceFiles(directory) {
 }
 
 const artifactFiles = [
-  'server/package-lock.json',
-  'server/package.json',
+  'package-lock.json',
+  'package.json',
   ...(await sourceFiles(resolve(repositoryRoot, 'server/src')))
-    .map((path) => relative(repositoryRoot, path).replaceAll('\\', '/'))
+    .map((path) => relative(resolve(repositoryRoot, 'server'), path).replaceAll('\\', '/'))
     .sort()
 ];
 
@@ -28,9 +28,10 @@ function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
 }
 
-async function fileDigest(path) {
-  const content = await readFile(resolve(repositoryRoot, path));
-  return { path, sha256: sha256(content), bytes: content.length };
+async function fileDigest(deployPath) {
+  const sourcePath = `server/${deployPath}`;
+  const content = await readFile(resolve(repositoryRoot, sourcePath));
+  return { sourcePath, deployPath, sha256: sha256(content), bytes: content.length };
 }
 
 function git(...argumentsList) {
@@ -43,6 +44,7 @@ const manifest = {
   gitCommit: git('rev-parse', 'HEAD'),
   gitCommitShort: git('rev-parse', '--short', 'HEAD'),
   repositoryPath: relative(repositoryRoot, resolve(repositoryRoot)) || '.',
+  deploymentRoot: 'server',
   files: await Promise.all(artifactFiles.map(fileDigest))
 };
 
