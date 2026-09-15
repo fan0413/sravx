@@ -14,6 +14,7 @@ import { createMysqlAddressRepository } from '../src/repositories/mysql-address-
 import { createMysqlToolRepository } from '../src/repositories/mysql-tool-repository.js';
 import { createMysqlAfterSaleRepository } from '../src/repositories/mysql-after-sale-repository.js';
 import { createMysqlOrderReadRepository } from '../src/repositories/mysql-order-read-repository.js';
+import { createMysqlGiftCardReadRepository } from '../src/repositories/mysql-gift-card-read-repository.js';
 import { issueSession } from '../src/security/session.js';
 import { createUploadIntent } from '../src/media/upload-policy.js';
 import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
@@ -604,6 +605,27 @@ test('points order read route scopes records to the signed user', async (t) => {
   const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/points-orders?status=pending&page=2&pageSize=4&userId=forged`, { headers: { authorization: `Bearer ${token}` } });
   assert.equal(response.status, 200);
   assert.deepEqual(request, { userId: 49, query: { status: 'pending', page: '2', pageSize: '4' } });
+});
+
+test('gift card redemption records use only the signed customer identity', async (t) => {
+  let request;
+  const server = createServer({ sessionSecret: secret, giftCardReadRepository: { list: async (userId, query) => { request = { userId, query }; return []; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 50, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/gift-card-redemptions?page=2&pageSize=4&userId=forged`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(request, { userId: 50, query: { page: '2', pageSize: '4' } });
+});
+
+test('gift card record repository scopes rows by user id and omits redemption codes', async () => {
+  let query;
+  const repository = createMysqlGiftCardReadRepository({ execute: async (sql, values) => { query = { sql, values }; return [[{ id: 8, gift_type: 'points', gift_title: '', gift_snapshot: '{"points":20}', fulfillment_status: 'fulfilled', order_id: null, order_no: null, user_coupon_id: null, points_change: 20, created_at: '2026-09-15' }]]; } });
+  const records = await repository.list(51, { page: 1, pageSize: 99 });
+  assert.equal(records[0].valueText, '+20 积分');
+  assert.equal(Object.hasOwn(records[0], 'code'), false);
+  assert.match(query.sql, /WHERE r\.user_id = \?/);
+  assert.doesNotMatch(query.sql, /r\.code/);
+  assert.deepEqual(query.values, [51, 50, 0]);
 });
 
 test('media intent policy generates only controlled catalog keys', () => {

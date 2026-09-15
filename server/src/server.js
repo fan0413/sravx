@@ -56,7 +56,7 @@ function addressInput(value) {
   return Object.freeze({ contact, phone, province: text('province', 50), city: text('city', 50), district: text('district', 50), detail: text('detail', 200, { required: true }), tag: text('tag', 20), isDefault });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
     const authenticatedSession = async () => {
@@ -360,6 +360,14 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         if (typeof orderReadRepository.listPoints === 'function') return send(response, 200, { success: true, data: await orderReadRepository.listPoints(session.subject, { status: url.searchParams.get('status') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
       } catch { const result = error('ORDER_OPERATION_FAILED', '订单服务暂不可用', 503); return send(response, result.status, result.body); }
       const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body);
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/v1/gift-card-redemptions') {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!giftCardReadRepository || typeof giftCardReadRepository.list !== 'function') { const result = error('GIFT_CARD_NOT_READY', '礼品卡服务尚未配置', 503); return send(response, result.status, result.body); }
+      try { return send(response, 200, { success: true, data: await giftCardReadRepository.list(session.subject, { page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) }); }
+      catch { const result = error('GIFT_CARD_OPERATION_FAILED', '礼品卡记录暂不可用', 503); return send(response, result.status, result.body); }
     }
 
     if (request.method === 'GET') {

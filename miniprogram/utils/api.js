@@ -671,7 +671,7 @@ function confirmGiftCardProductAddress(params) {
  * 获取礼品卡兑换记录（需要登录）
  */
 function getGiftCardRedeemRecords(page = 1, pageSize = 10) {
-  return callFunction('giftCard', { action: 'records', page, pageSize }, true)
+  return authenticatedMigrationRequest(`/api/v1/gift-card-redemptions?page=${encodeURIComponent(String(page))}&pageSize=${encodeURIComponent(String(pageSize))}`, 'GET', undefined, () => callFunction('giftCard', { action: 'records', page, pageSize }, true))
     .catch((err) => {
       const msg = err && err.message ? String(err.message) : ''
       if (msg.includes('giftCard') || msg.includes('function') || msg.includes('not found')) {
