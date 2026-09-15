@@ -468,6 +468,34 @@ test('address route reads only addresses owned by the signed session subject', a
   assert.deepEqual((await response.json()).data, []);
 });
 
+test('address writes use only the signed session subject and validate the address', async (t) => {
+  let created;
+  const server = createServer({ sessionSecret: secret, addressRepository: { create: async (userId, input) => { created = { userId, input }; return { id: 18 }; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 44, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/addresses`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ openid: 'forged', name: '收件人', phone: '13800138000', province: '江苏省', city: '苏州市', district: '吴中区', detail: '示例路 1 号', is_default: true }) });
+  assert.equal(response.status, 201);
+  assert.equal(created.userId, 44);
+  assert.equal(created.input.contact, '收件人');
+  assert.equal(created.input.isDefault, true);
+  const invalid = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/addresses`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: '收件人' }) });
+  assert.equal(invalid.status, 400);
+});
+
+test('address update and default reject records not owned by the signed user', async (t) => {
+  const calls = [];
+  const server = createServer({ sessionSecret: secret, addressRepository: { update: async (...value) => { calls.push(value); return false; }, setDefault: async (...value) => { calls.push(value); return false; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 45, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const update = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/addresses/99`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: '收件人', phone: '13800138000', detail: '示例路 1 号' }) });
+  const defaultAddress = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/addresses/99/default`, { method: 'PUT', headers: { authorization: `Bearer ${token}` } });
+  assert.equal(update.status, 404);
+  assert.equal(defaultAddress.status, 404);
+  assert.equal(calls[0][0], 45);
+  assert.equal(calls[0][1], 99);
+  assert.deepEqual(calls[1], [45, 99]);
+});
+
 test('address repository joins users by the server-side user id', async () => {
   let query;
   const repository = createMysqlAddressRepository({ execute: async (sql, values) => {

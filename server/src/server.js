@@ -31,6 +31,31 @@ function error(code, message, status) {
   return { status, body: { success: false, error: { code, message } } };
 }
 
+function positiveInteger(value) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : null;
+}
+
+function addressInput(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid address.');
+  const text = (field, maximum, { required = false } = {}) => {
+    const raw = value[field];
+    if (raw === undefined || raw === null) {
+      if (required) throw new Error('Invalid address.');
+      return '';
+    }
+    if (typeof raw !== 'string') throw new Error('Invalid address.');
+    const output = raw.trim();
+    if ((required && !output) || output.length > maximum) throw new Error('Invalid address.');
+    return output;
+  };
+  const contact = text('name', 50) || text('contact', 50, { required: true });
+  const phone = text('phone', 32, { required: true });
+  if (!/^[0-9+() -]{6,32}$/.test(phone)) throw new Error('Invalid address.');
+  const isDefault = value.is_default === true || value.is_default === 1 || value.isDefault === true || value.isDefault === 1;
+  return Object.freeze({ contact, phone, province: text('province', 50), city: text('city', 50), district: text('district', 50), detail: text('detail', 200, { required: true }), tag: text('tag', 20), isDefault });
+}
+
 export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
@@ -168,6 +193,46 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         return send(response, result.status, result.body);
       }
       return send(response, 200, { success: true, data: await addressRepository.list(session.subject) });
+    }
+
+    if (url.pathname === '/api/v1/addresses' || /^\/api\/v1\/addresses\/\d+(?:\/default)?$/.test(url.pathname)) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') {
+        const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401);
+        return send(response, result.status, result.body);
+      }
+      if (!addressRepository) {
+        const result = error('ADDRESS_NOT_READY', '地址服务尚未配置', 503);
+        return send(response, result.status, result.body);
+      }
+      const match = /^\/api\/v1\/addresses\/(\d+)(\/default)?$/.exec(url.pathname);
+      const addressId = match ? positiveInteger(match[1]) : null;
+      try {
+        if (request.method === 'POST' && url.pathname === '/api/v1/addresses' && typeof addressRepository.create === 'function') {
+          return send(response, 201, { success: true, data: await addressRepository.create(session.subject, addressInput(await readJsonBody(request))) });
+        }
+        if (request.method === 'PUT' && match && !match[2] && typeof addressRepository.update === 'function') {
+          const updated = await addressRepository.update(session.subject, addressId, addressInput(await readJsonBody(request)));
+          if (!updated) { const result = error('ADDRESS_NOT_FOUND', '地址不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: addressId } });
+        }
+        if (request.method === 'DELETE' && match && !match[2] && typeof addressRepository.remove === 'function') {
+          const removed = await addressRepository.remove(session.subject, addressId);
+          if (!removed) { const result = error('ADDRESS_NOT_FOUND', '地址不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: addressId } });
+        }
+        if (request.method === 'PUT' && match && match[2] && typeof addressRepository.setDefault === 'function') {
+          const updated = await addressRepository.setDefault(session.subject, addressId);
+          if (!updated) { const result = error('ADDRESS_NOT_FOUND', '地址不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: addressId, is_default: 1 } });
+        }
+      } catch (cause) {
+        const invalid = cause instanceof Error && ['INVALID_JSON', 'REQUEST_TOO_LARGE', 'Invalid address.'].includes(cause.message);
+        const result = error(invalid ? 'INVALID_REQUEST' : 'ADDRESS_OPERATION_FAILED', invalid ? '收货地址信息无效' : '地址服务暂不可用', invalid ? 400 : 503);
+        return send(response, result.status, result.body);
+      }
+      const result = error('ADDRESS_NOT_READY', '地址服务尚未配置', 503);
+      return send(response, result.status, result.body);
     }
 
     if (request.method === 'GET') {
