@@ -6,7 +6,14 @@ import { getBearerToken, validateSigningSecret, verifySession } from './security
 import { createUploadIntent } from './media/upload-policy.js';
 import { bannerInput, categoryInput, productInput } from './media/admin-catalog-input.js';
 
-const JSON_HEADERS = Object.freeze({ 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+const JSON_HEADERS = Object.freeze({
+  'content-type': 'application/json; charset=utf-8',
+  'cache-control': 'no-store',
+  'content-security-policy': "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+  'referrer-policy': 'no-referrer',
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY'
+});
 
 async function readJsonBody(request, maximumBytes = 8192) {
   let size = 0;

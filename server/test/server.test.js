@@ -51,6 +51,18 @@ test('public catalog starts empty and preserves the mini program response shapes
   assert.deepEqual(await points.json(), { success: true, data: { products: [], categories: [] } });
 });
 
+test('json responses include baseline browser security headers', async (t) => {
+  const { server, baseUrl } = await start();
+  t.after(() => server.close());
+  const response = await fetch(`${baseUrl}/health`);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('content-security-policy'), "default-src 'none'; base-uri 'none'; frame-ancestors 'none'");
+  assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+  assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(response.headers.get('x-frame-options'), 'DENY');
+  assert.equal(response.headers.get('strict-transport-security'), null);
+});
+
 test('missing catalog records return a stable business error', async (t) => {
   const { server, baseUrl } = await start();
   t.after(() => server.close());
