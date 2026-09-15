@@ -15,7 +15,8 @@
 | 地址簿 | `GET/POST /api/v1/addresses`、`PUT/DELETE /api/v1/addresses/{id}`、`PUT /api/v1/addresses/{id}/default` | 已接入开关 | 所有增删改查按会话用户归属；默认地址更新使用事务。 |
 | 工具档案 | `GET/POST /api/v1/tools`、`GET/DELETE /api/v1/tools/{id}` | 已接入开关 | SN 绑定锁定剪刀记录；保修快照与积分奖励同一事务。 |
 | 工具售后 | `GET/POST /api/v1/tools/{id}/after-sales`、`POST /api/v1/after-sales/{id}/shipment` | 已接入开关 | 仅返回用户可见的记录与留言，不返回收件地址或手机号。 |
-| 普通商品订单读取 | `GET /api/v1/orders`、`GET /api/v1/orders/{id}`、`GET /api/v1/orders?orderNo=` | 暂未接入小程序开关 | 只读；按会话用户查询；旧 `cloud://` 图片标识不返回。 |
+| 普通商品订单读取 | `GET /api/v1/orders`、`GET /api/v1/orders/{id}`、`GET /api/v1/orders?orderNo=` | 已接入开关 | 只读；按会话用户查询；旧 `cloud://` 图片标识不返回。 |
+| 积分订单读取 | `GET /api/v1/points-orders`、`GET /api/v1/points-orders/{id}`、`GET /api/v1/points-orders?orderNo=` | 已接入开关 | 只读；返回当前用户自己的积分订单、积分余额和流水。 |
 
 ## 明确未迁移/未放行
 
