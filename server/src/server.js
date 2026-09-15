@@ -56,7 +56,7 @@ function addressInput(value) {
   return Object.freeze({ contact, phone, province: text('province', 50), city: text('city', 50), district: text('district', 50), detail: text('detail', 200, { required: true }), tag: text('tag', 20), isDefault });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, toolRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
     const authenticatedSession = async () => {
@@ -267,6 +267,40 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         const result = error('TOOL_OPERATION_FAILED', '工具档案服务暂不可用', 503); return send(response, result.status, result.body);
       }
       const result = error('TOOL_NOT_READY', '工具档案服务尚未配置', 503); return send(response, result.status, result.body);
+    }
+
+    const afterSaleMatch = /^\/api\/v1\/tools\/(\d+)\/after-sales$/.exec(url.pathname);
+    const shipmentMatch = /^\/api\/v1\/after-sales\/(\d+)\/shipment$/.exec(url.pathname);
+    if (afterSaleMatch || shipmentMatch) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!afterSaleRepository) { const result = error('AFTER_SALE_NOT_READY', '售后服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        if (afterSaleMatch && request.method === 'GET' && typeof toolRepository?.get === 'function' && typeof afterSaleRepository.list === 'function') {
+          const bindingId = positiveInteger(afterSaleMatch[1]);
+          const tool = await toolRepository.get(session.subject, bindingId);
+          if (!tool) { const result = error('TOOL_NOT_FOUND', '工具档案不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { scissors: tool, records: await afterSaleRepository.list(session.subject, bindingId) } });
+        }
+        if (afterSaleMatch && request.method === 'POST' && typeof afterSaleRepository.apply === 'function') {
+          const payload = await readJsonBody(request);
+          return send(response, 201, { success: true, data: await afterSaleRepository.apply(session.subject, { bindingId: positiveInteger(afterSaleMatch[1]), recipientAddressId: positiveInteger(payload?.recipientAddressId), serviceType: payload?.serviceType, description: typeof payload?.description === 'string' ? payload.description.trim().replace(/\r\n?/g, '\n') : '' }) });
+        }
+        if (shipmentMatch && request.method === 'POST' && typeof afterSaleRepository.submitShipment === 'function') {
+          const payload = await readJsonBody(request);
+          return send(response, 200, { success: true, data: await afterSaleRepository.submitShipment(session.subject, positiveInteger(shipmentMatch[1]), { carrier: typeof payload?.carrier === 'string' ? payload.carrier.trim() : '', trackingNo: typeof payload?.trackingNo === 'string' ? payload.trackingNo.trim() : '', freightAmount: Number(payload?.freightAmount) }) });
+        }
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        const invalid = ['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST'].includes(code);
+        if (invalid) { const result = error('INVALID_REQUEST', '售后信息无效', 400); return send(response, result.status, result.body); }
+        if (code === 'TOOL_NOT_FOUND') { const result = error('TOOL_NOT_FOUND', '工具档案不存在', 404); return send(response, result.status, result.body); }
+        if (code === 'ADDRESS_NOT_FOUND' || code === 'ADDRESS_INCOMPLETE') { const result = error('ADDRESS_INVALID', '请选择完整有效的收货地址', 400); return send(response, result.status, result.body); }
+        if (code === 'AFTER_SALE_ALREADY_OPEN') { const result = error('AFTER_SALE_ALREADY_OPEN', '该工具已有处理中售后申请', 409); return send(response, result.status, result.body); }
+        if (code === 'AFTER_SALE_NOT_SHIPPABLE') { const result = error('AFTER_SALE_NOT_SHIPPABLE', '当前售后单暂不可填写寄回物流', 409); return send(response, result.status, result.body); }
+        const result = error('AFTER_SALE_OPERATION_FAILED', '售后服务暂不可用', 503); return send(response, result.status, result.body);
+      }
+      const result = error('AFTER_SALE_NOT_READY', '售后服务尚未配置', 503); return send(response, result.status, result.body);
     }
 
     if (request.method === 'GET') {

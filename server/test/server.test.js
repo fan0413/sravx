@@ -12,6 +12,7 @@ import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
 import { createMysqlToolRepository } from '../src/repositories/mysql-tool-repository.js';
+import { createMysqlAfterSaleRepository } from '../src/repositories/mysql-after-sale-repository.js';
 import { issueSession } from '../src/security/session.js';
 import { createUploadIntent } from '../src/media/upload-policy.js';
 import { createMysqlMediaIntentRepository } from '../src/repositories/mysql-media-intent-repository.js';
@@ -540,6 +541,26 @@ test('tool repository locks the SN record before binding and never resolves lega
   assert.equal(result.card_image, '');
   assert.match(calls.find((item) => item.sql && /FROM scissors s/.test(item.sql)).sql, /FOR UPDATE/);
   assert.deepEqual(calls.filter((value) => typeof value === 'string'), ['begin', 'commit', 'release']);
+});
+
+test('after-sale routes only expose records belonging to the signed tool owner', async (t) => {
+  const calls = [];
+  const server = createServer({ sessionSecret: secret, toolRepository: { get: async (userId, id) => { calls.push(['tool', userId, id]); return id === 9 ? { id, sn: 'SV-TEST-001' } : null; } }, afterSaleRepository: { list: async (userId, id) => { calls.push(['list', userId, id]); return []; }, apply: async (userId, data) => { calls.push(['apply', userId, data]); return { id: 3, requestNo: 'AS20260915TEST' }; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 47, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tools/9/after-sales`, { headers })).status, 200);
+  assert.equal((await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tools/9/after-sales`, { method: 'POST', headers, body: JSON.stringify({ recipientAddressId: 4, serviceType: 'repair', description: '剪刀需要检修' }) })).status, 201);
+  assert.deepEqual(calls, [['tool', 47, 9], ['list', 47, 9], ['apply', 47, { bindingId: 9, recipientAddressId: 4, serviceType: 'repair', description: '剪刀需要检修' }]]);
+});
+
+test('after-sale repository never selects recipient contact details for a user record list', async () => {
+  const queries = [];
+  const repository = createMysqlAfterSaleRepository({ getConnection: async () => { throw new Error('not used'); }, execute: async (sql, values) => { queries.push({ sql, values }); return [[]]; } });
+  assert.deepEqual(await repository.list(3, 7), []);
+  assert.doesNotMatch(queries[0].sql, /recipient_phone|recipient_address_text/);
+  assert.match(queries[0].sql, /us\.user_id = \?/);
+  assert.deepEqual(queries[0].values, [7, 3]);
 });
 
 test('media intent policy generates only controlled catalog keys', () => {
