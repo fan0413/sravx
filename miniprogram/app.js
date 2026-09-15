@@ -98,5 +98,9 @@ App({
     this.globalData.hasPhoneAuth = false
     wx.removeStorageSync('userInfo')
     wx.removeStorageSync('isRegistered')
+    // The target API session is independent from the legacy CloudBase login.
+    // Clear both local records whenever the customer signs out.
+    this.globalData.authenticatedApiSession = null
+    wx.removeStorageSync('sravx_authenticated_api_session')
   }
 });
