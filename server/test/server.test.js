@@ -63,6 +63,18 @@ test('missing catalog records return a stable business error', async (t) => {
   });
 });
 
+test('unexpected route failures return a generic response without internal details', async (t) => {
+  const catalogRepository = { listProducts: async () => { throw new Error('database endpoint and credentials must not reach clients'); } };
+  const server = createServer({ sessionSecret: secret, catalogRepository });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+  const response = await fetch(`http://127.0.0.1:${port}/api/v1/catalog/products`);
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { success: false, error: { code: 'INTERNAL_ERROR', message: '服务暂不可用，请稍后重试' } });
+});
+
 test('each response receives a server-generated request identifier', async (t) => {
   const { server, baseUrl } = await start();
   t.after(() => server.close());

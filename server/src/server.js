@@ -59,7 +59,8 @@ function addressInput(value) {
 
 export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
-  return http.createServer(async (request, response) => {
+  return http.createServer((request, response) => {
+    void (async () => {
     const requestId = randomUUID();
     const startedAt = process.hrtime.bigint();
     const url = new URL(request.url || '/', 'http://localhost');
@@ -638,5 +639,13 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
 
     const result = error('NOT_FOUND', '接口不存在', 404);
     return send(response, result.status, result.body);
+    })().catch(() => {
+      if (response.headersSent || response.writableEnded) {
+        response.destroy();
+        return;
+      }
+      const result = error('INTERNAL_ERROR', '服务暂不可用，请稍后重试', 500);
+      send(response, result.status, result.body);
+    });
   });
 }
