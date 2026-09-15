@@ -1,4 +1,5 @@
 import http from 'node:http';
+import { randomUUID } from 'node:crypto';
 import { EmptyCatalogRepository } from './repositories/catalog-repository.js';
 import { catalogResponse } from './routes/catalog.js';
 import { getBearerToken, validateSigningSecret, verifySession } from './security/session.js';
@@ -59,6 +60,7 @@ function addressInput(value) {
 export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
+    response.setHeader('x-request-id', randomUUID());
     const authenticatedSession = async () => {
       const token = getBearerToken(request.headers.authorization);
       const session = verifySession(token, sessionSecret);

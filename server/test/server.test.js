@@ -55,10 +55,26 @@ test('missing catalog records return a stable business error', async (t) => {
   t.after(() => server.close());
   const response = await fetch(`${baseUrl}/api/v1/catalog/products/9`);
   assert.equal(response.status, 404);
+  assert.match(response.headers.get('x-request-id') || '', /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   assert.deepEqual(await response.json(), {
     success: false,
     error: { code: 'PRODUCT_NOT_FOUND', message: '商品不存在' }
   });
+});
+
+test('each response receives a server-generated request identifier', async (t) => {
+  const { server, baseUrl } = await start();
+  t.after(() => server.close());
+  const [first, second] = await Promise.all([
+    fetch(`${baseUrl}/health`, { headers: { 'x-request-id': 'client-controlled-value' } }),
+    fetch(`${baseUrl}/health`)
+  ]);
+  const firstId = first.headers.get('x-request-id') || '';
+  const secondId = second.headers.get('x-request-id') || '';
+  assert.match(firstId, /^[0-9a-f-]{36}$/i);
+  assert.match(secondId, /^[0-9a-f-]{36}$/i);
+  assert.notEqual(firstId, 'client-controlled-value');
+  assert.notEqual(firstId, secondId);
 });
 
 test('admin routes reject missing and non-admin sessions', async (t) => {
