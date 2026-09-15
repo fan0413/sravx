@@ -17,6 +17,7 @@ import { createMysqlMediaIntentRepository } from './repositories/mysql-media-int
 import { createMysqlAdminCatalogRepository } from './repositories/mysql-admin-catalog-repository.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
+import { createRequestAuditLogger } from './observability/request-audit.js';
 import { createServer } from './server.js';
 
 function required(environment, name) {
@@ -83,5 +84,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); } });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
 }

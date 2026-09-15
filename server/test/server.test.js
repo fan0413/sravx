@@ -26,6 +26,7 @@ import { createCosUploadSigner } from '../src/media/cos-upload-signer.js';
 import { bannerInput, categoryInput, productInput } from '../src/media/admin-catalog-input.js';
 import { hashPassword, verifyPassword } from '../src/security/password.js';
 import { createAdminLoginService } from '../src/auth/admin-login-service.js';
+import { createRequestAuditLogger } from '../src/observability/request-audit.js';
 
 const secret = 'test-only-session-secret-which-is-long-enough-123456';
 
@@ -75,6 +76,23 @@ test('each response receives a server-generated request identifier', async (t) =
   assert.match(secondId, /^[0-9a-f-]{36}$/i);
   assert.notEqual(firstId, 'client-controlled-value');
   assert.notEqual(firstId, secondId);
+});
+
+test('audit records contain only a route group and operational request metadata', async (t) => {
+  const lines = [];
+  const server = createServer({ sessionSecret: secret, auditLogger: createRequestAuditLogger({ write: (line) => lines.push(JSON.parse(line)) }) });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  t.after(() => server.close());
+  const { port } = server.address();
+  await fetch(`http://127.0.0.1:${port}/api/v1/tools/serial-should-not-log?phone=13800138000`, { headers: { authorization: 'Bearer should-not-log' } });
+  assert.equal(lines.length, 1);
+  assert.equal(lines[0].event, 'api_request');
+  assert.equal(lines[0].route, '/api/v1/tools');
+  assert.equal(lines[0].method, 'GET');
+  assert.equal(lines[0].statusCode, 404);
+  assert.match(lines[0].requestId, /^[0-9a-f-]{36}$/i);
+  assert.equal(Object.values(lines[0]).some((value) => String(value).includes('13800138000') || String(value).includes('should-not-log') || String(value).includes('serial-should-not-log')), false);
 });
 
 test('admin routes reject missing and non-admin sessions', async (t) => {

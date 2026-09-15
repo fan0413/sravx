@@ -57,10 +57,21 @@ function addressInput(value) {
   return Object.freeze({ contact, phone, province: text('province', 50), city: text('city', 50), district: text('district', 50), detail: text('detail', 200, { required: true }), tag: text('tag', 20), isDefault });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
-    response.setHeader('x-request-id', randomUUID());
+    const requestId = randomUUID();
+    const startedAt = process.hrtime.bigint();
+    const url = new URL(request.url || '/', 'http://localhost');
+    response.setHeader('x-request-id', requestId);
+    response.once('finish', () => {
+      if (typeof auditLogger !== 'function') return;
+      try {
+        auditLogger({ requestId, method: request.method || 'UNKNOWN', pathname: url.pathname, statusCode: response.statusCode, durationMs: Number((process.hrtime.bigint() - startedAt) / 1_000_000n) });
+      } catch {
+        // Audit output must not interrupt the client response path.
+      }
+    });
     const authenticatedSession = async () => {
       const token = getBearerToken(request.headers.authorization);
       const session = verifySession(token, sessionSecret);
@@ -70,7 +81,6 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       if (repository && typeof repository.active === 'function' && !await repository.active(sessionReference)) return null;
       return session;
     };
-    const url = new URL(request.url || '/', 'http://localhost');
     if (request.method === 'GET' && url.pathname === '/health') {
       return send(response, 200, { success: true, data: { status: 'ok', mode: 'local-skeleton' } });
     }
