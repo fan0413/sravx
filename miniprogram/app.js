@@ -7,6 +7,10 @@ App({
     // Read-only API migration remains disabled until the new HTTPS endpoint is
     // accepted in the mini program's request-domain configuration.
     readOnlyApiMigration: { enabled: false, baseUrl: '' },
+    // Authenticated migration traffic remains disabled until the target HTTPS
+    // endpoint has passed the internal user-session and address-book checks.
+    authenticatedApiMigration: { enabled: false, baseUrl: '' },
+    authenticatedApiSession: null,
     hasPhoneAuth: false,
     userProfileUpdated: false
   },

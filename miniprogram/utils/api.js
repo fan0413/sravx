@@ -44,6 +44,79 @@ function migratedRead(path, legacyRequest) {
   return request || legacyRequest()
 }
 
+function getAuthenticatedApiBase() {
+  const config = app && app.globalData && app.globalData.authenticatedApiMigration
+  if (!config || config.enabled !== true || typeof config.baseUrl !== 'string') return null
+  const baseUrl = config.baseUrl.trim().replace(/\/$/, '')
+  return /^https:\/\//.test(baseUrl) ? baseUrl : null
+}
+
+function targetSessionCache() {
+  const inMemory = app && app.globalData && app.globalData.authenticatedApiSession
+  if (inMemory && typeof inMemory.token === 'string') return inMemory
+  try {
+    const cached = wx.getStorageSync('sravx_authenticated_api_session')
+    return cached && typeof cached.token === 'string' ? cached : null
+  } catch (err) {
+    return null
+  }
+}
+
+function storeTargetSession(session) {
+  if (app && app.globalData) app.globalData.authenticatedApiSession = session
+  try { wx.setStorageSync('sravx_authenticated_api_session', session) } catch (err) {}
+}
+
+function clearTargetSession() {
+  if (app && app.globalData) app.globalData.authenticatedApiSession = null
+  try { wx.removeStorageSync('sravx_authenticated_api_session') } catch (err) {}
+}
+
+function rawTargetRequest(baseUrl, path, method, data, token) {
+  return new Promise((resolve, reject) => {
+    wx.request({
+      url: `${baseUrl}${path}`,
+      method,
+      data,
+      header: {
+        Accept: 'application/json',
+        ...(data === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      success: (res) => {
+        const body = res.data
+        if (res.statusCode >= 200 && res.statusCode < 300 && body && body.success) return resolve(body.data)
+        const detail = body && body.error
+        reject({ message: (detail && detail.message) || '服务暂不可用', code: (detail && detail.code) || 'TARGET_API_ERROR', statusCode: res.statusCode })
+      },
+      fail: (err) => reject({ message: err.errMsg || '服务网络错误', code: 'TARGET_API_NETWORK_ERROR' })
+    })
+  })
+}
+
+async function targetSession(baseUrl) {
+  const cached = targetSessionCache()
+  const now = Math.floor(Date.now() / 1000)
+  if (cached && cached.expiresAt > now + 60) return cached.token
+  const login = await new Promise((resolve, reject) => wx.login({ success: resolve, fail: reject }))
+  if (!login || typeof login.code !== 'string' || !login.code) throw { message: '登录状态获取失败', code: 'TARGET_LOGIN_FAILED' }
+  const data = await rawTargetRequest(baseUrl, '/api/v1/auth/wechat/session', 'POST', { code: login.code })
+  if (!data || typeof data.token !== 'string' || !Number.isFinite(Number(data.expiresAt))) throw { message: '登录服务返回无效', code: 'TARGET_LOGIN_FAILED' }
+  storeTargetSession({ token: data.token, expiresAt: Number(data.expiresAt) })
+  return data.token
+}
+
+function authenticatedMigrationRequest(path, method, data, legacyRequest) {
+  const baseUrl = getAuthenticatedApiBase()
+  if (!baseUrl) return legacyRequest()
+  return targetSession(baseUrl)
+    .then((token) => rawTargetRequest(baseUrl, path, method, data, token))
+    .catch((err) => {
+      if (err && err.statusCode === 401) clearTargetSession()
+      throw err
+    })
+}
+
 /**
  * 获取全局 openid
  */
@@ -613,7 +686,7 @@ function getGiftCardRedeemRecords(page = 1, pageSize = 10) {
  * 获取地址列表（需要登录）
  */
 function getAddressList() {
-  return callFunction('address', { action: 'list' }, true)
+  return authenticatedMigrationRequest('/api/v1/addresses', 'GET', undefined, () => callFunction('address', { action: 'list' }, true))
 }
 
 /**
@@ -621,7 +694,7 @@ function getAddressList() {
  * @param {Object} address - 地址信息
  */
 function addAddress(address) {
-  return callFunction('address', { action: 'add', ...address }, true)
+  return authenticatedMigrationRequest('/api/v1/addresses', 'POST', address, () => callFunction('address', { action: 'add', ...address }, true))
 }
 
 /**
@@ -629,7 +702,9 @@ function addAddress(address) {
  * @param {Object} address - 地址信息（含 id）
  */
 function updateAddress(address) {
-  return callFunction('address', { action: 'update', ...address }, true)
+  const id = Number(address && address.id)
+  if (!id) return Promise.reject({ message: '地址信息无效', code: 'INVALID_ADDRESS' })
+  return authenticatedMigrationRequest(`/api/v1/addresses/${id}`, 'PUT', address, () => callFunction('address', { action: 'update', ...address }, true))
 }
 
 /**
@@ -637,7 +712,7 @@ function updateAddress(address) {
  * @param {number} id - 地址ID
  */
 function deleteAddress(id) {
-  return callFunction('address', { action: 'delete', id }, true)
+  return authenticatedMigrationRequest(`/api/v1/addresses/${Number(id)}`, 'DELETE', undefined, () => callFunction('address', { action: 'delete', id }, true))
 }
 
 /**
@@ -645,7 +720,7 @@ function deleteAddress(id) {
  * @param {number} id - 地址ID
  */
 function setDefaultAddress(id) {
-  return callFunction('address', { action: 'setDefault', id }, true)
+  return authenticatedMigrationRequest(`/api/v1/addresses/${Number(id)}/default`, 'PUT', undefined, () => callFunction('address', { action: 'setDefault', id }, true))
 }
 
 // ==================== 剪刀模块 ====================
