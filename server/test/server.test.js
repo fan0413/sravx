@@ -5,6 +5,8 @@ import { createServer } from '../src/server.js';
 import { createLoginService } from '../src/auth/login-service.js';
 import { createWechatCodeExchange } from '../src/auth/wechat-code-exchange.js';
 import { createWechatIdentityRequester } from '../src/auth/wechat-identity-requester.js';
+import { createWechatPhoneRequester } from '../src/auth/wechat-phone-requester.js';
+import { createPhoneService } from '../src/auth/phone-service.js';
 import { createMysqlUserRepository } from '../src/repositories/mysql-user-repository.js';
 import { createMysqlCatalogRepository } from '../src/repositories/mysql-catalog-repository.js';
 import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-admin-catalog-repository.js';
@@ -318,6 +320,17 @@ test('points logs and membership routes use only the signed session subject', as
   assert.deepEqual(calls, [['logs', 32, { page: '2', pageSize: '5' }], ['membership', 32]]);
 });
 
+test('phone binding uses only the signed session subject and does not return the phone code', async (t) => {
+  let request;
+  const server = createServer({ sessionSecret: secret, phoneService: { bind: async (userId, code) => { request = { userId, code }; return { phone: '13800138000' }; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 34, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/me/phone?userId=forged`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ code: 'phone-code-1234' }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(request, { userId: 34, code: 'phone-code-1234' });
+  assert.doesNotMatch(JSON.stringify(await response.json()), /phone-code-1234/);
+});
+
 test('login service issues a customer session only after a trusted identity exchange', async () => {
   let receivedRequest;
   let storedSession;
@@ -374,6 +387,29 @@ test('identity requester uses HTTPS and does not expose provider errors', async 
     fetchImpl: async () => ({ ok: true, json: async () => ({ errcode: 40029, errmsg: 'invalid code' }) })
   });
   await assert.rejects(() => rejectedRequester({ appId: 'test-app-id', appSecret: 'test-app-secret', code: 'valid-wechat-login-code' }), /upstream rejected login code/);
+});
+
+test('phone requester uses HTTPS, caches the access token, and returns only the verified phone', async () => {
+  const requests = [];
+  const requester = createWechatPhoneRequester({ appId: 'test-app-id', appSecret: 'test-app-secret', fetchImpl: async (url, options) => {
+    requests.push({ url: new URL(url), options });
+    if (url.pathname.endsWith('/token')) return { ok: true, json: async () => ({ access_token: 'opaque-token', expires_in: 7200 }) };
+    return { ok: true, json: async () => ({ errcode: 0, phone_info: { phoneNumber: '13800138000' } }) };
+  } });
+  assert.equal(await requester('phone-code-1234'), '13800138000');
+  assert.equal(await requester('phone-code-5678'), '13800138000');
+  assert.equal(requests.filter((request) => request.url.pathname.endsWith('/token')).length, 1);
+  assert.equal(requests[1].url.protocol, 'https:');
+  assert.equal(requests[1].options.method, 'POST');
+  assert.doesNotMatch(requests[1].options.body, /test-app-secret/);
+});
+
+test('phone service binds a verified phone only to an active signed user', async () => {
+  let bound;
+  const service = createPhoneService({ requestPhone: async () => '13800138000', bindPhone: async (userId, phone) => { bound = { userId, phone }; return true; } });
+  assert.deepEqual(await service.bind(35, 'phone-code-1234'), { phone: '13800138000' });
+  assert.deepEqual(bound, { userId: 35, phone: '13800138000' });
+  await assert.rejects(() => createPhoneService({ requestPhone: async () => 'invalid', bindPhone: async () => true }).bind(35, 'phone-code-1234'), /invalid phone/);
 });
 
 test('user repository resolves an existing active user with bound SQL parameters', async () => {
@@ -438,6 +474,15 @@ test('user read repository scopes points logs and membership by user id', async 
   assert.doesNotMatch(calls[0].sql, /openid/);
   assert.deepEqual(calls[0].values, [33, 100, 100]);
   assert.deepEqual(calls[1].values, [33]);
+});
+
+test('user repository binds a verified phone only by server user id', async () => {
+  let query;
+  const repository = createMysqlUserRepository({ getConnection: async () => { throw new Error('not used'); }, execute: async (sql, values) => { query = { sql, values }; return [{ affectedRows: 1 }]; } });
+  assert.equal(await repository.bindPhone(36, '13800138000'), true);
+  assert.match(query.sql, /WHERE id = \? AND status = 'active'/);
+  assert.doesNotMatch(query.sql, /openid/);
+  assert.deepEqual(query.values, ['13800138000', 36]);
 });
 
 test('catalog repository binds filters and caps pagination without writing', async () => {

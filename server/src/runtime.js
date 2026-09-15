@@ -1,6 +1,8 @@
 import { createLoginService } from './auth/login-service.js';
 import { createWechatCodeExchange } from './auth/wechat-code-exchange.js';
 import { createWechatIdentityRequester } from './auth/wechat-identity-requester.js';
+import { createWechatPhoneRequester } from './auth/wechat-phone-requester.js';
+import { createPhoneService } from './auth/phone-service.js';
 import { createMysqlUserRepository } from './repositories/mysql-user-repository.js';
 import { createMysqlCatalogRepository } from './repositories/mysql-catalog-repository.js';
 import { createMysqlAddressRepository } from './repositories/mysql-address-repository.js';
@@ -75,10 +77,11 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: sessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
+  const phoneService = createPhoneService({ requestPhone: createWechatPhoneRequester({ appId: required(environment, 'WECHAT_MINIPROGRAM_APP_ID'), appSecret: required(environment, 'WECHAT_MINIPROGRAM_APP_SECRET') }), bindPhone: userRepository.bindPhone });
   const adminLoginService = createAdminLoginService({
     authenticate: adminRepository.authenticate,
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); } });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); } });
 }

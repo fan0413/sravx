@@ -90,6 +90,12 @@ export function createMysqlUserRepository(pool) {
       const user = rows[0];
       return { member_level: memberLevel(user.total_points), total_points: Number(user.total_points) || 0, total_spent: Number(user.total_spent) || 0, order_count: Number(user.order_count) || 0 };
     },
+    async bindPhone(userId, phone) {
+      if (!Number.isInteger(userId) || userId <= 0) throw new Error('A valid user id is required.');
+      if (typeof phone !== 'string' || !/^\+?[0-9]{6,20}$/.test(phone)) throw new Error('A valid phone is required.');
+      const [result] = await pool.execute("UPDATE users SET phone = ?, updated_at = NOW() WHERE id = ? AND status = 'active'", [phone, userId]);
+      return result.affectedRows === 1;
+    },
     async updateProfile(userId, input) {
       if (!Number.isInteger(userId) || userId <= 0) throw new Error('A valid user id is required.');
       const profile = profileInput(input);

@@ -56,7 +56,7 @@ function addressInput(value) {
   return Object.freeze({ contact, phone, province: text('province', 50), city: text('city', 50), district: text('district', 50), detail: text('detail', 200, { required: true }), tag: text('tag', 20), isDefault });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer(async (request, response) => {
     const authenticatedSession = async () => {
@@ -214,6 +214,20 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         if (!membership) { const result = error('USER_NOT_FOUND', '用户不存在', 404); return send(response, result.status, result.body); }
         return send(response, 200, { success: true, data: membership });
       } catch { const result = error('USER_OPERATION_FAILED', '会员信息暂不可用', 503); return send(response, result.status, result.body); }
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/v1/me/phone') {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!phoneService || typeof phoneService.bind !== 'function') { const result = error('PHONE_NOT_READY', '手机号服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        const body = await readJsonBody(request);
+        return send(response, 200, { success: true, data: await phoneService.bind(session.subject, body?.code) });
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        const result = error(code.includes('invalid phone code') || code === 'INVALID_JSON' || code === 'REQUEST_TOO_LARGE' ? 'INVALID_REQUEST' : 'PHONE_BIND_FAILED', code.includes('invalid phone code') ? '手机号授权凭证无效' : '手机号绑定暂不可用', code.includes('invalid phone code') || code === 'INVALID_JSON' || code === 'REQUEST_TOO_LARGE' ? 400 : 503);
+        return send(response, result.status, result.body);
+      }
     }
 
     if (request.method === 'GET' && url.pathname === '/api/v1/addresses') {
