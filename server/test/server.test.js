@@ -10,6 +10,7 @@ import { createMysqlCatalogRepository } from '../src/repositories/mysql-catalog-
 import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-admin-catalog-repository.js';
 import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
+import { collectGiftCardIntegrity } from '../scripts/check-gift-card-integrity.mjs';
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
 import { createMysqlToolRepository } from '../src/repositories/mysql-tool-repository.js';
 import { createMysqlAfterSaleRepository } from '../src/repositories/mysql-after-sale-repository.js';
@@ -626,6 +627,17 @@ test('gift card record repository scopes rows by user id and omits redemption co
   assert.match(query.sql, /WHERE r\.user_id = \?/);
   assert.doesNotMatch(query.sql, /r\.code/);
   assert.deepEqual(query.values, [51, 50, 0]);
+});
+
+test('gift card readiness check rejects incomplete ownership and card links', async () => {
+  const values = [
+    [[{ totalRecords: 3, recordsWithoutUser: 1, recordsWithoutCard: 0, recordsWithoutCardId: 0 }], []],
+    [[{ redeemedCardsWithoutRecord: 0 }], []],
+    [[{ cardsWithMultipleRecords: 0 }], []]
+  ];
+  const result = await collectGiftCardIntegrity({ execute: async () => values.shift() });
+  assert.equal(result.totalRecords, 3);
+  assert.equal(result.readyForUserScopedReads, false);
 });
 
 test('media intent policy generates only controlled catalog keys', () => {
