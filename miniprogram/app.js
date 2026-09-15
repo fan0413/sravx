@@ -99,7 +99,17 @@ App({
     wx.removeStorageSync('userInfo')
     wx.removeStorageSync('isRegistered')
     // The target API session is independent from the legacy CloudBase login.
-    // Clear both local records whenever the customer signs out.
+    // Revoke it when the opt-in endpoint is active, then always clear local state.
+    const migration = this.globalData.authenticatedApiMigration || {}
+    const cachedSession = this.globalData.authenticatedApiSession || wx.getStorageSync('sravx_authenticated_api_session')
+    const baseUrl = typeof migration.baseUrl === 'string' ? migration.baseUrl.trim().replace(/\/$/, '') : ''
+    if (migration.enabled === true && /^https:\/\//.test(baseUrl) && cachedSession && typeof cachedSession.token === 'string') {
+      wx.request({
+        url: `${baseUrl}/api/v1/auth/session`,
+        method: 'DELETE',
+        header: { Authorization: `Bearer ${cachedSession.token}` }
+      })
+    }
     this.globalData.authenticatedApiSession = null
     wx.removeStorageSync('sravx_authenticated_api_session')
   }
