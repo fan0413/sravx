@@ -11,7 +11,10 @@ App({
     readOnlyApiMigration: { enabled: false, baseUrl: 'https://api.sravxpet.com' },
     // Authenticated migration traffic remains disabled until the target HTTPS
     // endpoint has passed the internal user-session and address-book checks.
-    authenticatedApiMigration: { enabled: false, baseUrl: 'https://api.sravxpet.com' },
+    // Keep every feature false until its independent migration gate passes.
+    // Do not enable payment, order, points, tool binding, gift-card or after-sale
+    // routes through this configuration.
+    authenticatedApiMigration: { enabled: false, baseUrl: 'https://api.sravxpet.com', features: { profile: false, addresses: false, inquiries: false } },
     authenticatedApiSession: null,
     hasPhoneAuth: false,
     userProfileUpdated: false

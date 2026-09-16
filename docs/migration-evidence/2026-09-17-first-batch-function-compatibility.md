@@ -5,7 +5,7 @@
 ## 已完成的本地实现
 
 - 新 API 运行时已装配微信 code 登录、服务端会话、手机号 code 绑定、用户资料、地址和公开目录仓储。
-- 小程序 `login` 已改为受 `authenticatedApiMigration.enabled` 控制：关闭时保持调用 CloudBase `login`；开启后调用目标 API 的会话、手机号和资料接口。
+- 小程序 `login` 已改为受 `authenticatedApiMigration.enabled` 控制：关闭时保持调用 CloudBase `login`；开启后调用目标 API 的会话。资料、地址和咨询另由 `features.profile`、`features.addresses`、`features.inquiries` 分项开关控制，默认关闭。
 - 目标登录结果不回传 OpenID 或 UnionID。小程序改以目标用户 ID 和签名会话维持登录态，避免新链路继续依赖客户端身份标识。
 - 目录读取仍由独立的 `readOnlyApiMigration.enabled` 控制，目标目录为空时维持既有空集合响应形状。
 

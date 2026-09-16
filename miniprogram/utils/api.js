@@ -51,6 +51,23 @@ function getAuthenticatedApiBase() {
   return /^https:\/\//.test(baseUrl) ? baseUrl : null
 }
 
+// The authenticated migration cannot be a single switch: payment-adjacent
+// requests must continue to use CloudBase until their own cutover is approved.
+// A feature must be explicitly enabled in app.globalData.authenticatedApiMigration.features.
+function authenticatedFeatureEnabled(path, method) {
+  const config = app && app.globalData && app.globalData.authenticatedApiMigration
+  const features = config && config.features
+  if (!config || config.enabled !== true || !features || typeof features !== 'object') return false
+  // A target session resolves or creates a target user. Profile cutover is
+  // therefore the prerequisite for every other authenticated target feature.
+  if (features.profile !== true) return false
+  if (path === '/api/v1/me' && (method === 'GET' || method === 'PUT')) return features.profile === true
+  if (path === '/api/v1/me/phone' && method === 'POST') return features.profile === true
+  if (path.indexOf('/api/v1/addresses') === 0) return features.addresses === true
+  if (path === '/api/v1/inquiries' && method === 'POST') return features.inquiries === true
+  return false
+}
+
 function targetSessionCache() {
   const inMemory = app && app.globalData && app.globalData.authenticatedApiSession
   if (inMemory && typeof inMemory.token === 'string') return inMemory
@@ -108,7 +125,7 @@ async function targetSession(baseUrl) {
 
 function authenticatedMigrationRequest(path, method, data, legacyRequest) {
   const baseUrl = getAuthenticatedApiBase()
-  if (!baseUrl) return legacyRequest()
+  if (!baseUrl || !authenticatedFeatureEnabled(path, method)) return legacyRequest()
   return targetSession(baseUrl)
     .then((token) => rawTargetRequest(baseUrl, path, method, data, token))
     .catch((err) => {
@@ -331,7 +348,7 @@ function httpRequest(path, data = {}) {
  * @param {Object} phoneData - 可选，包含 encryptedData 和 iv 用于获取手机号
  */
 function login(phoneData = {}) {
-  return getAuthenticatedApiBase()
+  return authenticatedFeatureEnabled('/api/v1/me', 'GET')
     ? targetLogin(phoneData)
     : callFunction('login', phoneData, false)
 }
