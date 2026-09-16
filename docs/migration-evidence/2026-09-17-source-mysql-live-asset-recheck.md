@@ -31,6 +31,12 @@
 | `user_addresses` | 0 | `user_coupons` | 0 |
 | `user_scissors` | 10 | `users` | 52 |
 
+## 非敏感结构摘要
+
+- `information_schema.TRIGGERS`：当前源库未返回任何触发器。
+- `information_schema.EVENTS`：当前源库未返回任何 MySQL 事件。
+- 30 张表均有索引；每表索引数介于 2 至 7 个。该统计不替代完整索引定义，最终恢复仍须在受控位置导出和比较原始 DDL、索引列顺序、唯一性、外键、排序规则与 SQL 模式。
+
 ## 对放行的影响
 
 - B-03 获得了新的资产范围与汇总证据，但仍未完成：受控源 DDL/索引/触发器/事件导出、最终冻结快照、分块哈希和目标恢复对账。
