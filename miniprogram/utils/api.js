@@ -117,7 +117,7 @@ function authenticatedMigrationRequest(path, method, data, legacyRequest) {
     })
 }
 
-function targetUserLoginResult(profile) {
+function targetUserLoginResult(profile, { profileSaved = false } = {}) {
   const user = profile || {}
   const points = Number(user.points) || 0
   const totalPoints = Number(user.total_points) || 0
@@ -137,6 +137,7 @@ function targetUserLoginResult(profile) {
     occupation: typeof user.occupation === 'string' ? user.occupation : '',
     isNewUser: false,
     needsProfileSetup: !phone || !username,
+    profileSaved,
     memberLevel: Number(user.member_level) || 1,
     points,
     totalPoints
@@ -155,7 +156,7 @@ async function targetLogin(phoneData = {}) {
     await rawTargetRequest(baseUrl, '/api/v1/me', 'PUT', profileInput, token)
   }
   const profile = await rawTargetRequest(baseUrl, '/api/v1/me', 'GET', undefined, token)
-  return targetUserLoginResult(profile)
+  return targetUserLoginResult(profile, { profileSaved: !!(profileInput && typeof profileInput.username === 'string' && profileInput.username.trim()) })
 }
 
 /**

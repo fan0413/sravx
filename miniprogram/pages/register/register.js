@@ -119,7 +119,7 @@ Page({
   },
 
   async ensureLoginResult(loginRes = {}) {
-    if (loginRes && loginRes.openid) return loginRes
+    if (loginRes && (loginRes.openid || loginRes.userId)) return loginRes
 
     const refreshed = await api.login({
       profile: this.getProfilePayload()
