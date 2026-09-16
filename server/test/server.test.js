@@ -12,6 +12,7 @@ import { createMysqlCatalogRepository } from '../src/repositories/mysql-catalog-
 import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-admin-catalog-repository.js';
 import { databaseIdentifier, parseArguments as parseSchemaExportArguments } from '../scripts/schema-export.mjs';
 import { orderedTables, parseArguments as parseSchemaRestoreArguments, restorePlan } from '../scripts/schema-restore-rehearsal.mjs';
+import { compareSchemaEvidence } from '../scripts/compare-schema-evidence.mjs';
 import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { collectGiftCardIntegrity } from '../scripts/check-gift-card-integrity.mjs';
@@ -78,6 +79,14 @@ test('schema rehearsal restores only dedicated databases in foreign-key order', 
   assert.throws(() => parseSchemaRestoreArguments(['--snapshot', '/private/source.json', '--database', 'production', '--apply']), /dedicated/);
   const plan = restorePlan({ format: 'sravx-source-schema/v1', schemaSettings: { characterSet: 'utf8mb4', collation: 'utf8mb4_unicode_ci' }, objects: { tables, foreignKeys: [{ tableName: 'child', referencedTableName: 'parent' }], views: [], routines: [], triggers: [], events: [] } });
   assert.deepEqual(plan.tables.map(({ name }) => name), ['parent', 'child']);
+});
+
+test('schema evidence comparison reports only structural mismatches', () => {
+  const snapshot = { format: 'sravx-source-schema/v1', database: 'source', schemaSettings: { characterSet: 'utf8mb4', collation: 'utf8mb4_unicode_ci' }, objects: { tables: [{ name: 'users', statement: 'CREATE TABLE `users` (id INT)' }], views: [], routines: [], triggers: [], events: [], foreignKeys: [] } };
+  assert.deepEqual(compareSchemaEvidence(snapshot, { ...snapshot, database: 'rehearsal' }), { sourceSchema: 'source', targetSchema: 'rehearsal', matches: true, differences: [] });
+  const mismatched = structuredClone(snapshot);
+  mismatched.objects.tables[0].statement = 'CREATE TABLE `users` (id BIGINT)';
+  assert.deepEqual(compareSchemaEvidence(snapshot, mismatched).differences, [{ group: 'tables', name: 'users', reason: 'statement_digest_mismatch' }]);
 });
 
 test('user snapshot rejects unapproved data fields and duplicate identities', () => {
