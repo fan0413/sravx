@@ -920,8 +920,13 @@ export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<A
 
 export async function createAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
   if (targetAdminModeEnabled()) {
-    if (payload.icon || payload.image) throw new Error("目标模式下分类图片需使用即将上线的分类上传控件");
-    return targetAdminRequest<{ id: number }>("/api/v1/admin/categories", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav }) });
+    const media = (value: string | undefined) => {
+      if (!value) return null;
+      const intentId = targetMediaIntentId(value);
+      if (!intentId) throw new Error("分类图片需重新上传后再保存");
+      return { intentId };
+    };
+    return targetAdminRequest<{ id: number }>("/api/v1/admin/categories", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav, icon: media(payload.icon), image: media(payload.image) }) });
   }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
     action: "create",
@@ -933,8 +938,14 @@ export async function createAdminCategory(payload: CategoryInput): Promise<{ id:
 export async function updateAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
   if (targetAdminModeEnabled()) {
     if (!payload.id) throw new Error("缺少分类 ID");
-    if (payload.icon || payload.image) throw new Error("目标模式下分类图片需使用即将上线的分类上传控件");
-    return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${payload.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav }) });
+    const media = (value: string | undefined) => {
+      if (!value) return null;
+      const intentId = targetMediaIntentId(value);
+      if (intentId) return { intentId };
+      if (value.startsWith("catalog/categories/")) return { existingObjectKey: value };
+      throw new Error("分类图片需重新上传后再保存");
+    };
+    return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${payload.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav, icon: media(payload.icon), image: media(payload.image) }) });
   }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
     action: "update",

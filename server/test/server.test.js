@@ -890,8 +890,30 @@ test('category creation stores only a current admin confirmed category image key
   const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async () => true }, mediaIntentRepository: { getConfirmed: async ({ id }) => id === '12345678-1234-1234-1234-123456789012' ? { objectKey: 'catalog/categories/a.png' } : null }, adminCatalogRepository: { createCategory: async (value) => { stored = value; return { id: 1 }; } } });
   server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
   const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
-  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: '剪刀', imageIntentId: '12345678-1234-1234-1234-123456789012' }) });
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: '剪刀', image: { intentId: '12345678-1234-1234-1234-123456789012' } }) });
   assert.equal(response.status, 201); assert.equal(stored.image, 'catalog/categories/a.png');
+});
+
+test('category updates retain only their own confirmed media keys', async (t) => {
+  let stored;
+  const existing = { icon: 'catalog/categories/1/icon.png', image: 'catalog/categories/1/image.png' };
+  const server = createServer({
+    sessionSecret: secret,
+    adminSessionRepository: { active: async () => true },
+    adminRepository: { hasRole: async () => true },
+    mediaIntentRepository: { getConfirmed: async ({ id }) => id === '12345678-1234-1234-1234-123456789012' ? { objectKey: 'catalog/categories/1/replacement.png' } : null },
+    adminCatalogRepository: { getCategory: async () => existing, updateCategory: async (_id, value) => { stored = value; return true; } }
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const body = { name: '剪刀', icon: { existingObjectKey: existing.icon }, image: { intentId: '12345678-1234-1234-1234-123456789012' } };
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories/1`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  assert.equal(response.status, 200);
+  assert.equal(stored.icon, existing.icon);
+  assert.equal(stored.image, 'catalog/categories/1/replacement.png');
+  const forbidden = { ...body, icon: { existingObjectKey: 'catalog/categories/2/not-owned.png' } };
+  const forbiddenResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories/1`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(forbidden) });
+  assert.equal(forbiddenResponse.status, 400);
 });
 
 test('product creation stores only confirmed product media keys for every image field', async (t) => {

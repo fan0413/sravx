@@ -92,6 +92,11 @@ export function createMysqlAdminCatalogRepository(pool) {
       );
       return { id: Number(result.insertId) };
     },
+    async getCategory(id) {
+      const categoryId = integer(id); if (!categoryId) return null;
+      const [rows] = await pool.execute('SELECT id, icon, image FROM categories WHERE id = ? AND deleted_at IS NULL LIMIT 1', [categoryId]);
+      return rows[0] || null;
+    },
     async updateCategory(id, input) {
       const [result] = await pool.execute(
         `UPDATE categories SET parent_id = ?, name = ?, icon = COALESCE(?, icon), image = COALESCE(?, image), description = ?, level = ?, sort_order = ?, is_show = ?, is_nav = ?

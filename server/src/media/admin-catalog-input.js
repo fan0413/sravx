@@ -20,6 +20,16 @@ function integer(value, fallback, minimum = 0, maximum = 1000000) {
   return number;
 }
 
+function categoryMediaReference(value, name) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(`Invalid ${name}.`);
+  const intent = intentId(value.intentId, `${name}.intentId`);
+  const existingObjectKey = text(value.existingObjectKey, 512, `${name}.existingObjectKey`);
+  if ((intent ? 1 : 0) + (existingObjectKey ? 1 : 0) !== 1) throw new Error(`Invalid ${name}.`);
+  if (existingObjectKey && !existingObjectKey.startsWith('catalog/categories/')) throw new Error(`Invalid ${name}.`);
+  return intent ? { intentId: intent } : { existingObjectKey };
+}
+
 export function categoryInput(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid category payload.');
   return {
@@ -30,8 +40,8 @@ export function categoryInput(payload) {
     sortOrder: integer(payload.sortOrder, 0),
     isShow: flag(payload.isShow, 1),
     isNav: flag(payload.isNav, 0),
-    iconIntentId: text(payload.iconIntentId, 36, 'iconIntentId'),
-    imageIntentId: text(payload.imageIntentId, 36, 'imageIntentId')
+    icon: categoryMediaReference(payload.icon, 'icon'),
+    image: categoryMediaReference(payload.image, 'image')
   };
 }
 

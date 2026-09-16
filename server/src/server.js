@@ -477,7 +477,7 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
             if (!media || !media.objectKey.startsWith(prefix)) throw new Error('Unverified media.');
             return media.objectKey;
           };
-          const data = await adminCatalogRepository.createCategory({ ...input, icon: await resolve(input.iconIntentId, 'catalog/categories/'), image: await resolve(input.imageIntentId, 'catalog/categories/') });
+          const data = await adminCatalogRepository.createCategory({ ...input, icon: await resolve(input.icon?.intentId, 'catalog/categories/'), image: await resolve(input.image?.intentId, 'catalog/categories/') });
           return send(response, 201, { success: true, data });
         } catch {
           const result = error('INVALID_REQUEST', '分类内容或关联图片无效', 400); return send(response, result.status, result.body);
@@ -489,8 +489,21 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         if (!await requireCatalogEditor()) return;
         try {
           const input = categoryInput(await readJsonBody(request));
-          const resolve = async (id) => { if (!id) return null; const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id }); if (!media || !media.objectKey.startsWith('catalog/categories/')) throw new Error('Unverified media.'); return media.objectKey; };
-          if (!await adminCatalogRepository.updateCategory(Number(categoryId[1]), { ...input, icon: await resolve(input.iconIntentId), image: await resolve(input.imageIntentId) })) { const result = error('NOT_FOUND', '分类不存在', 404); return send(response, result.status, result.body); }
+          if (typeof adminCatalogRepository.getCategory !== 'function') throw new Error('Category lookup unavailable.');
+          const current = await adminCatalogRepository.getCategory(Number(categoryId[1]));
+          if (!current) { const result = error('NOT_FOUND', '分类不存在', 404); return send(response, result.status, result.body); }
+          const allowedKeys = new Set([current.icon, current.image].filter((key) => typeof key === 'string' && key.startsWith('catalog/categories/')));
+          const resolve = async (reference) => {
+            if (!reference) return null;
+            if (reference.existingObjectKey) {
+              if (!allowedKeys.has(reference.existingObjectKey)) throw new Error('Unverified media.');
+              return reference.existingObjectKey;
+            }
+            const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id: reference.intentId });
+            if (!media || !media.objectKey.startsWith('catalog/categories/')) throw new Error('Unverified media.');
+            return media.objectKey;
+          };
+          if (!await adminCatalogRepository.updateCategory(Number(categoryId[1]), { ...input, icon: await resolve(input.icon), image: await resolve(input.image) })) { const result = error('NOT_FOUND', '分类不存在', 404); return send(response, result.status, result.body); }
           return send(response, 200, { success: true, data: { id: Number(categoryId[1]) } });
         } catch { const result = error('INVALID_REQUEST', '分类内容或关联图片无效', 400); return send(response, result.status, result.body); }
       }

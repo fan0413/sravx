@@ -87,10 +87,22 @@
             placeholder="请输入分类描述"
           />
         </el-form-item>
-        <el-form-item label="图标地址">
+        <el-form-item v-if="targetMode" label="分类图标">
+          <el-upload :show-file-list="false" :auto-upload="false" accept="image/jpeg,image/png,image/webp" :on-change="handleIconChange">
+            <el-button>上传图标</el-button>
+          </el-upload>
+          <el-button v-if="form.icon" link type="danger" @click="form.icon = ''">移除</el-button>
+        </el-form-item>
+        <el-form-item v-else label="图标地址">
           <el-input v-model="form.icon" placeholder="可选，用于前台小图标" />
         </el-form-item>
-        <el-form-item label="图片地址">
+        <el-form-item v-if="targetMode" label="分类图片">
+          <el-upload :show-file-list="false" :auto-upload="false" accept="image/jpeg,image/png,image/webp" :on-change="handleImageChange">
+            <el-button>上传图片</el-button>
+          </el-upload>
+          <el-button v-if="form.image" link type="danger" @click="form.image = ''">移除</el-button>
+        </el-form-item>
+        <el-form-item v-else label="图片地址">
           <el-input v-model="form.image" placeholder="可选，用于分类封面图" />
         </el-form-item>
         <el-form-item label="排序">
@@ -113,17 +125,19 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from "element-plus";
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadFile } from "element-plus";
 import {
   createAdminCategory,
   deleteAdminCategory,
   fetchAdminCategories,
   toggleAdminCategory,
   updateAdminCategory,
+  uploadAdminImages,
   type CategoryInput,
   type CategoryQuery
 } from "../../api/admin";
 import type { CategoryRow } from "../../api/types";
+import { targetAdminModeEnabled } from "../../lib/target-admin-auth";
 
 const rows = ref<CategoryRow[]>([]);
 const loading = ref(false);
@@ -132,6 +146,7 @@ const total = ref(0);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
 const formRef = ref<FormInstance>();
+const targetMode = targetAdminModeEnabled();
 
 const query = reactive<CategoryQuery>({
   keyword: "",
@@ -208,6 +223,29 @@ function openEdit(row: CategoryRow) {
     is_nav: row.is_nav || 0
   });
   dialogVisible.value = true;
+}
+
+async function uploadCategoryMedia(field: "icon" | "image", file: UploadFile) {
+  if (!file.raw) return;
+  try {
+    saving.value = true;
+    const [uploaded] = await uploadAdminImages([file.raw as unknown as File], "categories");
+    if (!uploaded) throw new Error("图片上传失败");
+    form[field] = uploaded;
+    ElMessage.success("图片已上传，保存分类后生效");
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "图片上传失败");
+  } finally {
+    saving.value = false;
+  }
+}
+
+function handleIconChange(file: UploadFile) {
+  return uploadCategoryMedia("icon", file);
+}
+
+function handleImageChange(file: UploadFile) {
+  return uploadCategoryMedia("image", file);
 }
 
 async function handleSubmit() {
