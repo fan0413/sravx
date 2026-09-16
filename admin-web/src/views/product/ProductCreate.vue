@@ -469,7 +469,7 @@ const parseStringArray = (value: unknown): string[] => {
 const toPreviewUrl = (url: string, urlMap: Record<string, string>) => {
   const raw = String(url || "").trim();
   if (!raw) return "";
-  if (raw.startsWith("cloud://")) return urlMap[raw] || raw;
+  if (raw.startsWith("cloud://") || raw.startsWith("catalog/")) return urlMap[raw] || raw;
   return raw;
 };
 
@@ -502,16 +502,16 @@ const loadProductDetail = async (id: number) => {
   const images = parseStringArray(detail.images);
   const detailImagesRaw = parseStringArray(detail.detail_images);
   const specsRaw = Array.isArray(detail.specs) ? detail.specs : [];
-  const specImageCloudIds = specsRaw
+  const specImageObjectKeys = specsRaw
     .map((item) => String((item as Record<string, unknown>).image || "").trim())
-    .filter((item) => item.startsWith("cloud://"));
-  const specCardImageCloudIds = specsRaw
+    .filter((item) => item.startsWith("cloud://") || item.startsWith("catalog/"));
+  const specCardImageObjectKeys = specsRaw
     .map((item) => String((item as Record<string, unknown>).card_image || "").trim())
-    .filter((item) => item.startsWith("cloud://"));
-  const allCloudIds = [cover, ...images, ...detailImagesRaw, ...specImageCloudIds, ...specCardImageCloudIds]
+    .filter((item) => item.startsWith("cloud://") || item.startsWith("catalog/"));
+  const allObjectKeys = [cover, ...images, ...detailImagesRaw, ...specImageObjectKeys, ...specCardImageObjectKeys]
     .map((item) => String(item || "").trim())
-    .filter((item) => item.startsWith("cloud://"));
-  const urlMap = await resolveAdminFileUrls(allCloudIds);
+    .filter((item) => item.startsWith("cloud://") || item.startsWith("catalog/"));
+  const urlMap = await resolveAdminFileUrls(allObjectKeys);
 
   coverUploadFiles.value = cover ? buildUploadFilesFromUrls([cover], urlMap) : [];
   galleryUploadFiles.value = buildUploadFilesFromUrls(images, urlMap);
@@ -520,12 +520,15 @@ const loadProductDetail = async (id: number) => {
   syncGalleryImages(undefined, galleryUploadFiles.value as UploadFiles);
   syncDetailImages(undefined, detailUploadFiles.value as UploadFiles);
 
+  const savedParams = detail.params && typeof detail.params === "object" && !Array.isArray(detail.params)
+    ? detail.params as Record<string, unknown>
+    : {};
   const paramsData: Record<string, unknown> = {
-    核心材质: detail.core_material || "",
-    手柄材质: detail.handle_material || "",
-    尺寸: detail.size || "",
-    "重量(g)": detail.weight || "",
-    质保周期: detail.warranty_period || ""
+    核心材质: savedParams.核心材质 ?? detail.core_material ?? "",
+    手柄材质: savedParams.手柄材质 ?? detail.handle_material ?? "",
+    尺寸: savedParams.尺寸 ?? detail.size ?? "",
+    "重量(g)": savedParams["重量(g)"] ?? detail.weight ?? "",
+    质保周期: savedParams.质保周期 ?? detail.warranty_period ?? ""
   };
   paramRows.value = paramRows.value.map((item) => ({
     key: item.key,
@@ -1052,7 +1055,7 @@ const handleSave = async () => {
 
     let res: { id: number };
     if (isEditMode.value) {
-      if (targetAdminModeEnabled()) throw new Error("目标商品编辑仍在核验，请在切换前保持此商品不变");
+
       const payload = await buildPayload(`products/${editingId.value}`);
       res = await updateAdminProduct({ ...payload, id: editingId.value });
     } else {

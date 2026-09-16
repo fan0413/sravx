@@ -7,7 +7,7 @@
 ## 已纳入目标模式
 
 - 目标看板（商品与轮播图统计）
-- 商品列表、新建商品、删除商品
+- 商品列表、新建商品、编辑商品（含库存与履约信息）、删除商品
 - 分类列表
 - 轮播图管理
 - 私有 COS 商品与轮播图预览链接
@@ -16,15 +16,15 @@
 
 ## 暂不开放
 
-积分商品、订单、退款、用户、优惠券、礼品卡、剪刀 SN、剪刀售后、合作咨询，以及商品编辑和库存调整。这些页面在目标模式下从菜单隐藏；通过地址直接进入时会回到目标看板。
+积分商品、订单、退款、用户、优惠券、礼品卡、剪刀 SN、剪刀售后和合作咨询。这些页面在目标模式下从菜单隐藏；通过地址直接进入时会回到目标看板。
 
 ## 验证
 
-2026-09-11 在本机执行：
+2026-09-16 在本机执行：
 
 ```powershell
 $env:VITE_ADMIN_AUTH_MODE='target'
-Remove-Item Env:VITE_API_BASE_URL -ErrorAction SilentlyContinue
+$env:VITE_API_BASE_URL='https://admin-api.invalid'
 npm --prefix D:\saven\admin-web run build
 ```
 
@@ -32,4 +32,4 @@ npm --prefix D:\saven\admin-web run build
 
 ## 发布状态
 
-本次未发布静态管理端。`admin.sravxpet.com` 的互联网信息服务接入备案仍在办理，待通过后需先设置 COS 精确 CORS 规则并在浏览器完成登录、上传、目录写入和私有图片回显的端到端验收，再发布本构建产物。
+本次未发布静态管理端。根域名的 ICP 接入服务已显示正常，但尚未核验 `admin.sravxpet.com` 的 DNS、证书、COS 精确 CORS 与浏览器端到端流程；完成这些核验前不得发布构建产物。

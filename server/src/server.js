@@ -4,7 +4,7 @@ import { EmptyCatalogRepository } from './repositories/catalog-repository.js';
 import { catalogResponse } from './routes/catalog.js';
 import { getBearerToken, validateSigningSecret, verifySession } from './security/session.js';
 import { createUploadIntent } from './media/upload-policy.js';
-import { bannerInput, categoryInput, productInput } from './media/admin-catalog-input.js';
+import { bannerInput, categoryInput, productInput, productUpdateInput } from './media/admin-catalog-input.js';
 
 const JSON_HEADERS = Object.freeze({
   'content-type': 'application/json; charset=utf-8',
@@ -568,7 +568,34 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       if (productDetail && request.method === 'PUT') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.updateProduct !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
         if (!await requireCatalogEditor()) return;
-        try { const input = productInput(await readJsonBody(request), { existing: true }); const resolve = async (id) => { if (!id) return null; const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id }); if (!media || !media.objectKey.startsWith('catalog/products/')) throw new Error('Unverified media.'); return media.objectKey; }; const resolveMany = async (ids) => Promise.all(ids.map(resolve)); if (!await adminCatalogRepository.updateProduct(Number(productDetail[1]), { ...input, coverImage: await resolve(input.coverImageIntentId), images: await resolveMany(input.imageIntentIds), detailImages: await resolveMany(input.detailImageIntentIds), scissorsCardImage: await resolve(input.scissorsCardImageIntentId), specs: await Promise.all(input.specs.map(async (spec) => ({ ...spec, image: await resolve(spec.imageIntentId), cardImage: await resolve(spec.cardImageIntentId) }))) })) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); } return send(response, 200, { success: true, data: { id: Number(productDetail[1]) } }); } catch { const result = error('INVALID_REQUEST', '商品、规格、履约信息或关联图片无效', 400); return send(response, result.status, result.body); }
+        try {
+          const input = productUpdateInput(await readJsonBody(request));
+          if (typeof adminCatalogRepository.getProduct !== 'function') throw new Error('Product lookup unavailable.');
+          const current = await adminCatalogRepository.getProduct(Number(productDetail[1]));
+          if (!current) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); }
+          const storedKeys = [current.cover_image, ...(Array.isArray(current.images) ? current.images : []), ...(Array.isArray(current.detail_images) ? current.detail_images : []), current.scissors_card_image, ...(Array.isArray(current.specs) ? current.specs.flatMap((spec) => [spec.image, spec.card_image]) : [])]
+            .filter((key) => typeof key === 'string' && key.startsWith('catalog/products/'));
+          const allowedKeys = new Set(storedKeys);
+          const resolve = async (reference) => {
+            if (!reference) return null;
+            if (reference.existingObjectKey) {
+              if (!allowedKeys.has(reference.existingObjectKey)) throw new Error('Unverified media.');
+              return reference.existingObjectKey;
+            }
+            const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id: reference.intentId });
+            if (!media || !media.objectKey.startsWith('catalog/products/')) throw new Error('Unverified media.');
+            return media.objectKey;
+          };
+          if (!await adminCatalogRepository.updateProduct(Number(productDetail[1]), {
+            ...input,
+            coverImage: await resolve(input.coverImage),
+            images: await Promise.all(input.images.map(resolve)),
+            detailImages: await Promise.all(input.detailImages.map(resolve)),
+            scissorsCardImage: await resolve(input.scissorsCardImage),
+            specs: await Promise.all(input.specs.map(async (spec) => ({ ...spec, image: await resolve(spec.image), cardImage: await resolve(spec.cardImage) })))
+          })) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: Number(productDetail[1]) } });
+        } catch { const result = error('INVALID_REQUEST', '商品、规格、履约信息或关联图片无效', 400); return send(response, result.status, result.body); }
       }
       if (productDetail && request.method === 'DELETE') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.deleteProduct !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }

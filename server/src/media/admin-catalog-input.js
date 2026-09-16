@@ -78,3 +78,50 @@ export function productInput(payload, { existing = false } = {}) {
   if (specs.length > 50) throw new Error('Too many specifications.');
   return { name: text(payload.name, 200, 'name', { required: true }), shortName: text(payload.shortName, 50, 'shortName'), description: text(payload.description, 500, 'description'), price: decimal(payload.price, 'price', { required: true }), categoryId: integer(payload.categoryId, null, 1), coverImageIntentId: intentId(payload.coverImageIntentId, 'coverImageIntentId', !existing), imageIntentIds: intentIds(payload.imageIntentIds, 'imageIntentIds', 7), detailImageIntentIds: intentIds(payload.detailImageIntentIds, 'detailImageIntentIds', 30), scissorsCardImageIntentId: intentId(payload.scissorsCardImageIntentId, 'scissorsCardImageIntentId'), params: productParams(payload.params), stock: integer(payload.stock, 0), warrantyMonths: integer(payload.warrantyMonths, null, 0, 1200), hasSpec, isOnSale: flag(payload.isOnSale, 1), isRecommend: flag(payload.isRecommend, 0), allowCoupon: flag(payload.allowCoupon, 1), sortOrder: integer(payload.sortOrder, 0), ...fulfillment(payload), specs: specs.map((spec) => ({ name: text(spec?.name, 50, 'spec.name', { required: true }), sku: text(spec?.sku, 64, 'spec.sku'), imageIntentId: intentId(spec?.imageIntentId, 'spec.imageIntentId'), cardImageIntentId: intentId(spec?.cardImageIntentId, 'spec.cardImageIntentId'), price: decimal(spec?.price, 'spec.price', { required: true }), sortOrder: integer(spec?.sortOrder, 0), ...fulfillment(spec || {}) })) };
 }
+
+function mediaReference(value, name, { required = false } = {}) {
+  if (value === undefined || value === null) {
+    if (required) throw new Error(`${name} is required.`);
+    return null;
+  }
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error(`Invalid ${name}.`);
+  const intent = intentId(value.intentId, `${name}.intentId`);
+  const existingObjectKey = text(value.existingObjectKey, 512, `${name}.existingObjectKey`);
+  if ((intent ? 1 : 0) + (existingObjectKey ? 1 : 0) !== 1) throw new Error(`Invalid ${name}.`);
+  if (existingObjectKey && !existingObjectKey.startsWith('catalog/products/')) throw new Error(`Invalid ${name}.`);
+  return intent ? { intentId: intent } : { existingObjectKey };
+}
+
+function mediaReferences(value, name, maximum) {
+  if (!Array.isArray(value) || value.length > maximum) throw new Error(`Invalid ${name}.`);
+  return value.map((item, index) => mediaReference(item, `${name}[${index}]`, { required: true }));
+}
+
+export function productUpdateInput(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid product payload.');
+  const coverImage = mediaReference(payload.coverImage, 'coverImage');
+  const images = mediaReferences(payload.images, 'images', 7);
+  const detailImages = mediaReferences(payload.detailImages, 'detailImages', 30);
+  const scissorsCardImage = mediaReference(payload.scissorsCardImage, 'scissorsCardImage');
+  const specs = Array.isArray(payload.specs) ? payload.specs : [];
+  const normalized = productInput({
+    ...payload,
+    coverImageIntentId: coverImage?.intentId,
+    imageIntentIds: [],
+    detailImageIntentIds: [],
+    scissorsCardImageIntentId: scissorsCardImage?.intentId,
+    specs: specs.map((spec) => ({ ...spec, imageIntentId: null, cardImageIntentId: null }))
+  }, { existing: true });
+  return {
+    ...normalized,
+    coverImage,
+    images,
+    detailImages,
+    scissorsCardImage,
+    specs: normalized.specs.map((spec, index) => ({
+      ...spec,
+      image: mediaReference(specs[index]?.image, `specs[${index}].image`),
+      cardImage: mediaReference(specs[index]?.cardImage, `specs[${index}].cardImage`)
+    }))
+  };
+}

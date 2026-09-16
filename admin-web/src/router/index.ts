@@ -166,7 +166,7 @@ const router = createRouter({
   routes
 });
 
-const targetAllowedRouteNames = new Set(["Dashboard", "ProductList", "ProductCreate", "CategoryList", "BannerList"]);
+const targetAllowedRouteNames = new Set(["Dashboard", "ProductList", "ProductCreate", "ProductEdit", "CategoryList", "BannerList"]);
 
 router.beforeEach(async (to) => {
   if (to.meta.public) return true;

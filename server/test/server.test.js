@@ -883,6 +883,42 @@ test('product creation stores only confirmed product media keys for every image 
   assert.equal(stored.specs[0].image, `catalog/products/${ids[3]}.png`);
 });
 
+test('product update retains only its own existing object keys and accepts confirmed replacements', async (t) => {
+  let stored;
+  const existing = {
+    cover_image: 'catalog/products/1/cover.png',
+    images: ['catalog/products/1/gallery.png'],
+    detail_images: ['catalog/products/1/detail.png'],
+    scissors_card_image: null,
+    specs: [{ image: 'catalog/products/1/spec.png', card_image: null }]
+  };
+  const server = createServer({
+    sessionSecret: secret,
+    adminSessionRepository: { active: async () => true },
+    adminRepository: { hasRole: async () => true },
+    mediaIntentRepository: { getConfirmed: async ({ id }) => id === '55555555-5555-5555-5555-555555555555' ? { objectKey: 'catalog/products/1/replacement.png' } : null },
+    adminCatalogRepository: {
+      getProduct: async () => existing,
+      updateProduct: async (_id, value) => { stored = value; return true; }
+    }
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const base = {
+    name: '宠物剪刀', price: 99, categoryId: 1, coverImage: { existingObjectKey: existing.cover_image }, images: [{ existingObjectKey: existing.images[0] }], detailImages: [{ intentId: '55555555-5555-5555-5555-555555555555' }], params: {}, stock: 3, warrantyMonths: 12, hasSpec: 1, isOnSale: 1, isRecommend: 0, allowCoupon: 1,
+    shippingType: 'normal', shipDeadlineDays: 2, shippingPromise: '付款后 2 天内发货', shippingDelayReason: '现货', shippingNote: '工作日发货',
+    specs: [{ name: '标准款', sku: 'S-1', image: { existingObjectKey: existing.specs[0].image }, cardImage: null, price: 99, sortOrder: 1, shippingType: 'normal', shipDeadlineDays: 2, shippingPromise: '付款后 2 天内发货', shippingDelayReason: '现货', shippingNote: '工作日发货' }]
+  };
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products/1`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(base) });
+  assert.equal(response.status, 200);
+  assert.equal(stored.coverImage, existing.cover_image);
+  assert.deepEqual(stored.images, existing.images);
+  assert.deepEqual(stored.detailImages, ['catalog/products/1/replacement.png']);
+
+  const forbidden = { ...base, images: [{ existingObjectKey: 'catalog/products/2/not-owned.png' }] };
+  const forbiddenResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products/1`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(forbidden) });
+  assert.equal(forbiddenResponse.status, 400);
+});
 test('readiness distinguishes an unavailable dependency from process liveness', async (t) => {
   const ready = createServer({ sessionSecret: secret, healthCheck: async () => {} });
   ready.listen(0, '127.0.0.1'); await once(ready, 'listening'); t.after(() => ready.close());

@@ -120,9 +120,10 @@
         </template>
       </el-table-column>
       <el-table-column prop="updated_at" label="更新时间" min-width="170" />
-      <el-table-column label="操作" :width="targetMode ? 100 : 180" fixed="right" align="center" header-align="center">
+      <el-table-column label="操作" :width="targetMode ? 160 : 180" fixed="right" align="center" header-align="center">
         <template #default="{ row }">
           <template v-if="targetMode">
+            <el-button link type="primary" @click="router.push(`/product/edit/${row.id}`)">编辑商品</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除商品</el-button>
           </template>
           <template v-else>

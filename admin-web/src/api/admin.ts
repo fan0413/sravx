@@ -1885,7 +1885,38 @@ export async function createAdminProduct(payload: CreateProductInput): Promise<{
   return unwrapCloudResponse(result, "后台创建商品失败");
 }
 
+type TargetProductMediaReference = { intentId: string } | { existingObjectKey: string };
+
+function targetProductMediaReference(value: string | undefined | null): TargetProductMediaReference | null {
+  const source = String(value || '').trim();
+  if (!source) return null;
+  const intentId = targetMediaIntentId(source);
+  if (intentId) return { intentId };
+  if (source.startsWith('catalog/products/')) return { existingObjectKey: source };
+  throw new Error('商品图片已失效，请重新上传后再保存');
+}
+
+function targetProductMediaReferences(values: string[] | undefined): TargetProductMediaReference[] {
+  return (values || []).map((value) => {
+    const reference = targetProductMediaReference(value);
+    if (!reference) throw new Error('商品图片不能为空');
+    return reference;
+  });
+}
+
+function targetProductUpdateBody(payload: CreateProductInput) {
+  const primarySpec = payload.specs?.[0];
+  if (!primarySpec) throw new Error('请至少填写一个规格及其履约信息');
+  return {
+    name: payload.name, shortName: payload.short_name, description: payload.desc, price: payload.price, categoryId: payload.category_id,
+    coverImage: targetProductMediaReference(payload.cover_image), images: targetProductMediaReferences(payload.images), detailImages: targetProductMediaReferences(payload.detail_images), scissorsCardImage: targetProductMediaReference(payload.scissors_card_image),
+    params: payload.params, stock: payload.stock, warrantyMonths: payload.warranty_months, hasSpec: payload.has_spec, sortOrder: payload.sort_order, isOnSale: payload.is_on_sale, isRecommend: payload.is_recommend, allowCoupon: payload.allow_coupon,
+    shippingType: primarySpec.shipping_type, shipDeadlineDays: primarySpec.ship_deadline_days, shippingPromise: primarySpec.shipping_promise, shippingDelayReason: primarySpec.shipping_delay_reason, shippingNote: primarySpec.shipping_note,
+    specs: (payload.specs || []).map((spec) => ({ name: spec.name, sku: spec.sku, image: targetProductMediaReference(spec.image), cardImage: targetProductMediaReference(spec.card_image), price: spec.price, sortOrder: spec.sort_order, shippingType: spec.shipping_type, shipDeadlineDays: spec.ship_deadline_days, shippingPromise: spec.shipping_promise, shippingDelayReason: spec.shipping_delay_reason, shippingNote: spec.shipping_note }))
+  };
+}
 export async function fetchAdminProductDetail(id: number): Promise<Record<string, unknown>> {
+  if (targetAdminModeEnabled()) return targetAdminRequest<Record<string, unknown>>(`/api/v1/admin/products/${id}`);
   const result = await callCloudFunction<CloudFunctionResponse<Record<string, unknown>>>("admin-product", {
     action: "detail",
     id
@@ -1894,7 +1925,10 @@ export async function fetchAdminProductDetail(id: number): Promise<Record<string
 }
 
 export async function updateAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) throw new Error("目标商品编辑仍在核验，当前可创建新商品或删除空商品");
+  if (targetAdminModeEnabled()) {
+    if (!payload.id) throw new Error("商品编号无效");
+    return targetAdminRequest<{ id: number }>(`/api/v1/admin/products/${payload.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(targetProductUpdateBody(payload)) });
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-product", {
     action: "update",
     ...payload
