@@ -14,6 +14,7 @@ import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { collectGiftCardIntegrity } from '../scripts/check-gift-card-integrity.mjs';
 import { compareRowEvidence } from '../scripts/compare-row-evidence.mjs';
+import { evaluatePreflight } from '../scripts/user-import-preflight.mjs';
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
 import { createMysqlToolRepository } from '../src/repositories/mysql-tool-repository.js';
 import { createMysqlAfterSaleRepository } from '../src/repositories/mysql-after-sale-repository.js';
@@ -29,6 +30,19 @@ import { createAdminLoginService } from '../src/auth/admin-login-service.js';
 import { createRequestAuditLogger } from '../src/observability/request-audit.js';
 
 const secret = 'test-only-session-secret-which-is-long-enough-123456';
+
+test('user-import preflight limits the scope and rejects missing identity data', () => {
+  const users = [{ name: 'id' }, { name: 'status' }, { name: 'openid' }, { name: 'username' }, { name: 'points' }];
+  const result = evaluatePreflight({
+    sourceUsers: users,
+    targetUsers: users,
+    targetIdentities: Object.assign([{ name: 'user_id' }, { name: 'provider' }, { name: 'provider_subject' }], { indexes: [{ name: 'uk_user_identities_provider_subject', unique: true, columns: ['provider', 'provider_subject'] }] }),
+    sourceSummary: { total: 2, identityEligible: 1, identityMissing: 1, identityColumns: ['openid'] }
+  });
+  assert.deepEqual(result.importColumns, ['id', 'status', 'openid', 'username']);
+  assert.deepEqual(result.blockers, ['SOURCE_USERS_WITHOUT_IDENTITY']);
+  assert.equal(result.readyForIsolatedImport, false);
+});
 
 async function start() {
   const server = createServer({ sessionSecret: secret });
