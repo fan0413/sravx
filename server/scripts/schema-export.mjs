@@ -13,8 +13,8 @@ export function quoteIdentifier(value) {
 }
 
 export function parseArguments(args) {
-  if (args.length !== 4 || args[0] !== '--database' || !args[1] || args[2] !== '--output' || !args[3]) {
-    throw new Error('Usage: --database <source-database> --output <controlled-json-path>');
+  if (args.length !== 5 || args[0] !== '--database' || !args[1] || args[2] !== '--output' || !args[3] || args[4] !== '--apply') {
+    throw new Error('Usage: --database <source-database> --output <controlled-json-path> --apply');
   }
   return { database: databaseIdentifier(args[1]), output: args[3] };
 }

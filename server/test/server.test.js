@@ -63,8 +63,8 @@ test('user-import preflight accepts either order for the identity unique key', (
 test('schema exporter accepts only controlled database and output arguments', () => {
   assert.equal(databaseIdentifier('cloud1-8gk3bptqefbf01d6'), 'cloud1-8gk3bptqefbf01d6');
   assert.throws(() => databaseIdentifier('source; DROP DATABASE source'), /Invalid/);
-  assert.deepEqual(parseSchemaExportArguments(['--database', 'source_db', '--output', '/private/schema.json']), { database: 'source_db', output: '/private/schema.json' });
-  assert.throws(() => parseSchemaExportArguments(['--database', 'source_db']), /Usage/);
+  assert.deepEqual(parseSchemaExportArguments(['--database', 'source_db', '--output', '/private/schema.json', '--apply']), { database: 'source_db', output: '/private/schema.json' });
+  assert.throws(() => parseSchemaExportArguments(['--database', 'source_db', '--output', '/private/schema.json']), /Usage/);
 });
 
 test('user snapshot rejects unapproved data fields and duplicate identities', () => {
