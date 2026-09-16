@@ -10,6 +10,7 @@ import { createPhoneService } from '../src/auth/phone-service.js';
 import { createMysqlUserRepository } from '../src/repositories/mysql-user-repository.js';
 import { createMysqlCatalogRepository } from '../src/repositories/mysql-catalog-repository.js';
 import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-admin-catalog-repository.js';
+import { databaseIdentifier, parseArguments as parseSchemaExportArguments } from '../scripts/schema-export.mjs';
 import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { collectGiftCardIntegrity } from '../scripts/check-gift-card-integrity.mjs';
@@ -57,6 +58,13 @@ test('user-import preflight accepts either order for the identity unique key', (
   const users = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'varchar(128)' }];
   const result = evaluatePreflight({ sourceUsers: users, targetUsers: users, targetIdentities: Object.assign([{ name: 'user_id' }, { name: 'provider' }, { name: 'provider_subject' }], { indexes: [{ name: 'identity_reverse', unique: true, columns: ['provider_subject', 'provider'] }] }), sourceSummary: { total: 1, identityEligible: 1, identityMissing: 0, identityColumns: ['openid'] } });
   assert.equal(result.readyForIsolatedImport, true);
+});
+
+test('schema exporter accepts only controlled database and output arguments', () => {
+  assert.equal(databaseIdentifier('cloud1-8gk3bptqefbf01d6'), 'cloud1-8gk3bptqefbf01d6');
+  assert.throws(() => databaseIdentifier('source; DROP DATABASE source'), /Invalid/);
+  assert.deepEqual(parseSchemaExportArguments(['--database', 'source_db', '--output', '/private/schema.json']), { database: 'source_db', output: '/private/schema.json' });
+  assert.throws(() => parseSchemaExportArguments(['--database', 'source_db']), /Usage/);
 });
 
 test('user snapshot rejects unapproved data fields and duplicate identities', () => {
