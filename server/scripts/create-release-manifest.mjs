@@ -6,12 +6,12 @@ import { fileURLToPath } from 'node:url';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, '../..');
-async function sourceFiles(directory) {
+async function sourceFiles(directory, extensions = ['.js']) {
   const entries = await readdir(directory, { withFileTypes: true });
   const files = await Promise.all(entries.map(async (entry) => {
     const path = resolve(directory, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path);
-    return entry.isFile() && entry.name.endsWith('.js') ? [path] : [];
+    if (entry.isDirectory()) return sourceFiles(path, extensions);
+    return entry.isFile() && extensions.some((extension) => entry.name.endsWith(extension)) ? [path] : [];
   }));
   return files.flat();
 }
@@ -20,6 +20,9 @@ const artifactFiles = [
   'package-lock.json',
   'package.json',
   ...(await sourceFiles(resolve(repositoryRoot, 'server/src')))
+    .map((path) => relative(resolve(repositoryRoot, 'server'), path).replaceAll('\\', '/'))
+    .sort(),
+  ...(await sourceFiles(resolve(repositoryRoot, 'server/scripts'), ['.mjs', '.sh']))
     .map((path) => relative(resolve(repositoryRoot, 'server'), path).replaceAll('\\', '/'))
     .sort()
 ];
