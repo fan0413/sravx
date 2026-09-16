@@ -53,6 +53,12 @@ test('user-import preflight requires the identity unique key and compatible fiel
   assert.deepEqual(result.blockers, ['TARGET_IDENTITY_UNIQUENESS_MISSING', 'USER_FIELD_TYPE_MISMATCH']);
 });
 
+test('user-import preflight accepts either order for the identity unique key', () => {
+  const users = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'varchar(128)' }];
+  const result = evaluatePreflight({ sourceUsers: users, targetUsers: users, targetIdentities: Object.assign([{ name: 'user_id' }, { name: 'provider' }, { name: 'provider_subject' }], { indexes: [{ name: 'identity_reverse', unique: true, columns: ['provider_subject', 'provider'] }] }), sourceSummary: { total: 1, identityEligible: 1, identityMissing: 0, identityColumns: ['openid'] } });
+  assert.equal(result.readyForIsolatedImport, true);
+});
+
 test('user snapshot rejects unapproved data fields and duplicate identities', () => {
   assert.deepEqual(selectUserBaseColumns(['id', 'status', 'openid', 'username', 'avatar', 'points']), ['id', 'status', 'openid', 'username']);
   assert.deepEqual(identityBindings({ openid: 'open', _openid: 'other', unionid: 'union' }), [{ provider: 'wechat_miniprogram_openid', subject: 'open' }, { provider: 'wechat_unionid', subject: 'union' }]);

@@ -89,7 +89,7 @@ export function evaluatePreflight({ sourceUsers, targetUsers, targetIdentities, 
   const sourceByName = new Map(sourceUsers.map((column) => [column.name, column]));
   const targetByName = new Map(targetUsers.map((column) => [column.name, column]));
   const typeMismatches = importColumns.filter((name) => comparableType(sourceByName.get(name)?.type) !== comparableType(targetByName.get(name)?.type));
-  const identityUnique = (targetIdentities.indexes || []).some((index) => index.unique && JSON.stringify(index.columns) === JSON.stringify(['provider', 'provider_subject']));
+  const identityUnique = (targetIdentities.indexes || []).some((index) => index.unique && index.columns.length === 2 && new Set(index.columns).size === 2 && index.columns.includes('provider') && index.columns.includes('provider_subject'));
   const blockers = [];
   if (missingSource.length) blockers.push('SOURCE_USERS_SCHEMA_INCOMPLETE');
   if (missingTarget.length) blockers.push('TARGET_USERS_SCHEMA_INCOMPLETE');
