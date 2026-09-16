@@ -69,6 +69,11 @@ export async function exportSchema(connection, database) {
   const schema = databaseIdentifier(database);
   await connection.query('SET SESSION TRANSACTION READ ONLY');
   const [[settings]] = await connection.query('SELECT @@version AS version, @@sql_mode AS sqlMode, @@time_zone AS timeZone, @@character_set_server AS characterSetServer, @@collation_server AS collationServer');
+  const [[schemaSettings]] = await connection.execute(
+    `SELECT DEFAULT_CHARACTER_SET_NAME AS characterSet, DEFAULT_COLLATION_NAME AS collation
+       FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?`, [schema]
+  );
+  if (!schemaSettings) throw new Error(`Schema ${schema} was not found.`);
   const [tables] = await connection.execute(
     `SELECT TABLE_NAME AS name, TABLE_TYPE AS type, ENGINE AS engine, TABLE_COLLATION AS collation
        FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? ORDER BY TABLE_NAME`, [schema]
@@ -106,6 +111,7 @@ export async function exportSchema(connection, database) {
     collectedAt: new Date().toISOString(),
     database: schema,
     settings,
+    schemaSettings,
     objects: {
       tables: await createStatements(connection, schema, 'TABLE', baseTables),
       views: await createStatements(connection, schema, 'VIEW', views),

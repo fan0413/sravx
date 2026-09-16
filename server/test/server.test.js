@@ -11,6 +11,7 @@ import { createMysqlUserRepository } from '../src/repositories/mysql-user-reposi
 import { createMysqlCatalogRepository } from '../src/repositories/mysql-catalog-repository.js';
 import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-admin-catalog-repository.js';
 import { databaseIdentifier, parseArguments as parseSchemaExportArguments } from '../scripts/schema-export.mjs';
+import { orderedTables, parseArguments as parseSchemaRestoreArguments, restorePlan } from '../scripts/schema-restore-rehearsal.mjs';
 import { parseArguments, quoteIdentifier } from '../scripts/row-baseline.mjs';
 import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks.mjs';
 import { collectGiftCardIntegrity } from '../scripts/check-gift-card-integrity.mjs';
@@ -65,6 +66,18 @@ test('schema exporter accepts only controlled database and output arguments', ()
   assert.throws(() => databaseIdentifier('source; DROP DATABASE source'), /Invalid/);
   assert.deepEqual(parseSchemaExportArguments(['--database', 'source_db', '--output', '/private/schema.json', '--apply']), { database: 'source_db', output: '/private/schema.json' });
   assert.throws(() => parseSchemaExportArguments(['--database', 'source_db', '--output', '/private/schema.json']), /Usage/);
+});
+
+test('schema rehearsal restores only dedicated databases in foreign-key order', () => {
+  const tables = [
+    { name: 'child', statement: 'CREATE TABLE child (id INT)' },
+    { name: 'parent', statement: 'CREATE TABLE parent (id INT)' }
+  ];
+  assert.deepEqual(orderedTables(tables, [{ tableName: 'child', referencedTableName: 'parent' }]).map(({ name }) => name), ['parent', 'child']);
+  assert.deepEqual(parseSchemaRestoreArguments(['--snapshot', '/private/source.json', '--database', 'sravx_rehearsal_20260917', '--apply']), { snapshot: '/private/source.json', database: 'sravx_rehearsal_20260917' });
+  assert.throws(() => parseSchemaRestoreArguments(['--snapshot', '/private/source.json', '--database', 'production', '--apply']), /dedicated/);
+  const plan = restorePlan({ format: 'sravx-source-schema/v1', schemaSettings: { characterSet: 'utf8mb4', collation: 'utf8mb4_unicode_ci' }, objects: { tables, foreignKeys: [{ tableName: 'child', referencedTableName: 'parent' }], views: [], routines: [], triggers: [], events: [] } });
+  assert.deepEqual(plan.tables.map(({ name }) => name), ['parent', 'child']);
 });
 
 test('user snapshot rejects unapproved data fields and duplicate identities', () => {
