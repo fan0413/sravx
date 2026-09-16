@@ -1,47 +1,43 @@
 # 目标库数据范围（待实施）
 
-更新：2026-09-09。此文件只定义迁移范围，不执行导入、删除或 DDL。
+更新：2026-09-16。此文件只定义迁移范围，不执行导入、删除或 DDL。
 
-## 已确认：重新建设商品目录
+## 已确认：不导入商品目录
 
-负责人确认新系统的商品主数据和商品图片全部重新上传。因此最终导入不得把以下源表的数据作为新店商品目录写入目标生产库：
+负责人确认新系统的商品主数据和商品图片全部重新上传。因此目标生产库不得导入以下源表的数据：
 
-| 不导入为新目录的数据 | 原因 | 目标处理 |
-|---|---|---|
-| `products`、`product_specs` | 商品、价格、库存、规格和图片均由负责人重新建设。 | 目标库初始为空，由新版后台创建。 |
-| `categories` | 与重建后的商品目录一起重新定义。 | 目标库初始为空。 |
-| `points_products`、`points_product_specs`、`points_categories` | 依赖商品目录、库存和图片。 | 目标库初始为空。 |
-| `banners` | 依赖旧图片对象和旧商品/分类跳转。 | 不导入为线上轮播，由新版后台重新上传和配置。 |
-
-不导入仅适用于目标生产库的目录初始化；源 CloudBase 数据不修改、不删除。目标库尚未执行任何导入。
-
-## 必须保留并与目录解耦的历史数据
-
-订单、积分订单、支付、退款、礼品卡、用户、地址、剪刀保修和售后数据仍属于迁移范围。它们必须保留发生时的名称、金额、数量、收货/物流和支付状态；不得为迁移而重新关联到新商品。
-
-| 数据 | 处理要求 |
+| 不导入的数据 | 表 |
 |---|---|
-| `orders`、`order_items`、`order_addresses`、`order_refund_requests` | 保留订单项的商品名称、SKU、价格、数量等快照。旧 `product_id` 仅作历史追溯，不能在新前台用于查询当前商品。 |
-| `points_orders`、`points_order_items`、`points_payment_logs`、`points_order_refund_requests` | 保留积分和现金支付、退款与商品文本快照；不尝试映射到新积分商品。 |
-| `users`、`addresses`、`user_addresses`、`after_sale_service_addresses` | 保留，按隐私和最小权限规则迁移。 |
-| `gift_cards`、`gift_redeem_records`、`points_logs` | 保留余额、兑换和积分账务事实。 |
-| `scissors`、`user_scissors`、`scissors_after_sales`、`scissors_after_sale_messages` | 保留序列号、保修与售后链路。若其图片是旧 `cloud://` 文件 ID，新系统只显示“历史图片不可用”，不请求或迁移该对象。 |
+| 商品、价格、库存、规格和图片 | `products`、`product_specs` |
+| 商品分类和首页轮播 | `categories`、`banners` |
+| 积分商品目录 | `points_categories`、`points_products`、`points_product_specs` |
 
-历史订单中已有 `product_image`、`product_image_snapshot` 等字段时，可保留原始历史快照值以便审计，但新版 API 和界面不得把其解析为 COS 对象或发起 CloudBase 文件读取。订单详情应以商品文字、金额和规格快照为准。
+源 CloudBase 数据不修改、不删除；目标目录由新版后台重新创建。
 
-## 暂停导入，待业务规则确认的数据
+## 已确认：本批仅迁移用户基础资料
 
-| 数据 | 原因 |
+本批仅处理源 `users` 表中的用户身份、账户状态和基础资料，并在目标侧生成 `user_identities` 绑定。新会话不迁移。
+
+为遵守数据最小化原则，本批不迁移地址簿、积分余额和流水、会员等级、累计消费、优惠券、礼品卡、剪刀档案、售后、媒体文件或合作咨询。未迁移积分账本和订单前，不得迁移或重算 `points`、`total_points`、`total_spent`、`order_count`、`member_level`。
+
+| 本批处理 | 处理要求 |
 |---|---|
-| `coupon_rules`、`coupons`、`user_coupons` | 可能绑定旧商品、分类或有效期；重建商品目录后继续生效会产生错误优惠。 |
-| `cooperation_inquiries` | 需确认是否属于要保留的业务线索及保留期限。 |
+| `users` | 仅迁移登录识别所需的 OpenID/UnionID、用户主键、账户状态及基础资料字段；导入前在隔离库核验字段映射。 |
+| `user_identities`（目标新增） | 从已核验的 OpenID/UnionID 生成唯一身份绑定；空值、冲突及一人多身份例外人工处理，不能自动合并。 |
 
-在负责人明确决定“作废、保留但禁用、或重新配置”之前，以上数据不能写入目标生产库。
+## 本轮明确不导出
+
+| 数据范围 | 表 |
+|---|---|
+| 普通订单与退款 | `orders`、`order_items`、`order_addresses`、`order_refund_requests` |
+| 积分订单、支付与账本 | `points_orders`、`points_order_items`、`points_order_refund_requests`、`points_payment_logs`、`points_logs` |
+| 地址、优惠权益、工具与售后 | `addresses`、`user_addresses`、`after_sale_service_addresses`、`coupons`、`coupon_rules`、`user_coupons`、`gift_cards`、`gift_redeem_records`、`scissors`、`user_scissors`、`scissors_after_sales`、`scissors_after_sale_messages` |
+| 其他业务资料 | `cooperation_inquiries` |
 
 ## 实施前验证
 
-1. 源业务库结构扫描显示唯一外键为 `coupon_rules.coupon_id → coupons.id`；目录相关表没有结构外键阻止“历史数据 + 空目录”演练。优惠券三表必须作为同一待决范围处理。
-2. 先在隔离库执行“历史数据 + 空目录”的转换演练，验证无业务查询依赖旧目录。
-3. 对订单、支付、退款、积分、礼品卡、售后逐表校验行数、金额汇总与状态分布。
-4. 新版 API 增加历史订单与当前商品的明确区分；禁止用旧 `product_id` 自动跳转新商品详情。
-5. 仅在冻结写入后的最终快照上执行正式导入；不得长期双写。
+1. 在受控私有位置导出冻结时点的完整源 DDL，以及仅 `users` 的最小字段快照；个人信息不得进入 Git、普通文档或聊天记录。
+2. 先在隔离库核验目标 `users` 结构、字段映射、主键保留和 OpenID/UnionID 唯一性，再执行任何正式导入。
+3. 记录源与目标的汇总行数、身份绑定数量、空身份数量和冲突数量；日志不得输出用户资料值、手机号或身份标识。
+4. 对目标登录做内部测试，确认已有用户被识别为原账户；新会话由目标登录流程生成，不复制旧会话令牌。
+5. 仅在冻结快照上执行正式导入；小程序认证迁移开关继续关闭，直至隔离验证通过并另行放行。
