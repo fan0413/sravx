@@ -1,5 +1,6 @@
 import { mkdir, open, rename } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { quoteIdentifier } from './row-baseline.mjs';
 
 export const USER_BASE_COLUMNS = Object.freeze(['id', 'status', 'openid', '_openid', 'unionid', 'username', 'phone', 'gender', 'birthday', 'occupation', 'created_at', 'updated_at', 'profile_updated_at']);
@@ -77,7 +78,7 @@ function parseArguments(args) {
   return { database: values.get('--database'), output: values.get('--output') };
 }
 
-if (import.meta.main) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { database, output } = parseArguments(process.argv.slice(2));
   const required = (name) => {
     const value = process.env[`SOURCE_${name}`];

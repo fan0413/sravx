@@ -1,5 +1,6 @@
 import { mkdir, open, rename } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { quoteIdentifier } from './row-baseline.mjs';
 
 const REQUIRED_USER_COLUMNS = Object.freeze(['id', 'status']);
@@ -119,7 +120,7 @@ async function connectionFrom(prefix, database) {
   return mysql.createPool({ host: required('MYSQL_HOST'), port: Number(required('MYSQL_PORT')), user: required('MYSQL_USER'), password: required('MYSQL_PASSWORD'), database, connectionLimit: 1, dateStrings: true });
 }
 
-if (import.meta.main) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { sourceDatabase, targetDatabase, output } = parseArguments(process.argv.slice(2));
   const [sourcePool, targetPool] = await Promise.all([connectionFrom('SOURCE', sourceDatabase), connectionFrom('TARGET', targetDatabase)]);
   try {

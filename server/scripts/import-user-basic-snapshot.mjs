@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
 import { identityBindings, validateSnapshot } from './user-basic-snapshot.mjs';
 
 function parseArguments(args) {
@@ -27,7 +28,7 @@ export async function importUsers(connection, snapshot) {
   }
 }
 
-if (import.meta.main) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { snapshot: path } = parseArguments(process.argv.slice(2));
   const snapshot = JSON.parse(await readFile(path, 'utf8'));
   const required = (name) => {
