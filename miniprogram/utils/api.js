@@ -117,6 +117,47 @@ function authenticatedMigrationRequest(path, method, data, legacyRequest) {
     })
 }
 
+function targetUserLoginResult(profile) {
+  const user = profile || {}
+  const points = Number(user.points) || 0
+  const totalPoints = Number(user.total_points) || 0
+  const username = typeof user.username === 'string' ? user.username : ''
+  const phone = typeof user.phone === 'string' ? user.phone : ''
+  return {
+    // OpenID is deliberately not returned by the new API. The local user ID
+    // and the signed session identify the customer after migration.
+    userId: Number(user.id) || 0,
+    openid: '',
+    unionid: '',
+    phone,
+    username,
+    avatar: typeof user.avatar === 'string' ? user.avatar : '',
+    gender: typeof user.gender === 'string' ? user.gender : '',
+    birthday: typeof user.birthday === 'string' ? user.birthday : '',
+    occupation: typeof user.occupation === 'string' ? user.occupation : '',
+    isNewUser: false,
+    needsProfileSetup: !phone || !username,
+    memberLevel: Number(user.member_level) || 1,
+    points,
+    totalPoints
+  }
+}
+
+async function targetLogin(phoneData = {}) {
+  const baseUrl = getAuthenticatedApiBase()
+  if (!baseUrl) return null
+  const token = await targetSession(baseUrl)
+  if (phoneData && typeof phoneData.code === 'string' && phoneData.code) {
+    await rawTargetRequest(baseUrl, '/api/v1/me/phone', 'POST', { code: phoneData.code }, token)
+  }
+  const profileInput = phoneData && phoneData.profile
+  if (profileInput && typeof profileInput === 'object' && typeof profileInput.username === 'string' && profileInput.username.trim()) {
+    await rawTargetRequest(baseUrl, '/api/v1/me', 'PUT', profileInput, token)
+  }
+  const profile = await rawTargetRequest(baseUrl, '/api/v1/me', 'GET', undefined, token)
+  return targetUserLoginResult(profile)
+}
+
 /**
  * 获取全局 openid
  */
@@ -289,7 +330,9 @@ function httpRequest(path, data = {}) {
  * @param {Object} phoneData - 可选，包含 encryptedData 和 iv 用于获取手机号
  */
 function login(phoneData = {}) {
-  return callFunction('login', phoneData, false)
+  return getAuthenticatedApiBase()
+    ? targetLogin(phoneData)
+    : callFunction('login', phoneData, false)
 }
 
 /**

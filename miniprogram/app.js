@@ -1,3 +1,5 @@
+const api = require('./utils/api')
+
 App({
   globalData: {
     userInfo: null,
@@ -34,8 +36,8 @@ App({
       const isRegistered = wx.getStorageSync('isRegistered')
       if (userInfo && isRegistered) {
         this.globalData.userInfo = userInfo
-        this.globalData.isRegistered = !!(userInfo.openid || userInfo.phone)
-        this.globalData.isLoggedIn = !!(userInfo.openid || userInfo.phone)
+        this.globalData.isRegistered = !!(userInfo.userId || userInfo.openid || userInfo.phone)
+        this.globalData.isLoggedIn = !!(userInfo.userId || userInfo.openid || userInfo.phone)
         this.globalData.hasPhoneAuth = !!(userInfo && userInfo.phone)
       }
     } catch (e) {
@@ -45,27 +47,19 @@ App({
 
   setUserInfo(info) {
     this.globalData.userInfo = info
-    this.globalData.isRegistered = !!(info && (info.openid || info.phone))
-    this.globalData.isLoggedIn = !!(info && (info.openid || info.phone))
+    this.globalData.isRegistered = !!(info && (info.userId || info.openid || info.phone))
+    this.globalData.isLoggedIn = !!(info && (info.userId || info.openid || info.phone))
     this.globalData.hasPhoneAuth = !!(info && info.phone)
     wx.setStorageSync('userInfo', info)
-    wx.setStorageSync('isRegistered', !!(info && (info.openid || info.phone)))
+    wx.setStorageSync('isRegistered', !!(info && (info.userId || info.openid || info.phone)))
   },
 
   refreshLoginState() {
-    if (!wx.cloud) return Promise.resolve(null)
+    if (!wx.cloud && !this.globalData.authenticatedApiMigration.enabled) return Promise.resolve(null)
     const cachedUser = this.globalData.userInfo || {}
 
-    return wx.cloud.callFunction({
-      name: 'login',
-      data: {}
-    }).then((res) => {
-      const result = res && res.result
-      if (!result || !result.success || !result.data) {
-        throw new Error((result && result.error) || 'login failed')
-      }
-
-      const loginUser = result.data
+    return api.login().then((loginUser) => {
+      if (!loginUser || !loginUser.userId) throw new Error('login failed')
       const merged = {
         ...cachedUser,
         openid: loginUser.openid,
