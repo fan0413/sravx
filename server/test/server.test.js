@@ -892,6 +892,8 @@ test('category creation stores only a current admin confirmed category image key
   const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
   const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: '剪刀', image: { intentId: '12345678-1234-1234-1234-123456789012' } }) });
   assert.equal(response.status, 201); assert.equal(stored.image, 'catalog/categories/a.png');
+  const reused = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ name: '无效分类', image: { existingObjectKey: 'catalog/categories/a.png' } }) });
+  assert.equal(reused.status, 400);
 });
 
 test('category updates retain only their own confirmed media keys', async (t) => {
@@ -914,6 +916,12 @@ test('category updates retain only their own confirmed media keys', async (t) =>
   const forbidden = { ...body, icon: { existingObjectKey: 'catalog/categories/2/not-owned.png' } };
   const forbiddenResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories/1`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(forbidden) });
   assert.equal(forbiddenResponse.status, 400);
+
+  const clear = { name: '剪刀', icon: null };
+  const clearResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/categories/1`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(clear) });
+  assert.equal(clearResponse.status, 200);
+  assert.equal(stored.icon, null);
+  assert.equal(stored.image, undefined);
 });
 
 test('product creation stores only confirmed product media keys for every image field', async (t) => {

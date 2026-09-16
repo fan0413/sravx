@@ -21,7 +21,8 @@ function integer(value, fallback, minimum = 0, maximum = 1000000) {
 }
 
 function categoryMediaReference(value, name) {
-  if (value === undefined || value === null || value === '') return null;
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
   if (typeof value !== 'object' || Array.isArray(value)) throw new Error(`Invalid ${name}.`);
   const intent = intentId(value.intentId, `${name}.intentId`);
   const existingObjectKey = text(value.existingObjectKey, 512, `${name}.existingObjectKey`);
@@ -41,7 +42,9 @@ export function categoryInput(payload) {
     isShow: flag(payload.isShow, 1),
     isNav: flag(payload.isNav, 0),
     icon: categoryMediaReference(payload.icon, 'icon'),
-    image: categoryMediaReference(payload.image, 'image')
+    image: categoryMediaReference(payload.image, 'image'),
+    iconProvided: Object.hasOwn(payload, 'icon'),
+    imageProvided: Object.hasOwn(payload, 'image')
   };
 }
 

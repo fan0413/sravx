@@ -920,6 +920,7 @@ export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<A
 export async function createAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) {
     const media = (value: string | undefined) => {
+      if (value === undefined) return undefined;
       if (!value) return null;
       const intentId = targetMediaIntentId(value);
       if (!intentId) throw new Error("分类图片需重新上传后再保存");

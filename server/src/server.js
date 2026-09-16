@@ -477,6 +477,7 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
             if (!media || !media.objectKey.startsWith(prefix)) throw new Error('Unverified media.');
             return media.objectKey;
           };
+          if (input.icon?.existingObjectKey || input.image?.existingObjectKey) throw new Error('Existing media cannot be used when creating a category.');
           const data = await adminCatalogRepository.createCategory({ ...input, icon: await resolve(input.icon?.intentId, 'catalog/categories/'), image: await resolve(input.image?.intentId, 'catalog/categories/') });
           return send(response, 201, { success: true, data });
         } catch {
@@ -494,6 +495,7 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
           if (!current) { const result = error('NOT_FOUND', '分类不存在', 404); return send(response, result.status, result.body); }
           const allowedKeys = new Set([current.icon, current.image].filter((key) => typeof key === 'string' && key.startsWith('catalog/categories/')));
           const resolve = async (reference) => {
+            if (reference === undefined) return undefined;
             if (!reference) return null;
             if (reference.existingObjectKey) {
               if (!allowedKeys.has(reference.existingObjectKey)) throw new Error('Unverified media.');

@@ -99,9 +99,9 @@ export function createMysqlAdminCatalogRepository(pool) {
     },
     async updateCategory(id, input) {
       const [result] = await pool.execute(
-        `UPDATE categories SET parent_id = ?, name = ?, icon = COALESCE(?, icon), image = COALESCE(?, image), description = ?, level = ?, sort_order = ?, is_show = ?, is_nav = ?
+        `UPDATE categories SET parent_id = ?, name = ?, icon = CASE WHEN ? THEN ? ELSE icon END, image = CASE WHEN ? THEN ? ELSE image END, description = ?, level = ?, sort_order = ?, is_show = ?, is_nav = ?
          WHERE id = ? AND deleted_at IS NULL`,
-        [input.parentId, input.name, input.icon, input.image, input.description, input.level, input.sortOrder, input.isShow, input.isNav, id]
+        [input.parentId, input.name, input.iconProvided ? 1 : 0, input.icon, input.imageProvided ? 1 : 0, input.image, input.description, input.level, input.sortOrder, input.isShow, input.isNav, id]
       );
       return result.affectedRows === 1;
     },
