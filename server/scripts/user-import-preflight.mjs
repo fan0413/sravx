@@ -71,6 +71,10 @@ function fields(columns) {
   return new Set(columns.map((column) => column.name));
 }
 
+function comparableType(value) {
+  return String(value || '').toLowerCase().replace(/\(.*/, '').trim();
+}
+
 export function evaluatePreflight({ sourceUsers, targetUsers, targetIdentities, sourceSummary }) {
   const source = fields(sourceUsers);
   const target = fields(targetUsers);
@@ -80,16 +84,24 @@ export function evaluatePreflight({ sourceUsers, targetUsers, targetIdentities, 
   const missingIdentityTableColumns = ['user_id', 'provider', 'provider_subject'].filter((name) => !identities.has(name));
   const identityColumns = IDENTITY_COLUMNS.filter((name) => source.has(name) && target.has(name));
   const profileColumns = PROFILE_COLUMNS.filter((name) => source.has(name) && target.has(name));
+  const importColumns = ['id', 'status', ...identityColumns, ...profileColumns.filter((name) => !identityColumns.includes(name) && !['id', 'status'].includes(name))];
+  const sourceByName = new Map(sourceUsers.map((column) => [column.name, column]));
+  const targetByName = new Map(targetUsers.map((column) => [column.name, column]));
+  const typeMismatches = importColumns.filter((name) => comparableType(sourceByName.get(name)?.type) !== comparableType(targetByName.get(name)?.type));
+  const identityUnique = (targetIdentities.indexes || []).some((index) => index.unique && JSON.stringify(index.columns) === JSON.stringify(['provider', 'provider_subject']));
   const blockers = [];
   if (missingSource.length) blockers.push('SOURCE_USERS_SCHEMA_INCOMPLETE');
   if (missingTarget.length) blockers.push('TARGET_USERS_SCHEMA_INCOMPLETE');
   if (!identityColumns.length) blockers.push('NO_SHARED_IDENTITY_COLUMN');
   if (missingIdentityTableColumns.length) blockers.push('TARGET_IDENTITIES_SCHEMA_INCOMPLETE');
+  if (!identityUnique) blockers.push('TARGET_IDENTITY_UNIQUENESS_MISSING');
+  if (typeMismatches.length) blockers.push('USER_FIELD_TYPE_MISMATCH');
   if (sourceSummary.identityMissing > 0) blockers.push('SOURCE_USERS_WITHOUT_IDENTITY');
   return {
     sourceUserColumns: sourceUsers.map((column) => column.name),
     targetUserColumns: targetUsers.map((column) => column.name),
-    importColumns: ['id', 'status', ...identityColumns, ...profileColumns.filter((name) => !identityColumns.includes(name) && !['id', 'status'].includes(name))],
+    importColumns,
+    typeMismatches,
     sourceSummary,
     targetIdentityIndexes: targetIdentities.indexes || [],
     blockers,

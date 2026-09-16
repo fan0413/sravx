@@ -33,7 +33,7 @@ import { createRequestAuditLogger } from '../src/observability/request-audit.js'
 const secret = 'test-only-session-secret-which-is-long-enough-123456';
 
 test('user-import preflight limits the scope and rejects missing identity data', () => {
-  const users = [{ name: 'id' }, { name: 'status' }, { name: 'openid' }, { name: 'username' }, { name: 'points' }];
+  const users = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'varchar(128)' }, { name: 'username', type: 'varchar(50)' }, { name: 'points', type: 'int' }];
   const result = evaluatePreflight({
     sourceUsers: users,
     targetUsers: users,
@@ -43,6 +43,14 @@ test('user-import preflight limits the scope and rejects missing identity data',
   assert.deepEqual(result.importColumns, ['id', 'status', 'openid', 'username']);
   assert.deepEqual(result.blockers, ['SOURCE_USERS_WITHOUT_IDENTITY']);
   assert.equal(result.readyForIsolatedImport, false);
+});
+
+test('user-import preflight requires the identity unique key and compatible fields', () => {
+  const sourceUsers = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'varchar(128)' }];
+  const targetUsers = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'text' }];
+  const result = evaluatePreflight({ sourceUsers, targetUsers, targetIdentities: Object.assign([{ name: 'user_id' }, { name: 'provider' }, { name: 'provider_subject' }], { indexes: [] }), sourceSummary: { total: 1, identityEligible: 1, identityMissing: 0, identityColumns: ['openid'] } });
+  assert.deepEqual(result.typeMismatches, ['openid']);
+  assert.deepEqual(result.blockers, ['TARGET_IDENTITY_UNIQUENESS_MISSING', 'USER_FIELD_TYPE_MISMATCH']);
 });
 
 test('user snapshot rejects unapproved data fields and duplicate identities', () => {
