@@ -99,6 +99,26 @@ export async function exportSchema(connection, database) {
       GROUP BY TABLE_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME
       ORDER BY TABLE_NAME, CONSTRAINT_NAME`, [schema]
   );
+  const [columns] = await connection.execute(
+    `SELECT TABLE_NAME AS tableName, COLUMN_NAME AS name, ORDINAL_POSITION AS ordinalPosition,
+            COLUMN_DEFAULT AS defaultValue, IS_NULLABLE AS nullable, DATA_TYPE AS dataType,
+            COLUMN_TYPE AS columnType, CHARACTER_SET_NAME AS characterSet, COLLATION_NAME AS collation,
+            COLUMN_KEY AS keyType, EXTRA AS extra, COLUMN_COMMENT AS comment, GENERATION_EXPRESSION AS generationExpression
+       FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ?
+      ORDER BY TABLE_NAME, ORDINAL_POSITION`, [schema]
+  );
+  const [indexes] = await connection.execute(
+    `SELECT TABLE_NAME AS tableName, NON_UNIQUE AS nonUnique, INDEX_NAME AS name,
+            SEQ_IN_INDEX AS sequence, COLUMN_NAME AS columnName, COLLATION AS collation,
+            SUB_PART AS subPart, INDEX_TYPE AS type, INDEX_COMMENT AS comment, IS_VISIBLE AS visible
+       FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = ?
+      ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX`, [schema]
+  );
+  const [constraints] = await connection.execute(
+    `SELECT TABLE_NAME AS tableName, CONSTRAINT_NAME AS name, CONSTRAINT_TYPE AS type
+       FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = ?
+      ORDER BY TABLE_NAME, CONSTRAINT_NAME`, [schema]
+  );
   const routineStatements = [];
   for (const routine of routines) {
     const [result] = await connection.query(`SHOW CREATE ${routine.type} ${quoteIdentifier(schema)}.${quoteIdentifier(routine.name)}`);
@@ -120,6 +140,7 @@ export async function exportSchema(connection, database) {
       routines: routineStatements,
       foreignKeys
     },
+    metadata: { tables, columns, indexes, constraints },
     summary: {
       baseTables: baseTables.length,
       views: views.length,

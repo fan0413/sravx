@@ -32,17 +32,22 @@ function foreignKeyDigest(snapshot) {
 
 export function compareSchemaEvidence(source, target) {
   if (source?.format !== 'sravx-source-schema/v1' || target?.format !== 'sravx-source-schema/v1') throw new Error('Unsupported schema evidence format.');
+  if (!source.metadata || !target.metadata) throw new Error('Schema metadata evidence is required.');
   const differences = [];
+  const representationDifferences = [];
   for (const group of GROUPS) {
     const left = statementMap(source, group);
     const right = statementMap(target, group);
     for (const name of [...new Set([...left.keys(), ...right.keys()])].sort()) {
-      if (left.get(name) !== right.get(name)) differences.push({ group, name, reason: left.has(name) && right.has(name) ? 'statement_digest_mismatch' : left.has(name) ? 'missing_from_target' : 'unexpected_in_target' });
+      if (left.get(name) !== right.get(name)) representationDifferences.push({ group, name, reason: left.has(name) && right.has(name) ? 'statement_digest_mismatch' : left.has(name) ? 'missing_from_target' : 'unexpected_in_target' });
     }
   }
   if (foreignKeyDigest(source) !== foreignKeyDigest(target)) differences.push({ group: 'foreignKeys', name: null, reason: 'definition_digest_mismatch' });
   if (source.schemaSettings?.characterSet !== target.schemaSettings?.characterSet || source.schemaSettings?.collation !== target.schemaSettings?.collation) differences.push({ group: 'schemaSettings', name: null, reason: 'default_encoding_mismatch' });
-  return { sourceSchema: source.database, targetSchema: target.database, matches: differences.length === 0, differences };
+  for (const group of ['tables', 'columns', 'indexes', 'constraints']) {
+    if (digest(JSON.stringify(source.metadata[group])) !== digest(JSON.stringify(target.metadata[group]))) differences.push({ group: 'metadata', name: group, reason: 'definition_digest_mismatch' });
+  }
+  return { sourceSchema: source.database, targetSchema: target.database, matches: differences.length === 0, differences, representationDifferences };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

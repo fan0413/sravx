@@ -82,11 +82,14 @@ test('schema rehearsal restores only dedicated databases in foreign-key order', 
 });
 
 test('schema evidence comparison reports only structural mismatches', () => {
-  const snapshot = { format: 'sravx-source-schema/v1', database: 'source', schemaSettings: { characterSet: 'utf8mb4', collation: 'utf8mb4_unicode_ci' }, objects: { tables: [{ name: 'users', statement: 'CREATE TABLE `users` (id INT)' }], views: [], routines: [], triggers: [], events: [], foreignKeys: [] } };
-  assert.deepEqual(compareSchemaEvidence(snapshot, { ...snapshot, database: 'rehearsal' }), { sourceSchema: 'source', targetSchema: 'rehearsal', matches: true, differences: [] });
+  const snapshot = { format: 'sravx-source-schema/v1', database: 'source', schemaSettings: { characterSet: 'utf8mb4', collation: 'utf8mb4_unicode_ci' }, objects: { tables: [{ name: 'users', statement: 'CREATE TABLE `users` (id INT)' }], views: [], routines: [], triggers: [], events: [], foreignKeys: [] }, metadata: { tables: [{ name: 'users' }], columns: [{ tableName: 'users', name: 'id', columnType: 'int' }], indexes: [{ tableName: 'users', name: 'PRIMARY' }], constraints: [{ tableName: 'users', name: 'PRIMARY', type: 'PRIMARY KEY' }] } };
+  assert.deepEqual(compareSchemaEvidence(snapshot, { ...snapshot, database: 'rehearsal' }), { sourceSchema: 'source', targetSchema: 'rehearsal', matches: true, differences: [], representationDifferences: [] });
   const mismatched = structuredClone(snapshot);
   mismatched.objects.tables[0].statement = 'CREATE TABLE `users` (id BIGINT)';
-  assert.deepEqual(compareSchemaEvidence(snapshot, mismatched).differences, [{ group: 'tables', name: 'users', reason: 'statement_digest_mismatch' }]);
+  assert.equal(compareSchemaEvidence(snapshot, mismatched).matches, true);
+  assert.deepEqual(compareSchemaEvidence(snapshot, mismatched).representationDifferences, [{ group: 'tables', name: 'users', reason: 'statement_digest_mismatch' }]);
+  mismatched.metadata.columns[0].columnType = 'bigint';
+  assert.deepEqual(compareSchemaEvidence(snapshot, mismatched).differences, [{ group: 'metadata', name: 'columns', reason: 'definition_digest_mismatch' }]);
 });
 
 test('user snapshot rejects unapproved data fields and duplicate identities', () => {
