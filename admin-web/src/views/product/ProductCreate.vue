@@ -334,7 +334,7 @@ import {
   updateAdminProduct,
   uploadAdminImages
 } from "../../api/admin";
-import { targetAdminModeEnabled } from "../../lib/target-admin-auth";
+import { targetAdminCatalogModeEnabled } from "../../lib/target-admin-auth";
 import { getLoginUser, signInWithUsernamePassword } from "../../lib/cloudbase";
 import type { UploadFile, UploadFiles, UploadRawFile, UploadUserFile } from "element-plus";
 import type { CategoryRow } from "../../api/types";
@@ -1059,7 +1059,7 @@ const handleSave = async () => {
       const payload = await buildPayload(`products/${editingId.value}`);
       res = await updateAdminProduct({ ...payload, id: editingId.value });
     } else {
-      if (targetAdminModeEnabled()) {
+      if (targetAdminCatalogModeEnabled()) {
         const payload = await buildPayload(`products/draft-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`);
         res = await createAdminProduct(payload);
       } else {

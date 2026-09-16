@@ -1,5 +1,5 @@
 import { callCloudFunction, getTempFileUrlMap, uploadFileToCloud } from "../lib/cloudbase";
-import { targetAdminModeEnabled, targetAdminRequest, targetAdminUploadImage, targetMediaIntentId } from "../lib/target-admin-auth";
+import { targetAdminCatalogModeEnabled, targetAdminRequest, targetAdminUploadImage, targetMediaIntentId } from "../lib/target-admin-auth";
 import type {
   BannerRow,
   CategoryRow,
@@ -420,7 +420,6 @@ function unwrapCloudResponse<T>(res: CloudFunctionResponse<T>, fallbackError: st
 }
 
 export async function fetchOverview(): Promise<OverviewStats> {
-  if (targetAdminModeEnabled()) return targetAdminRequest<OverviewStats>("/api/v1/admin/overview");
   const result = await callCloudFunction<CloudFunctionResponse<OverviewStats>>("admin-stats", {
     action: "overview"
   });
@@ -444,7 +443,7 @@ export async function fetchProducts(query: ProductQuery): Promise<ProductRow[]> 
 }
 
 export async function fetchAdminProducts(query: ProductQuery): Promise<AdminProductListResult> {
-  if (targetAdminModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), categoryId: query.categoryId, status: query.status, lowStock: query.lowStock, sku: query.sku?.trim(), shippingType: query.shippingType, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminProductListResult>(`/api/v1/admin/products?${p}`); }
+  if (targetAdminCatalogModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), categoryId: query.categoryId, status: query.status, lowStock: query.lowStock, sku: query.sku?.trim(), shippingType: query.shippingType, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminProductListResult>(`/api/v1/admin/products?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<AdminProductListResult>>("admin-product", {
     action: "list",
     keyword: (query.keyword || "").trim(),
@@ -841,7 +840,7 @@ export async function updateAdminUser(payload: {
 }
 
 export async function fetchCategories(): Promise<CategoryRow[]> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     const { list } = await fetchAdminCategories({ is_show: 1 });
     return list.sort((a, b) => a.sort_order - b.sort_order);
   }
@@ -902,7 +901,7 @@ function normalizeAdminCategory(item: CloudCategory): CategoryRow {
 }
 
 export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<AdminCategoryListResult> {
-  if (targetAdminModeEnabled()) { const p = new URLSearchParams(); if (query.keyword?.trim()) p.set("keyword", query.keyword.trim()); if (query.is_show !== undefined && query.is_show !== "") p.set("isShow", String(query.is_show)); return targetAdminRequest<AdminCategoryListResult>(`/api/v1/admin/categories?${p}`); }
+  if (targetAdminCatalogModeEnabled()) { const p = new URLSearchParams(); if (query.keyword?.trim()) p.set("keyword", query.keyword.trim()); if (query.is_show !== undefined && query.is_show !== "") p.set("isShow", String(query.is_show)); return targetAdminRequest<AdminCategoryListResult>(`/api/v1/admin/categories?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<{ list: CloudCategory[]; total: number }>>(
     "admin-category",
     {
@@ -919,7 +918,7 @@ export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<A
 }
 
 export async function createAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     const media = (value: string | undefined) => {
       if (!value) return null;
       const intentId = targetMediaIntentId(value);
@@ -936,7 +935,7 @@ export async function createAdminCategory(payload: CategoryInput): Promise<{ id:
 }
 
 export async function updateAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     if (!payload.id) throw new Error("缺少分类 ID");
     const media = (value: string | undefined) => {
       if (!value) return null;
@@ -955,7 +954,7 @@ export async function updateAdminCategory(payload: CategoryInput): Promise<{ id:
 }
 
 export async function toggleAdminCategory(id: number, is_show: number): Promise<{ id: number; is_show: number }> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     const { list } = await targetAdminRequest<AdminCategoryListResult>("/api/v1/admin/categories?pageSize=100");
     const category = list.find((item) => item.id === id);
     if (!category) throw new Error("分类不存在");
@@ -971,7 +970,7 @@ export async function toggleAdminCategory(id: number, is_show: number): Promise<
 }
 
 export async function deleteAdminCategory(id: number): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${id}`, { method: "DELETE" });
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
     action: "delete",
     id
@@ -1732,7 +1731,7 @@ export interface AdminBannerInput {
 }
 
 export async function fetchAdminBanners(query: AdminBannerQuery = {}): Promise<AdminBannerListResult> {
-  if (targetAdminModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), position: query.position?.trim(), isActive: query.is_active, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminBannerListResult>(`/api/v1/admin/banners?${p}`); }
+  if (targetAdminCatalogModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), position: query.position?.trim(), isActive: query.is_active, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminBannerListResult>(`/api/v1/admin/banners?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<AdminBannerListResult>>("admin-banner", {
     action: "list",
     keyword: (query.keyword || "").trim(),
@@ -1757,7 +1756,7 @@ export async function fetchAdminBannerDetail(id: number): Promise<BannerRow> {
 }
 
 export async function saveAdminBanner(payload: AdminBannerInput): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     const body = {
       title: payload.title,
       subtitle: payload.subtitle,
@@ -1784,7 +1783,7 @@ export async function saveAdminBanner(payload: AdminBannerInput): Promise<{ id: 
 }
 
 export async function toggleAdminBanner(id: number, isActive: number): Promise<{ id: number; is_active: number }> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     const { list } = await targetAdminRequest<AdminBannerListResult>("/api/v1/admin/banners?pageSize=100");
     const banner = list.find((item) => item.id === id);
     if (!banner) throw new Error("轮播图不存在");
@@ -1803,7 +1802,7 @@ export async function toggleAdminBanner(id: number, isActive: number): Promise<{
 }
 
 export async function updateAdminBannerSort(id: number, sortOrder: number): Promise<{ id: number; sort_order: number }> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     const { list } = await targetAdminRequest<AdminBannerListResult>("/api/v1/admin/banners?pageSize=100");
     const banner = list.find((item) => item.id === id);
     if (!banner) throw new Error("轮播图不存在");
@@ -1822,7 +1821,7 @@ export async function updateAdminBannerSort(id: number, sortOrder: number): Prom
 }
 
 export async function deleteAdminBanner(id: number): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/banners/${id}`, { method: "DELETE" });
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/banners/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-banner", {
     action: "delete",
     id
@@ -1844,7 +1843,7 @@ export async function createProduct(payload: CreateProductInput): Promise<{ id: 
 }
 
 export async function createAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     const primarySpec = payload.specs?.[0];
     if (!primarySpec) throw new Error("请至少填写一个规格及其履约信息");
     const intentIds = (items: string[] | undefined) => (items || []).map((item) => targetMediaIntentId(item)).filter((item): item is string => Boolean(item));
@@ -1927,7 +1926,7 @@ function targetProductUpdateBody(payload: CreateProductInput) {
   };
 }
 export async function fetchAdminProductDetail(id: number): Promise<Record<string, unknown>> {
-  if (targetAdminModeEnabled()) return targetAdminRequest<Record<string, unknown>>(`/api/v1/admin/products/${id}`);
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<Record<string, unknown>>(`/api/v1/admin/products/${id}`);
   const result = await callCloudFunction<CloudFunctionResponse<Record<string, unknown>>>("admin-product", {
     action: "detail",
     id
@@ -1936,7 +1935,7 @@ export async function fetchAdminProductDetail(id: number): Promise<Record<string
 }
 
 export async function updateAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     if (!payload.id) throw new Error("商品编号无效");
     return targetAdminRequest<{ id: number }>(`/api/v1/admin/products/${payload.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(targetProductUpdateBody(payload)) });
   }
@@ -1948,7 +1947,7 @@ export async function updateAdminProduct(payload: CreateProductInput): Promise<{
 }
 
 export async function deleteAdminProduct(id: number): Promise<{ id: number }> {
-  if (targetAdminModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/products/${id}`, { method: "DELETE" });
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/products/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-product", {
     action: "delete",
     id
@@ -1966,7 +1965,7 @@ export async function restockAdminProduct(id: number, stock: number): Promise<{ 
 }
 
 export async function uploadAdminImages(files: File[], folder: string) {
-  if (targetAdminModeEnabled() && (folder.startsWith("banners/") || folder.startsWith("products/") || folder.startsWith("categories/"))) {
+  if (targetAdminCatalogModeEnabled() && (folder.startsWith("banners/") || folder.startsWith("products/") || folder.startsWith("categories/"))) {
     return Promise.all(files.map((file) => targetAdminUploadImage(file, folder)));
   }
   const uploaded = await Promise.all(
@@ -1980,7 +1979,7 @@ export async function uploadAdminImages(files: File[], folder: string) {
 }
 
 export async function resolveAdminFileUrls(fileIDs: string[]) {
-  if (targetAdminModeEnabled()) {
+  if (targetAdminCatalogModeEnabled()) {
     const objectKeys = fileIDs.filter((item) => item.startsWith("catalog/"));
     if (objectKeys.length === 0) return {};
     const data = await targetAdminRequest<{ urls: Record<string, string> }>("/api/v1/admin/media/temporary-urls", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ objectKeys }) });

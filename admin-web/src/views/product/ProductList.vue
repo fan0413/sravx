@@ -153,7 +153,7 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 import { deleteAdminProduct, fetchAdminProducts, fetchCategories, resolveAdminFileUrls, restockAdminProduct } from "../../api/admin";
 import type { CategoryRow, ProductRow } from "../../api/admin";
-import { targetAdminModeEnabled } from "../../lib/target-admin-auth";
+import { targetAdminCatalogModeEnabled } from "../../lib/target-admin-auth";
 
 const query = reactive({
   keyword: "",
@@ -167,7 +167,7 @@ const query = reactive({
 });
 const route = useRoute();
 const router = useRouter();
-const targetMode = targetAdminModeEnabled();
+const targetMode = targetAdminCatalogModeEnabled();
 
 const rows = ref<ProductRow[]>([]);
 const total = ref(0);

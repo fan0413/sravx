@@ -137,7 +137,7 @@ import {
   type CategoryQuery
 } from "../../api/admin";
 import type { CategoryRow } from "../../api/types";
-import { targetAdminModeEnabled } from "../../lib/target-admin-auth";
+import { targetAdminCatalogModeEnabled } from "../../lib/target-admin-auth";
 
 const rows = ref<CategoryRow[]>([]);
 const loading = ref(false);
@@ -146,7 +146,7 @@ const total = ref(0);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
 const formRef = ref<FormInstance>();
-const targetMode = targetAdminModeEnabled();
+const targetMode = targetAdminCatalogModeEnabled();
 
 const query = reactive<CategoryQuery>({
   keyword: "",

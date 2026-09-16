@@ -1,7 +1,6 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
 import AdminLayout from "../layout/AdminLayout.vue";
 import { adminLoggedIn } from "../lib/admin-auth";
-import { targetAdminModeEnabled } from "../lib/target-admin-auth";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -166,13 +165,8 @@ const router = createRouter({
   routes
 });
 
-const targetAllowedRouteNames = new Set(["Dashboard", "ProductList", "ProductCreate", "ProductEdit", "CategoryList", "BannerList"]);
-
 router.beforeEach(async (to) => {
   if (to.meta.public) return true;
-  if (targetAdminModeEnabled() && !targetAllowedRouteNames.has(String(to.name || ""))) {
-    return { path: "/dashboard" };
-  }
   const loggedIn = await adminLoggedIn();
   if (loggedIn) return true;
   return {
