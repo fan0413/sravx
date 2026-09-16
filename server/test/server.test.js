@@ -15,6 +15,7 @@ import { canonicalizeJson, digestRows, encodeValue } from '../scripts/row-chunks
 import { collectGiftCardIntegrity } from '../scripts/check-gift-card-integrity.mjs';
 import { compareRowEvidence } from '../scripts/compare-row-evidence.mjs';
 import { evaluatePreflight } from '../scripts/user-import-preflight.mjs';
+import { identityBindings, selectUserBaseColumns, validateSnapshot } from '../scripts/user-basic-snapshot.mjs';
 import { createMysqlAddressRepository } from '../src/repositories/mysql-address-repository.js';
 import { createMysqlToolRepository } from '../src/repositories/mysql-tool-repository.js';
 import { createMysqlAfterSaleRepository } from '../src/repositories/mysql-after-sale-repository.js';
@@ -42,6 +43,13 @@ test('user-import preflight limits the scope and rejects missing identity data',
   assert.deepEqual(result.importColumns, ['id', 'status', 'openid', 'username']);
   assert.deepEqual(result.blockers, ['SOURCE_USERS_WITHOUT_IDENTITY']);
   assert.equal(result.readyForIsolatedImport, false);
+});
+
+test('user snapshot rejects unapproved data fields and duplicate identities', () => {
+  assert.deepEqual(selectUserBaseColumns(['id', 'status', 'openid', 'username', 'points']), ['id', 'status', 'openid', 'username']);
+  assert.deepEqual(identityBindings({ openid: 'open', _openid: 'other', unionid: 'union' }), [{ provider: 'wechat_miniprogram_openid', subject: 'open' }, { provider: 'wechat_unionid', subject: 'union' }]);
+  assert.throws(() => validateSnapshot({ scope: 'users-basic-data-only', columns: ['id', 'status', 'openid', 'points'], rows: [] }), /unapproved/);
+  assert.throws(() => validateSnapshot({ scope: 'users-basic-data-only', columns: ['id', 'status', 'openid'], rows: [{ id: 1, status: 'active', openid: 'same' }, { id: 2, status: 'active', openid: 'same' }] }), /reuses an identity/);
 });
 
 async function start() {

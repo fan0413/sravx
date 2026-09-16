@@ -15,6 +15,8 @@
 
 仓库中的 `server/scripts/user-import-preflight.mjs` 用于该阶段：它分别以只读连接检查源、目标 `users` 结构与目标 `user_identities` 唯一索引，只在受控输出位置写入列名、结构与汇总数，不读取或输出用户明细。
 
+`server/scripts/user-basic-snapshot.mjs` 仅导出获准字段，并使用一致性只读快照写入权限为 600 的受控文件；`server/scripts/import-user-basic-snapshot.mjs` 必须显式携带 `--apply`，且要求目标 `users` 为空，才会在一个事务中写入用户与身份绑定。
+
 ## 迁移规则
 
 - 保留用户主键，避免后续已关联历史数据时产生不可追溯的 ID 重写。
