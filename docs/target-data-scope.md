@@ -1,6 +1,6 @@
 # 目标库数据范围（待实施）
 
-更新：2026-09-16。此文件只定义迁移范围，不执行导入、删除或 DDL。
+更新：2026-09-17。此文件只定义迁移范围，不执行导入、删除或 DDL。
 
 ## 已确认：不导入商品目录
 
@@ -13,6 +13,14 @@
 | 积分商品目录 | `points_categories`、`points_products`、`points_product_specs` |
 
 源 CloudBase 数据不修改、不删除；目标目录由新版后台重新创建。
+
+## 已确认：目标仅保留用户基础资料
+
+负责人确认：目标库不保留任何其他历史业务数据。该决定仅限制**旧数据迁移**，不限制后续在新系统中重新创建商品目录或产生新的业务记录。
+
+- 仅 `users` 的获批准身份、账户状态和基础资料可进入目标库，并生成 `user_identities`。
+- 历史优惠券、礼品卡、订单、积分、地址、剪刀、售后、咨询和媒体均不导入目标库。
+- CloudBase 源数据保持不变、不可删除，作为历史只读参考，直到最终迁移验收和正式退役批准。
 
 ## 已确认：本批仅迁移用户基础资料
 
@@ -33,6 +41,8 @@
 | 积分订单、支付与账本 | `points_orders`、`points_order_items`、`points_order_refund_requests`、`points_payment_logs`、`points_logs` |
 | 地址、优惠权益、工具与售后 | `addresses`、`user_addresses`、`after_sale_service_addresses`、`coupons`、`coupon_rules`、`user_coupons`、`gift_cards`、`gift_redeem_records`、`scissors`、`user_scissors`、`scissors_after_sales`、`scissors_after_sale_messages` |
 | 其他业务资料 | `cooperation_inquiries` |
+
+历史优惠券和礼品卡在目标库不导入、不补发、不恢复余额或兑换记录。相关旧 CloudBase 数据不删除；如未来启用新优惠券或礼品卡，应作为新业务独立设计、重新创建并完成合规与交易演练。
 
 ## 实施前验证
 
