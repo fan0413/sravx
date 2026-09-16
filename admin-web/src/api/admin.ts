@@ -420,6 +420,7 @@ function unwrapCloudResponse<T>(res: CloudFunctionResponse<T>, fallbackError: st
 }
 
 export async function fetchOverview(): Promise<OverviewStats> {
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<OverviewStats>("/api/v1/admin/overview");
   const result = await callCloudFunction<CloudFunctionResponse<OverviewStats>>("admin-stats", {
     action: "overview"
   });

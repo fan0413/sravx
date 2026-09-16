@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
 import AdminLayout from "../layout/AdminLayout.vue";
 import { adminLoggedIn } from "../lib/admin-auth";
+import { targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -167,6 +168,12 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   if (to.meta.public) return true;
+  if (targetAdminModeEnabled()) {
+    const path = to.path;
+    const catalogRoute = path === "/dashboard" || path.startsWith("/product/") || path.startsWith("/category/") || path.startsWith("/banner/");
+    const operationsRoute = targetAdminOperationsModeEnabled() && (path.startsWith("/user/") || path.startsWith("/inquiry/"));
+    if (!catalogRoute && !operationsRoute) return { path: "/dashboard" };
+  }
   const loggedIn = await adminLoggedIn();
   if (loggedIn) return true;
   return {

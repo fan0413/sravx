@@ -9,7 +9,7 @@
           <el-menu-item index="/product/list">商品列表</el-menu-item>
           <el-menu-item index="/product/create">新建商品</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="points-product">
+        <el-sub-menu v-if="!targetMode" index="points-product">
           <template #title>积分商品</template>
           <el-menu-item index="/points-product/list">积分商品列表</el-menu-item>
           <el-menu-item index="/points-product/create">新建积分商品</el-menu-item>
@@ -21,28 +21,28 @@
         <el-sub-menu index="banner">
           <template #title>内容运营</template>
           <el-menu-item index="/banner/list">轮播图管理</el-menu-item>
-          <el-menu-item index="/coupon/list">优惠券管理</el-menu-item>
-          <el-menu-item index="/gift-card/list">礼品卡管理</el-menu-item>
+          <el-menu-item v-if="!targetMode" index="/coupon/list">优惠券管理</el-menu-item>
+          <el-menu-item v-if="!targetMode" index="/gift-card/list">礼品卡管理</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="order">
+        <el-sub-menu v-if="!targetMode" index="order">
           <template #title>订单管理</template>
           <el-menu-item index="/order/list">订单列表</el-menu-item>
           <el-menu-item index="/points-order/list">积分订单列表</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="refund">
+        <el-sub-menu v-if="!targetMode" index="refund">
           <template #title>售后管理</template>
           <el-menu-item index="/refund/list">售后退款</el-menu-item>
           <el-menu-item index="/scissors/after-sale">剪刀售后</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="user">
+        <el-sub-menu v-if="operationsMode" index="user">
           <template #title>用户管理</template>
           <el-menu-item index="/user/list">用户列表</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="scissors">
+        <el-sub-menu v-if="!targetMode" index="scissors">
           <template #title>剪刀 SN</template>
           <el-menu-item index="/scissors/list">SN 码管理</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="inquiry">
+        <el-sub-menu v-if="operationsMode" index="inquiry">
           <template #title>合作咨询</template>
           <el-menu-item index="/inquiry/list">咨询列表</el-menu-item>
         </el-sub-menu>
@@ -69,9 +69,12 @@ import { computed } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter, RouterView } from "vue-router";
 import { adminLogout } from "../lib/admin-auth";
+import { targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
 
 const route = useRoute();
 const router = useRouter();
+const targetMode = targetAdminModeEnabled();
+const operationsMode = targetAdminOperationsModeEnabled();
 
 const pageTitle = computed(() => String(route.meta.title || "电商管理平台"));
 
