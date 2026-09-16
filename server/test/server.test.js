@@ -54,7 +54,7 @@ test('user-import preflight requires the identity unique key and compatible fiel
 });
 
 test('user snapshot rejects unapproved data fields and duplicate identities', () => {
-  assert.deepEqual(selectUserBaseColumns(['id', 'status', 'openid', 'username', 'points']), ['id', 'status', 'openid', 'username']);
+  assert.deepEqual(selectUserBaseColumns(['id', 'status', 'openid', 'username', 'avatar', 'points']), ['id', 'status', 'openid', 'username']);
   assert.deepEqual(identityBindings({ openid: 'open', _openid: 'other', unionid: 'union' }), [{ provider: 'wechat_miniprogram_openid', subject: 'open' }, { provider: 'wechat_unionid', subject: 'union' }]);
   assert.throws(() => validateSnapshot({ scope: 'users-basic-data-only', columns: ['id', 'status', 'openid', 'points'], rows: [] }), /unapproved/);
   assert.throws(() => validateSnapshot({ scope: 'users-basic-data-only', columns: ['id', 'status', 'openid'], rows: [{ id: 1, status: 'active', openid: 'same' }, { id: 2, status: 'active', openid: 'same' }] }), /reuses an identity/);

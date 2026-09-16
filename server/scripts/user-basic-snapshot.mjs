@@ -2,7 +2,7 @@ import { mkdir, open, rename } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { quoteIdentifier } from './row-baseline.mjs';
 
-export const USER_BASE_COLUMNS = Object.freeze(['id', 'status', 'openid', '_openid', 'unionid', 'username', 'phone', 'avatar', 'gender', 'birthday', 'occupation', 'created_at', 'updated_at', 'profile_updated_at']);
+export const USER_BASE_COLUMNS = Object.freeze(['id', 'status', 'openid', '_openid', 'unionid', 'username', 'phone', 'gender', 'birthday', 'occupation', 'created_at', 'updated_at', 'profile_updated_at']);
 const REQUIRED_COLUMNS = Object.freeze(['id', 'status']);
 const IDENTITY_COLUMNS = Object.freeze(['openid', '_openid', 'unionid']);
 
