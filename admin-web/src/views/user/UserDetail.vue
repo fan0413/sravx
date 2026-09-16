@@ -6,7 +6,7 @@
           <span>编辑用户</span>
           <div class="header-actions">
             <el-button @click="goBack">返回</el-button>
-            <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+            <el-button v-if="!targetOperations" type="primary" :loading="saving" @click="handleSave">保存</el-button>
           </div>
         </div>
       </template>
@@ -27,19 +27,19 @@
         <el-row :gutter="12">
           <el-col :span="12">
             <el-form-item label="用户名">
-              <el-input v-model="form.username" placeholder="请输入用户名" />
+              <el-input v-model="form.username" placeholder="请输入用户名" :disabled="targetOperations" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="手机号">
-              <el-input v-model="form.phone" placeholder="请输入手机号" />
+              <el-input v-model="form.phone" placeholder="请输入手机号" :disabled="targetOperations" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="12">
           <el-col :span="8">
             <el-form-item label="状态">
-              <el-select v-model="form.status">
+              <el-select v-model="form.status" :disabled="targetOperations">
                 <el-option label="正常" value="active" />
                 <el-option label="冻结" value="frozen" />
                 <el-option label="已删除" value="deleted" />
@@ -48,12 +48,12 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="会员等级">
-              <el-input-number v-model="form.member_level" :min="1" :max="10" />
+              <el-input-number v-model="form.member_level" :min="1" :max="10" :disabled="targetOperations" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="积分">
-              <el-input-number v-model="form.points" :min="0" />
+              <el-input-number v-model="form.points" :min="0" :disabled="targetOperations" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -128,6 +128,7 @@ import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
 import { fetchAdminUserDetail, updateAdminUser } from "../../api/admin";
+import { targetAdminOperationsModeEnabled } from "../../lib/target-admin-auth";
 
 type AnyRecord = Record<string, any>;
 
@@ -136,6 +137,7 @@ const router = useRouter();
 
 const loading = ref(false);
 const saving = ref(false);
+const targetOperations = targetAdminOperationsModeEnabled();
 const orders = ref<AnyRecord[]>([]);
 const addresses = ref<AnyRecord[]>([]);
 const coupons = ref<AnyRecord[]>([]);

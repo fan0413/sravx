@@ -90,7 +90,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -488,6 +488,42 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         }
         return true;
       };
+      const requireOperationsManager = async () => {
+        if (!adminRepository || typeof adminRepository.hasRole !== 'function' || !await adminRepository.hasRole({ adminAccountId: session.subject, roleCode: 'operations_manager' })) {
+          const result = error('FORBIDDEN', '需要运营管理权限', 403);
+          send(response, result.status, result.body);
+          return false;
+        }
+        return true;
+      };
+      const adminUserMatch = /^\/api\/v1\/admin\/users\/(\d+)$/.exec(url.pathname);
+      if ((request.method === 'GET' && url.pathname === '/api/v1/admin/users') || (request.method === 'GET' && adminUserMatch)) {
+        if (!adminOperationsRepository || typeof adminOperationsRepository.listUsers !== 'function' || typeof adminOperationsRepository.getUser !== 'function') { const result = error('ADMIN_OPERATIONS_NOT_READY', '后台运营服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        if (adminUserMatch) {
+          const data = await adminOperationsRepository.getUser(Number(adminUserMatch[1]));
+          if (!data) { const result = error('NOT_FOUND', '用户不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data });
+        }
+        return send(response, 200, { success: true, data: await adminOperationsRepository.listUsers({ keyword: url.searchParams.get('keyword') || '', status: url.searchParams.get('status') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      const adminInquiryMatch = /^\/api\/v1\/admin\/inquiries\/(\d+)$/.exec(url.pathname);
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/inquiries') {
+        if (!adminOperationsRepository || typeof adminOperationsRepository.listInquiries !== 'function') { const result = error('ADMIN_OPERATIONS_NOT_READY', '后台运营服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        return send(response, 200, { success: true, data: await adminOperationsRepository.listInquiries({ keyword: url.searchParams.get('keyword') || '', status: url.searchParams.get('status'), page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'PUT' && adminInquiryMatch) {
+        if (!adminOperationsRepository || typeof adminOperationsRepository.updateInquiryStatus !== 'function') { const result = error('ADMIN_OPERATIONS_NOT_READY', '后台运营服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        try {
+          const input = await readJsonBody(request);
+          const status = Number(input.status);
+          if (![0, 1, 2].includes(status)) throw new Error('Invalid inquiry status.');
+          if (!await adminOperationsRepository.updateInquiryStatus(Number(adminInquiryMatch[1]), status)) { const result = error('NOT_FOUND', '咨询记录不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: Number(adminInquiryMatch[1]), status } });
+        } catch { const result = error('INVALID_REQUEST', '咨询状态无效', 400); return send(response, result.status, result.body); }
+      }
       if (request.method === 'GET' && url.pathname === '/api/v1/admin/overview') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.overview !== 'function') {
           const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body);

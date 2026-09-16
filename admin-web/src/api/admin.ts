@@ -1,5 +1,5 @@
 import { callCloudFunction, getTempFileUrlMap, uploadFileToCloud } from "../lib/cloudbase";
-import { targetAdminCatalogModeEnabled, targetAdminRequest, targetAdminUploadImage, targetMediaIntentId } from "../lib/target-admin-auth";
+import { targetAdminCatalogModeEnabled, targetAdminOperationsModeEnabled, targetAdminRequest, targetAdminUploadImage, targetMediaIntentId } from "../lib/target-admin-auth";
 import type {
   BannerRow,
   CategoryRow,
@@ -796,6 +796,7 @@ export async function fetchUsers(query: UserQuery): Promise<UserRow[]> {
 }
 
 export async function fetchUsersWithTotal(query: UserQuery): Promise<AdminUserListResult> {
+  if (targetAdminOperationsModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.username?.trim(), status: query.status, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([key, value]) => { if (value !== undefined && value !== "") p.set(key, String(value)); }); return targetAdminRequest<AdminUserListResult>(`/api/v1/admin/users?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<AdminUserListResult>>("admin-user", {
     action: "list",
     username: (query.username || "").trim(),
@@ -811,6 +812,7 @@ export async function fetchUsersWithTotal(query: UserQuery): Promise<AdminUserLi
 }
 
 export async function fetchAdminUserDetail(id: number): Promise<AdminUserDetailResult> {
+  if (targetAdminOperationsModeEnabled()) { const data = await targetAdminRequest<{ user: Record<string, unknown> | null; addresses: Record<string, unknown>[] }>(`/api/v1/admin/users/${id}`); return { user: data.user || null, addresses: Array.isArray(data.addresses) ? data.addresses : [], orders: [], coupons: [] }; }
   const result = await callCloudFunction<CloudFunctionResponse<AdminUserDetailResult>>("admin-user", {
     action: "detail",
     id
@@ -832,6 +834,7 @@ export async function updateAdminUser(payload: {
   member_level: number;
   points: number;
 }): Promise<{ id: number }> {
+  if (targetAdminOperationsModeEnabled()) throw new Error("用户积分、等级和状态变更将与支付阶段一并迁移，当前仅支持查看用户资料");
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-user", {
     action: "update",
     ...payload
@@ -2005,6 +2008,7 @@ export async function deleteCouponRule(id: number): Promise<void> {
 }
 
 export async function fetchInquiries(query: InquiryQuery): Promise<InquiryListResult> {
+  if (targetAdminOperationsModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), status: query.status, page: query.page || 1, pageSize: query.pageSize || 20 }).forEach(([key, value]) => { if (value !== undefined && value !== "") p.set(key, String(value)); }); return targetAdminRequest<InquiryListResult>(`/api/v1/admin/inquiries?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<InquiryListResult>>("admin-inquiry", {
     action: "list",
     keyword: (query.keyword || "").trim(),
@@ -2020,6 +2024,7 @@ export async function fetchInquiries(query: InquiryQuery): Promise<InquiryListRe
 }
 
 export async function updateInquiryStatus(id: number, status: number): Promise<{ id: number; status: number }> {
+  if (targetAdminOperationsModeEnabled()) return targetAdminRequest<{ id: number; status: number }>(`/api/v1/admin/inquiries/${id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ status }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; status: number }>>("admin-inquiry", {
     action: "updateStatus",
     id,

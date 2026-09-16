@@ -15,6 +15,7 @@ import { createMysqlAdminRepository } from './repositories/mysql-admin-repositor
 import { createMysqlAdminSessionRepository } from './repositories/mysql-admin-session-repository.js';
 import { createMysqlMediaIntentRepository } from './repositories/mysql-media-intent-repository.js';
 import { createMysqlAdminCatalogRepository } from './repositories/mysql-admin-catalog-repository.js';
+import { createMysqlAdminOperationsRepository } from './repositories/mysql-admin-operations-repository.js';
 import { createMysqlInquiryRepository } from './repositories/mysql-inquiry-repository.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
@@ -72,6 +73,7 @@ export async function createRuntimeServer(environment = process.env) {
   const adminSessionRepository = createMysqlAdminSessionRepository(pool);
   const mediaIntentRepository = createMysqlMediaIntentRepository(pool);
   const adminCatalogRepository = createMysqlAdminCatalogRepository(pool);
+  const adminOperationsRepository = createMysqlAdminOperationsRepository(pool);
   const inquiryRepository = createMysqlInquiryRepository(pool);
   const mediaSigner = await createOptionalCosSigner(environment);
   const loginService = createLoginService({
@@ -86,5 +88,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, inquiryRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, inquiryRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
 }

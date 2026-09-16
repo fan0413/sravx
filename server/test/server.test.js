@@ -10,6 +10,7 @@ import { createPhoneService } from '../src/auth/phone-service.js';
 import { createMysqlUserRepository } from '../src/repositories/mysql-user-repository.js';
 import { createMysqlCatalogRepository } from '../src/repositories/mysql-catalog-repository.js';
 import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-admin-catalog-repository.js';
+import { createMysqlAdminOperationsRepository } from '../src/repositories/mysql-admin-operations-repository.js';
 import { createMysqlInquiryRepository } from '../src/repositories/mysql-inquiry-repository.js';
 import { databaseIdentifier, parseArguments as parseSchemaExportArguments } from '../scripts/schema-export.mjs';
 import { orderedTables, parseArguments as parseSchemaRestoreArguments, restorePlan } from '../scripts/schema-restore-rehearsal.mjs';
@@ -923,6 +924,36 @@ test('administrator overview returns only target catalog metrics', async (t) => 
   const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/overview`, { headers: { authorization: `Bearer ${token}` } });
   assert.equal(response.status, 200);
   assert.deepEqual((await response.json()).data, overview);
+});
+
+test('administrator operations endpoints require their own role and never expose identities', async (t) => {
+  const operations = {
+    listUsers: async (query) => ({ list: [{ id: 3, username: 'A', phone: '13800138000' }], total: 1, query }),
+    getUser: async (id) => ({ user: { id, username: 'A' }, addresses: [] }),
+    listInquiries: async () => ({ list: [], total: 0 }),
+    updateInquiryStatus: async (id, status) => id === 6 && status === 1
+  };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async ({ roleCode }) => roleCode === 'operations_manager' }, adminOperationsRepository: operations });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}` };
+  const list = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/users?keyword=A`, { headers });
+  assert.equal(list.status, 200);
+  assert.equal((await list.json()).data.list[0].id, 3);
+  const update = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/inquiries/6`, { method: 'PUT', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ status: 1 }) });
+  assert.equal(update.status, 200);
+  const bad = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/inquiries/6`, { method: 'PUT', headers: { ...headers, 'content-type': 'application/json' }, body: JSON.stringify({ status: 9 }) });
+  assert.equal(bad.status, 400);
+});
+
+test('administrator operations repository applies bound filters and masks identity columns', async () => {
+  const calls = [];
+  const repository = createMysqlAdminOperationsRepository({ execute: async (sql, values = []) => { calls.push({ sql, values }); return sql.includes('COUNT(*)') ? [[{ total: 0 }]] : [[]]; } });
+  assert.deepEqual(await repository.listUsers({ keyword: 'A', status: 'active', page: 2, pageSize: 999 }), { list: [], total: 0 });
+  assert.match(calls[0].sql, /username LIKE \? OR phone LIKE \?/);
+  assert.doesNotMatch(calls[0].sql, /openid|unionid|_openid/);
+  assert.deepEqual(calls[0].values.slice(-2), [100, 100]);
+  await assert.rejects(async () => repository.updateInquiryStatus(1, 3), /Invalid inquiry status/);
 });
 
 test('administrator catalog repository uses bound filters and keeps deleted rows out', async () => {

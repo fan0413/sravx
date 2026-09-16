@@ -30,7 +30,8 @@
 | `mysql-api` | 不迁移通用数据库查询入口；目标 API 只提供按业务授权的接口。 |
 | `scissors-admin` | 旧 NoSQL 管理入口与目标 MySQL 工具模型重复，作为退役候选；先保留旧端观察。 |
 | `lowcode-automation`、`lowcode-automation-preview`、`lowcode-datasource`、`lowcode-datasource-preview` | 自动生成的低代码运行时，未发现确认的业务调用方或负责人；不建立无用途的替代公开接口。需确认其真实业务后迁移或停用。 |
-| `admin-user`、`admin-scissors`、`admin-inquiry`、`admin-stats` | 后台运营能力将按目标数据范围重写：只展示目标端新用户、工具、咨询和目录数据；不导入旧业务历史。需补角色权限和页面调用合同。 |
+| `admin-user`、`admin-inquiry` | 目标端用户基础资料只读与合作咨询处理 API 已实现，独立 `operations_manager` 角色和前端开关默认未启用；不导入旧业务历史。 |
+| `admin-scissors`、`admin-stats` | 仍需按目标端新数据重写；统计中的交易金额、订单、积分等字段留在资金阶段。 |
 
 ## 放行规则
 
