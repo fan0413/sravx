@@ -64,7 +64,33 @@ function addressInput(value) {
   return Object.freeze({ contact, phone, province: text('province', 50), city: text('city', 50), district: text('district', 50), detail: text('detail', 200, { required: true }), tag: text('tag', 20), isDefault });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
+function inquiryInput(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid inquiry.');
+  const text = (field, maximum, { required = false } = {}) => {
+    const raw = value[field];
+    if (raw === undefined || raw === null) {
+      if (required) throw new Error('Invalid inquiry.');
+      return '';
+    }
+    if (typeof raw !== 'string') throw new Error('Invalid inquiry.');
+    const output = raw.trim();
+    if ((required && !output) || output.length > maximum) throw new Error('Invalid inquiry.');
+    return output;
+  };
+  const phone = text('phone', 20, { required: true });
+  if (!/^[0-9+() -]{6,20}$/.test(phone)) throw new Error('Invalid inquiry.');
+  return Object.freeze({
+    name: text('name', 50, { required: true }),
+    gender: text('gender', 10, { required: true }),
+    scale: text('scale', 20, { required: true }),
+    phone,
+    wechat: text('wechat', 60),
+    address: text('address', 200),
+    intention: text('intention', 500)
+  });
+}
+
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -421,6 +447,19 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       if (!giftCardReadRepository || typeof giftCardReadRepository.list !== 'function') { const result = error('GIFT_CARD_NOT_READY', '礼品卡服务尚未配置', 503); return send(response, result.status, result.body); }
       try { return send(response, 200, { success: true, data: await giftCardReadRepository.list(session.subject, { page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) }); }
       catch { const result = error('GIFT_CARD_OPERATION_FAILED', '礼品卡记录暂不可用', 503); return send(response, result.status, result.body); }
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/v1/inquiries') {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!inquiryRepository || typeof inquiryRepository.submit !== 'function') { const result = error('INQUIRY_NOT_READY', '咨询服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        return send(response, 201, { success: true, data: await inquiryRepository.submit(session.subject, inquiryInput(await readJsonBody(request))) });
+      } catch (cause) {
+        const invalid = cause instanceof Error && ['INVALID_JSON', 'REQUEST_TOO_LARGE', 'Invalid inquiry.'].includes(cause.message);
+        const result = error(invalid ? 'INVALID_REQUEST' : 'INQUIRY_OPERATION_FAILED', invalid ? '咨询信息无效' : '咨询服务暂不可用', invalid ? 400 : 503);
+        return send(response, result.status, result.body);
+      }
     }
 
     if (request.method === 'GET') {

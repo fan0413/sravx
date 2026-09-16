@@ -10,6 +10,7 @@ import { createPhoneService } from '../src/auth/phone-service.js';
 import { createMysqlUserRepository } from '../src/repositories/mysql-user-repository.js';
 import { createMysqlCatalogRepository } from '../src/repositories/mysql-catalog-repository.js';
 import { createMysqlAdminCatalogRepository } from '../src/repositories/mysql-admin-catalog-repository.js';
+import { createMysqlInquiryRepository } from '../src/repositories/mysql-inquiry-repository.js';
 import { databaseIdentifier, parseArguments as parseSchemaExportArguments } from '../scripts/schema-export.mjs';
 import { orderedTables, parseArguments as parseSchemaRestoreArguments, restorePlan } from '../scripts/schema-restore-rehearsal.mjs';
 import { compareSchemaEvidence } from '../scripts/compare-schema-evidence.mjs';
@@ -456,6 +457,30 @@ test('phone binding uses only the signed session subject and does not return the
   assert.equal(response.status, 200);
   assert.deepEqual(request, { userId: 34, code: 'phone-code-1234' });
   assert.doesNotMatch(JSON.stringify(await response.json()), /phone-code-1234/);
+});
+
+test('inquiry submission uses only the signed customer session and validates personal fields', async (t) => {
+  let received;
+  const server = createServer({ sessionSecret: secret, inquiryRepository: { submit: async (userId, input) => { received = { userId, input }; return { id: 9 }; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 41, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  const payload = { name: '咨询用户', gender: '女', scale: '个人工作室', phone: '13800138000', wechat: 'sravx', address: '上海', intention: '希望了解合作方式' };
+  const response = await fetch(`${baseUrl}/api/v1/inquiries`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  assert.equal(response.status, 201);
+  assert.deepEqual(received, { userId: 41, input: payload });
+  const invalid = await fetch(`${baseUrl}/api/v1/inquiries`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ ...payload, phone: 'invalid' }) });
+  assert.equal(invalid.status, 400);
+  assert.equal((await invalid.json()).error.code, 'INVALID_REQUEST');
+});
+
+test('inquiry repository writes a new inquiry only through the signed user row', async () => {
+  let call;
+  const repository = createMysqlInquiryRepository({ execute: async (sql, values) => { call = { sql, values }; return [{ affectedRows: 1, insertId: 12 }]; } });
+  const result = await repository.submit(7, { name: 'n', gender: 'g', scale: 's', phone: '13800138000', wechat: '', address: '', intention: '' });
+  assert.deepEqual(result, { id: 12 });
+  assert.match(call.sql, /FROM users u/);
+  assert.deepEqual(call.values, ['n', 'g', 's', '13800138000', '', '', '', 7]);
 });
 
 test('login service issues a customer session only after a trusted identity exchange', async () => {

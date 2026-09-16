@@ -830,7 +830,7 @@ function submitScissorsAfterSaleShipping(params) {
  * 提交合作咨询
  */
 function submitCooperation(formData) {
-  return callFunction('contact', { action: 'submitCooperation', ...formData })
+  return authenticatedMigrationRequest('/api/v1/inquiries', 'POST', formData, () => callFunction('contact', { action: 'submitCooperation', ...formData }))
 }
 
 module.exports = {
