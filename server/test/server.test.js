@@ -1012,6 +1012,23 @@ test('catalog write inputs require actual content and constrain banner link type
   assert.throws(() => bannerInput({ title: 'x', imageIntentId: '12345678-1234-1234-1234-123456789012', linkType: 'unsafe' }), /linkType/);
 });
 
+test('administrator overview reports only target users, catalog and target serial counts', async () => {
+  const calls = [];
+  const results = [
+    [[{ total: 52, active: 52 }]],
+    [[{ total: 1, onSale: 1, lowStock: 0 }]],
+    [[{ online: 1 }]],
+    [[{ total: 2, unused: 2, bound: 0 }]]
+  ];
+  const repository = createMysqlAdminCatalogRepository({ execute: async (sql) => { calls.push(sql); return results.shift(); } });
+  const overview = await repository.overview();
+  assert.deepEqual(overview.users, { total: 52, active: 52 });
+  assert.deepEqual(overview.scissors, { total: 2, unused: 2, bound: 0 });
+  assert.deepEqual(overview.orders, { total: 0, paid: 0, pending: 0, fulfilled: 0 });
+  assert.match(calls[0], /FROM users WHERE status <> 'deleted'/);
+  assert.match(calls[3], /FROM scissors WHERE deleted_at IS NULL/);
+});
+
 test('category creation stores only a current admin confirmed category image key', async (t) => {
   let stored;
   const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async () => true }, mediaIntentRepository: { getConfirmed: async ({ id }) => id === '12345678-1234-1234-1234-123456789012' ? { objectKey: 'catalog/categories/a.png' } : null }, adminCatalogRepository: { createCategory: async (value) => { stored = value; return { id: 1 }; } } });

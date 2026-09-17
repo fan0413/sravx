@@ -21,16 +21,20 @@ export function createMysqlAdminCatalogRepository(pool) {
   if (!pool || typeof pool.execute !== 'function') throw new Error('A MySQL pool is required.');
   return Object.freeze({
     async overview() {
-      const [products] = await pool.execute('SELECT COUNT(*) AS total, COALESCE(SUM(is_on_sale = 1), 0) AS onSale, COALESCE(SUM(stock < 10), 0) AS lowStock FROM products WHERE deleted_at IS NULL');
-      const [banners] = await pool.execute('SELECT COALESCE(SUM(is_active = 1), 0) AS online FROM banners WHERE deleted_at IS NULL');
+      const [[users], [products], [banners], [scissors]] = await Promise.all([
+        pool.execute("SELECT COUNT(*) AS total, COALESCE(SUM(status = 'active'), 0) AS active FROM users WHERE status <> 'deleted'"),
+        pool.execute('SELECT COUNT(*) AS total, COALESCE(SUM(is_on_sale = 1), 0) AS onSale, COALESCE(SUM(stock < 10), 0) AS lowStock FROM products WHERE deleted_at IS NULL'),
+        pool.execute('SELECT COALESCE(SUM(is_active = 1), 0) AS online FROM banners WHERE deleted_at IS NULL'),
+        pool.execute("SELECT COUNT(*) AS total, COALESCE(SUM(status = 'unused'), 0) AS unused, COALESCE(SUM(status = 'bound'), 0) AS bound FROM scissors WHERE deleted_at IS NULL")
+      ]);
       return {
-        users: { total: 0, active: 0 },
+        users: { total: Number(users[0]?.total || 0), active: Number(users[0]?.active || 0) },
         products: { total: Number(products[0]?.total || 0), onSale: Number(products[0]?.onSale || 0), lowStock: Number(products[0]?.lowStock || 0) },
         orders: { total: 0, paid: 0, pending: 0, fulfilled: 0 },
         gmv: { total: 0, week: 0 },
         refunds: { pending: 0 },
         coupons: { active: 0 },
-        scissors: { total: 0, unused: 0, bound: 0 },
+        scissors: { total: Number(scissors[0]?.total || 0), unused: Number(scissors[0]?.unused || 0), bound: Number(scissors[0]?.bound || 0) },
         banners: { online: Number(banners[0]?.online || 0) }
       };
     },
