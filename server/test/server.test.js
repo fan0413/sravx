@@ -790,6 +790,19 @@ test('tool archive routes scope every operation to the signed user', async (t) =
   assert.deepEqual(calls, [['list', 46], ['bind', 46, 'SV-TEST-001'], ['get', 46, 7], ['remove', 46, 7]]);
 });
 
+test('tool warranty endpoint is read-only and scoped to the signed customer', async (t) => {
+  const calls = [];
+  const tools = { warranty: async (userId, sn) => { calls.push({ userId, sn }); return sn === 'SRAVX1234' ? { id: 4, sn, warranty_expire: '2027-01-01' } : null; } };
+  const server = createServer({ sessionSecret: secret, sessionRepository: { active: async () => true }, toolRepository: tools });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 5, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tools/warranty?sn=SRAVX1234`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ userId: 5, sn: 'SRAVX1234' }]);
+  const missing = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/tools/warranty?sn=OTHER1234`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(missing.status, 404);
+});
+
 test('tool repository locks the SN record before binding and never resolves legacy cloud images', async () => {
   const calls = [];
   const connection = {

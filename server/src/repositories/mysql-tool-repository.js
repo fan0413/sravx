@@ -115,6 +115,26 @@ export function createMysqlToolRepository(pool, { now = () => new Date() } = {})
       return { ...rows[0], image: safeImage(rows[0].image), card_image: safeImage(rows[0].card_image) };
     },
 
+    async warranty(userId, serial) {
+      if (!positiveId(userId)) throw new Error('A valid user id is required.');
+      const sn = typeof serial === 'string' ? serial.trim().toUpperCase() : '';
+      if (!/^[A-Z0-9-]{8,32}$/.test(sn)) throw new Error('INVALID_TOOL_SN');
+      const [rows] = await pool.execute(
+        `SELECT us.id, us.scissors_id, us.sn, us.name, us.model, us.image, us.activation_date, us.warranty_months, us.warranty_expire, us.status,
+                COALESCE(ps.name, s.spec_name, us.model) AS spec_name,
+                COALESCE(ps.sku, s.sku, '') AS sku,
+                COALESCE(ps.card_image, ps.image, p.cover_image, us.image) AS card_image
+           FROM user_scissors us
+           LEFT JOIN scissors s ON s.id = us.scissors_id AND s.deleted_at IS NULL
+           LEFT JOIN products p ON p.id = s.product_id AND p.deleted_at IS NULL
+           LEFT JOIN product_specs ps ON ps.id = s.spec_id
+          WHERE us.user_id = ? AND us.sn = ? LIMIT 1`,
+        [userId, sn]
+      );
+      if (rows.length !== 1) return null;
+      return { ...rows[0], image: safeImage(rows[0].image), card_image: safeImage(rows[0].card_image) };
+    },
+
     async remove(userId, bindingId) {
       if (!positiveId(userId) || !positiveId(bindingId)) throw new Error('A valid identifier is required.');
       const [result] = await pool.execute('DELETE FROM user_scissors WHERE id = ? AND user_id = ?', [bindingId, userId]);

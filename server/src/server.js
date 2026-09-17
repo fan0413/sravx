@@ -329,7 +329,7 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       return send(response, result.status, result.body);
     }
 
-    if (url.pathname === '/api/v1/tools' || /^\/api\/v1\/tools\/\d+$/.test(url.pathname)) {
+    if (url.pathname === '/api/v1/tools' || url.pathname === '/api/v1/tools/warranty' || /^\/api\/v1\/tools\/\d+$/.test(url.pathname)) {
       const session = await authenticatedSession();
       if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
       if (!toolRepository) { const result = error('TOOL_NOT_READY', '工具档案服务尚未配置', 503); return send(response, result.status, result.body); }
@@ -337,6 +337,11 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       const bindingId = match ? positiveInteger(match[1]) : null;
       try {
         if (request.method === 'GET' && url.pathname === '/api/v1/tools' && typeof toolRepository.list === 'function') return send(response, 200, { success: true, data: await toolRepository.list(session.subject) });
+        if (request.method === 'GET' && url.pathname === '/api/v1/tools/warranty' && typeof toolRepository.warranty === 'function') {
+          const tool = await toolRepository.warranty(session.subject, url.searchParams.get('sn'));
+          if (!tool) { const result = error('TOOL_NOT_FOUND', '工具档案不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: tool });
+        }
         if (request.method === 'POST' && url.pathname === '/api/v1/tools' && typeof toolRepository.bind === 'function') {
           const payload = await readJsonBody(request);
           const sn = typeof payload?.sn === 'string' ? payload.sn.trim().toUpperCase() : '';

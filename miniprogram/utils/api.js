@@ -65,6 +65,7 @@ function authenticatedFeatureEnabled(path, method) {
   if (path === '/api/v1/me/phone' && method === 'POST') return features.profile === true
   if (path.indexOf('/api/v1/addresses') === 0) return features.addresses === true
   if (path === '/api/v1/inquiries' && method === 'POST') return features.inquiries === true
+  if (path.indexOf('/api/v1/tools/warranty') === 0 && method === 'GET') return features.toolsRead === true
   return false
 }
 
@@ -816,7 +817,9 @@ function unbindScissors(id) {
  * @param {string} sn - 剪刀序列号
  */
 function getWarrantyInfo(sn) {
-  return callFunction('scissors', { action: 'warranty', sn }, true)
+  const serial = typeof sn === 'string' ? sn.trim().toUpperCase() : ''
+  if (!serial) return Promise.reject({ message: 'SN 码无效', code: 'INVALID_TOOL_SN' })
+  return authenticatedMigrationRequest(`/api/v1/tools/warranty?sn=${encodeURIComponent(serial)}`, 'GET', undefined, () => callFunction('scissors', { action: 'warranty', sn: serial }, true))
 }
 
 /**
