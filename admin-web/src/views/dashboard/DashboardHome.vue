@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard" v-loading="loading">
     <el-row :gutter="12">
-      <el-col v-if="!targetMode" :span="6">
+      <el-col :span="6">
         <el-card>
           <el-statistic title="活跃用户" :value="stats.users.active" />
           <div class="card-tip">总注册：{{ stats.users.total }}</div>
@@ -11,6 +11,12 @@
         <el-card>
           <el-statistic title="在售商品" :value="stats.products.onSale" />
           <div class="card-tip">商品总数：{{ stats.products.total }}</div>
+        </el-card>
+      </el-col>
+      <el-col v-if="targetMode" :span="6">
+        <el-card>
+          <el-statistic title="新建剪刀 SN" :value="stats.scissors.total" />
+          <div class="card-tip">未使用：{{ stats.scissors.unused }}</div>
         </el-card>
       </el-col>
       <el-col v-if="!targetMode" :span="6">
@@ -106,6 +112,10 @@ const stats = reactive<OverviewStats>({
 });
 
 const alertText = computed(() => {
+  if (targetMode) {
+    if (stats.products.lowStock > 0) return `有 ${stats.products.lowStock} 款目标商品库存低于 10，请尽快补货。`;
+    return "当前看板展示目标库中的用户基础资料、目录和新建剪刀编号；交易、积分、优惠券及历史工具数据尚未迁移。";
+  }
   if (stats.refunds.pending > 0) {
     return `当前有 ${stats.refunds.pending} 笔退款待审核，建议优先处理。`;
   }
