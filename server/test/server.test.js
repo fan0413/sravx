@@ -929,6 +929,19 @@ test('administrator catalog list endpoints require catalog editor and return rep
   assert.equal(body.data.query.page, '2');
 });
 
+test('administrator product stock update requires catalog editor and uses an exact non-negative quantity', async (t) => {
+  const calls = [];
+  const catalog = { restockProduct: async (id, stock) => { calls.push({ id, stock }); return id === 6 ? { id, stock } : null; } };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async ({ roleCode }) => roleCode === 'catalog_editor' }, adminCatalogRepository: catalog });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products/6/stock`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ stock: 24 }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [{ id: 6, stock: 24 }]);
+  const missing = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products/9/stock`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ stock: 1 }) });
+  assert.equal(missing.status, 404);
+});
+
 test('administrator scissors inventory endpoints are catalog-scoped and exclude binding operations', async (t) => {
   const calls = [];
   const scissors = {

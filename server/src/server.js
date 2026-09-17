@@ -704,6 +704,19 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         } catch { const result = error('INVALID_REQUEST', '商品、规格、履约信息或关联图片无效', 400); return send(response, result.status, result.body); }
       }
       const productDetail = /^\/api\/v1\/admin\/products\/(\d+)$/.exec(url.pathname);
+      const productStock = /^\/api\/v1\/admin\/products\/(\d+)\/stock$/.exec(url.pathname);
+      if (productStock && request.method === 'PUT') {
+        if (!adminCatalogRepository || typeof adminCatalogRepository.restockProduct !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const payload = await readJsonBody(request);
+          const data = await adminCatalogRepository.restockProduct(Number(productStock[1]), payload?.stock);
+          if (!data) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data });
+        } catch {
+          const result = error('INVALID_REQUEST', '库存数值无效', 400); return send(response, result.status, result.body);
+        }
+      }
       if (productDetail && request.method === 'PUT') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.updateProduct !== 'function' || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
         if (!await requireCatalogEditor()) return;

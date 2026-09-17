@@ -12,7 +12,7 @@ CloudBase 当前仍有 30 个活动云函数，均成功取得运行时、最近
 
 | 分类 | 函数 | 当前结论 |
 | --- | --- | --- |
-| 已有目标兼容实现 | `login`、`user`、`address`、`banner`、`category`、`product`、`contact`、`scissors`、`order`、`admin-banner`、`admin-category`、`admin-product`、`admin-user`、`admin-inquiry` | 保留 CloudBase 入口，待目标数据、真机回归和流量切换验证。 |
+| 已有目标兼容实现 | `login`、`user`、`address`、`banner`、`category`、`product`、`contact`、`scissors`、`order`、`admin-banner`、`admin-category`、`admin-product`、`admin-user`、`admin-inquiry` | 保留 CloudBase 入口，待目标数据、真机回归和流量切换验证。目标 `admin-product` 已补齐精确库存设置接口，供新建目标商品使用。 |
 | 资金或履约后置 | `paymentProxy`、`wxpayFunctions`、`admin-order`、`admin-points-product`、`sf-express` | 支付、退款、库存、积分或物流强耦合；等待专项事务、回调和对账方案。 |
 | 新业务重建设计 | `coupon`、`admin-coupon`、`giftCard`、`admin-scissors`、`admin-stats` | 历史券、礼品卡、剪刀和统计不导入；未来只基于目标新数据重新建立。目标后台剪刀编号库存接口已于本日完成并部署。 |
 | 不迁移的历史重复入口 | `scissors-admin` | 线上制品是已废弃的 NoSQL 版剪刀管理，动作仅为 `add`、`batchAdd`、`list`、`detail`、`delete`；其中删除还会直接删除绑定记录。当前仓库没有调用点，且功能已由受 RBAC 保护、只软删除未使用编号的目标 `admin-scissors` 接口覆盖。保留旧函数，不复制、不删除。 |

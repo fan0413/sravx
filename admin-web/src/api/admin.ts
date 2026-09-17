@@ -1974,6 +1974,7 @@ export async function deleteAdminProduct(id: number): Promise<{ id: number }> {
 }
 
 export async function restockAdminProduct(id: number, stock: number): Promise<{ id: number; stock: number }> {
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number; stock: number }>(`/api/v1/admin/products/${id}/stock`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ stock }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; stock: number }>>("admin-product", {
     action: "restock",
     id,

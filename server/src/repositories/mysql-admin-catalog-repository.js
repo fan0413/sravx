@@ -88,6 +88,14 @@ export function createMysqlAdminCatalogRepository(pool) {
       const [specs] = await pool.execute('SELECT id, name, sku, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, image, card_image, price, sort_order FROM product_specs WHERE product_id = ? ORDER BY sort_order ASC, id ASC', [productId]);
       return { ...normalizeProduct(products[0]), specs };
     },
+    async restockProduct(id, stock) {
+      const productId = integer(id);
+      const quantity = Number(stock);
+      if (!productId || !Number.isInteger(quantity) || quantity < 0 || quantity > 10000000) throw new Error('Invalid stock.');
+      const [result] = await pool.execute('UPDATE products SET stock = ?, updated_at = UTC_TIMESTAMP() WHERE id = ? AND deleted_at IS NULL', [quantity, productId]);
+      if (result.affectedRows !== 1) return null;
+      return { id: productId, stock: quantity };
+    },
     async createCategory(input) {
       const [result] = await pool.execute(
         `INSERT INTO categories (parent_id, name, icon, image, description, level, sort_order, is_show, is_nav, product_count)
