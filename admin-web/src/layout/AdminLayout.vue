@@ -38,7 +38,7 @@
           <template #title>用户管理</template>
           <el-menu-item index="/user/list">用户列表</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu v-if="!targetMode" index="scissors">
+        <el-sub-menu v-if="!targetMode || catalogMode" index="scissors">
           <template #title>剪刀 SN</template>
           <el-menu-item index="/scissors/list">SN 码管理</el-menu-item>
         </el-sub-menu>
@@ -69,11 +69,12 @@ import { computed } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter, RouterView } from "vue-router";
 import { adminLogout } from "../lib/admin-auth";
-import { targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
+import { targetAdminCatalogModeEnabled, targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
 
 const route = useRoute();
 const router = useRouter();
 const targetMode = targetAdminModeEnabled();
+const catalogMode = targetAdminCatalogModeEnabled();
 const operationsMode = targetAdminOperationsModeEnabled();
 
 const pageTitle = computed(() => String(route.meta.title || "电商管理平台"));

@@ -62,7 +62,7 @@ export function createMysqlAdminScissorsRepository(pool) {
   if (!pool || typeof pool.execute !== 'function' || typeof pool.getConnection !== 'function') throw new Error('A MySQL pool is required.');
   return Object.freeze({
     async listProducts() {
-      const [products] = await pool.execute('SELECT id, name, cover_image, scissors_card_image FROM products WHERE deleted_at IS NULL ORDER BY sort_order ASC, id DESC LIMIT 500');
+      const [products] = await pool.execute('SELECT id, name, cover_image, scissors_card_image, warranty_months FROM products WHERE deleted_at IS NULL ORDER BY sort_order ASC, id DESC LIMIT 500');
       if (!products.length) return [];
       const ids = products.map(({ id }) => id);
       const placeholders = ids.map(() => '?').join(',');
@@ -83,7 +83,7 @@ export function createMysqlAdminScissorsRepository(pool) {
       const where = filters.join(' AND ');
       const joins = 'LEFT JOIN products p ON p.id = s.product_id LEFT JOIN product_specs ps ON ps.id = s.spec_id AND ps.product_id = s.product_id';
       const [rows] = await pool.execute(
-        `SELECT s.id, s.sn, s.batch_no, s.product_id, s.spec_id, s.sku, s.spec_name, s.model, s.produce_date, s.points_value, s.status, s.created_at, s.updated_at, p.name, ${specProjection()}
+        `SELECT s.id, s.sn, s.batch_no, s.product_id, s.spec_id, s.sku, s.spec_name, s.model, s.produce_date, s.points_value, s.status, s.created_at, s.updated_at, p.name, p.warranty_months, ${specProjection()}
            FROM scissors s ${joins} WHERE ${where} ORDER BY s.id DESC LIMIT ? OFFSET ?`,
         [...values, limit, offset]
       );
@@ -95,7 +95,7 @@ export function createMysqlAdminScissorsRepository(pool) {
       if (!identifier && !serial) return null;
       const joins = 'LEFT JOIN products p ON p.id = s.product_id LEFT JOIN product_specs ps ON ps.id = s.spec_id AND ps.product_id = s.product_id';
       const [rows] = await pool.execute(
-        `SELECT s.id, s.sn, s.batch_no, s.product_id, s.spec_id, s.sku, s.spec_name, s.card_image, s.image AS legacy_image, s.model, s.produce_date, s.points_value, s.status, s.created_at, s.updated_at, p.name, ${specProjection()}
+        `SELECT s.id, s.sn, s.batch_no, s.product_id, s.spec_id, s.sku, s.spec_name, s.card_image, s.image AS legacy_image, s.model, s.produce_date, s.points_value, s.status, s.created_at, s.updated_at, p.name, p.warranty_months, ${specProjection()}
            FROM scissors s ${joins} WHERE s.deleted_at IS NULL AND ${identifier ? 's.id = ?' : 's.sn = ?'} LIMIT 1`,
         [identifier || serial]
       );
@@ -105,7 +105,7 @@ export function createMysqlAdminScissorsRepository(pool) {
       const { limit, offset } = pageWindow({ page, pageSize });
       const [totals] = await pool.execute('SELECT COUNT(DISTINCT batch_no) AS total FROM scissors WHERE deleted_at IS NULL AND batch_no IS NOT NULL');
       const [rows] = await pool.execute(
-        `SELECT s.batch_no, MIN(s.product_id) AS product_id, MIN(p.name) AS name, MIN(s.spec_id) AS matched_spec_id, MIN(COALESCE(ps.name, s.spec_name)) AS spec_name, MIN(COALESCE(ps.sku, s.sku)) AS sku, MIN(s.points_value) AS points_value, MIN(s.produce_date) AS produce_date, COUNT(*) AS total_count, SUM(s.status = 'unused') AS unused_count, SUM(s.status = 'bound') AS bound_count, SUM(s.status = 'sold') AS sold_count, SUM(s.status = 'expired') AS expired_count, MIN(s.created_at) AS created_at
+        `SELECT s.batch_no, MIN(s.product_id) AS product_id, MIN(p.name) AS name, MIN(s.spec_id) AS matched_spec_id, MIN(COALESCE(ps.name, s.spec_name)) AS spec_name, MIN(COALESCE(ps.sku, s.sku)) AS sku, MIN(s.points_value) AS points_value, MIN(p.warranty_months) AS warranty_months, MIN(s.produce_date) AS produce_date, COUNT(*) AS total_count, SUM(s.status = 'unused') AS unused_count, SUM(s.status = 'bound') AS bound_count, SUM(s.status = 'sold') AS sold_count, SUM(s.status = 'expired') AS expired_count, MIN(s.created_at) AS created_at
            FROM scissors s LEFT JOIN products p ON p.id = s.product_id LEFT JOIN product_specs ps ON ps.id = s.spec_id AND ps.product_id = s.product_id
           WHERE s.deleted_at IS NULL AND s.batch_no IS NOT NULL GROUP BY s.batch_no ORDER BY MIN(s.created_at) DESC, s.batch_no DESC LIMIT ? OFFSET ?`,
         [limit, offset]
@@ -122,7 +122,7 @@ export function createMysqlAdminScissorsRepository(pool) {
       const connection = await pool.getConnection();
       try {
         await connection.beginTransaction();
-        const [products] = await connection.execute('SELECT id, name, cover_image, scissors_card_image FROM products WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [productId]);
+        const [products] = await connection.execute('SELECT id, name, cover_image, scissors_card_image, warranty_months FROM products WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [productId]);
         if (products.length !== 1) throw new Error('PRODUCT_NOT_FOUND');
         const product = products[0];
         const selectedSpecId = integer(input.specId);
@@ -141,7 +141,7 @@ export function createMysqlAdminScissorsRepository(pool) {
         for (const serial of rows) values.push(serial, batch, product.id, spec?.id || null, spec?.sku || '', spec?.name || '', spec?.card_image || product.scissors_card_image || '', spec?.image || product.cover_image || '', text(input.model, 50) || null, date(input.produceDate), pointsValue);
         await connection.execute(`INSERT INTO scissors (sn, batch_no, product_id, spec_id, sku, spec_name, card_image, image, model, produce_date, points_value, status, created_at, updated_at) VALUES ${placeholders}`, values);
         await connection.commit();
-        return { batchNo: batch, count: rows.length, productId: product.id, productName: product.name, specId: spec?.id || null, specName: spec?.name || '', sku: spec?.sku || '', pointsValue, produceDate: date(input.produceDate), snLength: length, sampleSns: rows.slice(0, 20) };
+        return { batchNo: batch, count: rows.length, productId: product.id, productName: product.name, specId: spec?.id || null, specName: spec?.name || '', sku: spec?.sku || '', pointsValue, warrantyMonths: Number(product.warranty_months || 0), produceDate: date(input.produceDate), snLength: length, sampleSns: rows.slice(0, 20), allSns: rows };
       } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
     },
     async deleteUnused(ids) {

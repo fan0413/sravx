@@ -1590,6 +1590,11 @@ export interface ScissorsDetailResult {
 }
 
 export async function fetchAdminScissors(query: ScissorsQuery): Promise<ScissorsListResult> {
+  if (targetAdminCatalogModeEnabled()) {
+    const parameters = new URLSearchParams();
+    Object.entries({ sn: query.sn?.trim(), batchNo: query.batchNo?.trim(), status: query.status, productId: query.productId, specId: query.specId, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([key, value]) => { if (value !== undefined && value !== '') parameters.set(key, String(value)); });
+    return targetAdminRequest<ScissorsListResult>(`/api/v1/admin/scissors?${parameters}`);
+  }
   const result = await callCloudFunction<CloudFunctionResponse<ScissorsListResult>>("admin-scissors", {
     action: "list",
     sn: (query.sn || "").trim(),
@@ -1628,6 +1633,7 @@ export async function fetchAdminScissorsBatches(
   page = 1,
   pageSize = 30
 ): Promise<ScissorsBatchListResult> {
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<ScissorsBatchListResult>(`/api/v1/admin/scissors/batches?page=${page}&pageSize=${pageSize}`);
   const result = await callCloudFunction<CloudFunctionResponse<ScissorsBatchListResult>>(
     "admin-scissors",
     {
@@ -1644,6 +1650,7 @@ export async function fetchAdminScissorsBatches(
 }
 
 export async function fetchAdminScissorsProducts(): Promise<ScissorsProductOption[]> {
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<ScissorsProductOption[]>("/api/v1/admin/scissors/products");
   const result = await callCloudFunction<CloudFunctionResponse<ScissorsProductOption[]>>(
     "admin-scissors",
     { action: "listProducts" }
@@ -1655,6 +1662,7 @@ export async function fetchAdminScissorsProducts(): Promise<ScissorsProductOptio
 export async function batchGenerateScissors(
   payload: BatchGenerateScissorsInput
 ): Promise<BatchGenerateScissorsResult> {
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<BatchGenerateScissorsResult>("/api/v1/admin/scissors/batches", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) });
   const result = await callCloudFunction<CloudFunctionResponse<BatchGenerateScissorsResult>>(
     "admin-scissors",
     {
@@ -1669,6 +1677,10 @@ export async function fetchAdminScissorsDetail(params: {
   id?: number;
   sn?: string;
 }): Promise<ScissorsDetailResult> {
+  if (targetAdminCatalogModeEnabled()) {
+    if (!params.id) throw new Error("新系统仅支持按编号查看 SN 详情");
+    return targetAdminRequest<ScissorsDetailResult>(`/api/v1/admin/scissors/${params.id}`);
+  }
   const result = await callCloudFunction<CloudFunctionResponse<ScissorsDetailResult>>(
     "admin-scissors",
     {
@@ -1696,6 +1708,7 @@ export async function fetchAdminScissorsDetail(params: {
 }
 
 export async function deleteUnusedScissors(ids: number[]): Promise<{ deleted: number; requested: number }> {
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ deleted: number; requested: number }>("/api/v1/admin/scissors", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ deleted: number; requested: number }>>(
     "admin-scissors",
     {

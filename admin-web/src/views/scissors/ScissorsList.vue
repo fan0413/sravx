@@ -114,7 +114,7 @@
           <el-tag :type="statusTagType(row.status)">{{ statusLabel(row.status) }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="绑定用户" min-width="180">
+      <el-table-column v-if="!targetMode" label="绑定用户" min-width="180">
         <template #default="{ row }">
           <template v-if="row.bound_user_id">
             <div class="bound-info">
@@ -125,7 +125,7 @@
           <span v-else class="text-secondary">-</span>
         </template>
       </el-table-column>
-      <el-table-column label="绑定时间" min-width="140">
+      <el-table-column v-if="!targetMode" label="绑定时间" min-width="140">
         <template #default="{ row }">{{ formatDate(row.bound_at) || "-" }}</template>
       </el-table-column>
       <el-table-column label="创建时间" min-width="170">
@@ -203,7 +203,7 @@
           </el-select>
           <span class="hint">会写入 SN 的 spec_id / SKU / 规格名，用于用户端卡片精确匹配规格图</span>
         </el-form-item>
-        <el-form-item label="卡片图覆盖">
+        <el-form-item v-if="!targetMode" label="卡片图覆盖">
           <el-input
             v-model="form.card_image"
             placeholder="可选，仅当本批 SN 需要独立卡片图时填写 URL 或 cloud://"
@@ -214,11 +214,11 @@
           <el-input-number v-model="form.count" :min="1" :max="5000" :step="50" />
           <span class="hint">单次最多 5000 条</span>
         </el-form-item>
-        <el-form-item label="积分价值" prop="points_value">
+        <el-form-item :label="targetMode ? '预留积分值' : '积分价值'" prop="points_value">
           <el-input-number v-model="form.points_value" :min="1" :max="1000000" :step="50" />
-          <span class="hint">用户绑定成功后发放的积分</span>
+          <span class="hint">{{ targetMode ? '仅随编号保存，不会触发用户积分或保修权益。' : '用户绑定成功后发放的积分' }}</span>
         </el-form-item>
-        <el-form-item label="保修月数" prop="warranty_months">
+        <el-form-item v-if="!targetMode" label="保修月数" prop="warranty_months">
           <el-input-number v-model="form.warranty_months" :min="0" :max="120" :step="6" />
         </el-form-item>
         <el-form-item label="生产日期">
@@ -360,8 +360,9 @@
             formatDateTime(detail.scissors.created_at)
           }}</el-descriptions-item>
         </el-descriptions>
-        <el-divider content-position="left">绑定信息</el-divider>
-        <template v-if="detail.binding">
+        <el-divider v-if="!targetMode" content-position="left">绑定信息</el-divider>
+        <el-alert v-if="targetMode" type="info" title="当前仅管理新编号库存；用户绑定、保修和积分将在后续独立迁移。" :closable="false" />
+        <template v-else-if="detail.binding">
           <el-descriptions :column="1" border size="small">
             <el-descriptions-item label="用户">{{
               detail.binding.username || "-"
@@ -421,6 +422,7 @@ import {
   type ScissorsProductOption,
   type ScissorsRow
 } from "../../api/admin";
+import { targetAdminCatalogModeEnabled } from "../../lib/target-admin-auth";
 
 const query = reactive({
   sn: "",
@@ -435,6 +437,7 @@ const query = reactive({
 const rows = ref<ScissorsRow[]>([]);
 const total = ref(0);
 const loading = ref(false);
+const targetMode = targetAdminCatalogModeEnabled();
 const selectedIds = ref<number[]>([]);
 
 const productOptions = ref<ScissorsProductOption[]>([]);
