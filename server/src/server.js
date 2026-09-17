@@ -90,7 +90,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -496,6 +496,50 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         }
         return true;
       };
+      const requireScissorsAdmin = async () => {
+        if (!adminScissorsRepository) {
+          const result = error('ADMIN_SCISSORS_NOT_READY', '剪刀编号服务尚未配置', 503);
+          send(response, result.status, result.body);
+          return false;
+        }
+        return requireCatalogEditor();
+      };
+      const adminScissorsDetail = /^\/api\/v1\/admin\/scissors\/(\d+)$/.exec(url.pathname);
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/scissors/products') {
+        if (!await requireScissorsAdmin()) return;
+        return send(response, 200, { success: true, data: await adminScissorsRepository.listProducts() });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/scissors/batches') {
+        if (!await requireScissorsAdmin()) return;
+        return send(response, 200, { success: true, data: await adminScissorsRepository.listBatches({ page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/scissors') {
+        if (!await requireScissorsAdmin()) return;
+        return send(response, 200, { success: true, data: await adminScissorsRepository.list({ sn: url.searchParams.get('sn'), batchNo: url.searchParams.get('batchNo'), status: url.searchParams.get('status'), productId: url.searchParams.get('productId'), specId: url.searchParams.get('specId'), page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'GET' && adminScissorsDetail) {
+        if (!await requireScissorsAdmin()) return;
+        const data = await adminScissorsRepository.detail({ id: Number(adminScissorsDetail[1]) });
+        if (!data) { const result = error('NOT_FOUND', '剪刀编号不存在', 404); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data: { scissors: data, binding: null, pointsLog: null } });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/v1/admin/scissors/batches') {
+        if (!await requireScissorsAdmin()) return;
+        try {
+          const payload = await readJsonBody(request, 16384);
+          const data = await adminScissorsRepository.createBatch({ productId: payload.product_id, specId: payload.spec_id, count: payload.count, pointsValue: payload.points_value, snLength: payload.sn_length, prefix: payload.prefix, batchNo: payload.batch_no, produceDate: payload.produce_date, model: payload.model });
+          return send(response, 201, { success: true, data });
+        } catch (cause) {
+          const known = new Set(['Invalid product.', 'Invalid count.', 'Invalid points value.', 'Invalid serial length.', 'PRODUCT_NOT_FOUND', 'SPEC_NOT_FOUND', 'SPEC_REQUIRED', 'BATCH_EXISTS', 'INVALID_JSON', 'REQUEST_TOO_LARGE']);
+          const result = error(known.has(cause?.message) ? 'INVALID_REQUEST' : 'SCISSORS_OPERATION_FAILED', known.has(cause?.message) ? '剪刀编号批次参数无效或关联商品不存在' : '剪刀编号批次创建失败，请稍后重试', known.has(cause?.message) ? 400 : 503);
+          return send(response, result.status, result.body);
+        }
+      }
+      if (request.method === 'DELETE' && url.pathname === '/api/v1/admin/scissors') {
+        if (!await requireScissorsAdmin()) return;
+        try { return send(response, 200, { success: true, data: await adminScissorsRepository.deleteUnused((await readJsonBody(request)).ids) }); }
+        catch (cause) { const result = error(cause?.message === 'Invalid serial ids.' || cause?.message === 'INVALID_JSON' || cause?.message === 'REQUEST_TOO_LARGE' ? 'INVALID_REQUEST' : 'SCISSORS_OPERATION_FAILED', '剪刀编号删除请求无效', cause?.message === 'Invalid serial ids.' || cause?.message === 'INVALID_JSON' || cause?.message === 'REQUEST_TOO_LARGE' ? 400 : 503); return send(response, result.status, result.body); }
+      }
       const adminUserMatch = /^\/api\/v1\/admin\/users\/(\d+)$/.exec(url.pathname);
       if ((request.method === 'GET' && url.pathname === '/api/v1/admin/users') || (request.method === 'GET' && adminUserMatch)) {
         if (!adminOperationsRepository || typeof adminOperationsRepository.listUsers !== 'function' || typeof adminOperationsRepository.getUser !== 'function') { const result = error('ADMIN_OPERATIONS_NOT_READY', '后台运营服务尚未配置', 503); return send(response, result.status, result.body); }

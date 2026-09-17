@@ -916,6 +916,31 @@ test('administrator catalog list endpoints require catalog editor and return rep
   assert.equal(body.data.query.page, '2');
 });
 
+test('administrator scissors inventory endpoints are catalog-scoped and exclude binding operations', async (t) => {
+  const calls = [];
+  const scissors = {
+    listProducts: async () => [{ id: 3, name: '新商品', specs: [] }],
+    listBatches: async () => ({ list: [], total: 0 }),
+    list: async (query) => ({ list: [], total: 0, query }),
+    detail: async () => ({ id: 9, sn: 'SRAVX1234', status: 'unused' }),
+    createBatch: async (input) => { calls.push(input); return { batchNo: 'SN-TEST', count: 2, sampleSns: ['SRAVX1234'] }; },
+    deleteUnused: async () => ({ deleted: 1, requested: 1 })
+  };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async ({ adminAccountId, roleCode }) => adminAccountId === 7 && roleCode === 'catalog_editor' }, adminScissorsRepository: scissors });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const created = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/scissors/batches`, { method: 'POST', headers, body: JSON.stringify({ product_id: 3, count: 2, points_value: 0 }) });
+  assert.equal(created.status, 201);
+  assert.deepEqual(calls[0], { productId: 3, specId: undefined, count: 2, pointsValue: 0, snLength: undefined, prefix: undefined, batchNo: undefined, produceDate: undefined, model: undefined });
+  const detail = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/scissors/9`, { headers });
+  assert.equal(detail.status, 200);
+  assert.deepEqual((await detail.json()).data.binding, null);
+  const deniedToken = issueSession({ subject: 8, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const denied = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/scissors`, { headers: { authorization: `Bearer ${deniedToken}` } });
+  assert.equal(denied.status, 403);
+});
+
 test('administrator overview returns only target catalog metrics', async (t) => {
   const overview = { users: { total: 0, active: 0 }, products: { total: 2, onSale: 1, lowStock: 1 }, orders: { total: 0, paid: 0, pending: 0, fulfilled: 0 }, gmv: { total: 0, week: 0 }, refunds: { pending: 0 }, coupons: { active: 0 }, scissors: { total: 0, unused: 0, bound: 0 }, banners: { online: 1 } };
   const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async () => true }, adminCatalogRepository: { overview: async () => overview } });
