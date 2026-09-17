@@ -997,6 +997,29 @@ test('administrator operations endpoints require their own role and never expose
   assert.equal(bad.status, 400);
 });
 
+test('administrator after-sale endpoints stay separate from shipping and financial actions', async (t) => {
+  const calls = [];
+  const afterSales = {
+    list: async (query) => ({ list: [{ id: 4, request_no: 'AS1', sn: 'SN1' }], total: 1, query }),
+    listServiceAddresses: async () => [],
+    saveServiceAddress: async (id, input) => { calls.push({ kind: 'address', id, input }); return { id: id || 8 }; },
+    reply: async (input) => { calls.push({ kind: 'reply', input }); return { id: input.id }; }
+  };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async ({ roleCode }) => roleCode === 'operations_manager' }, adminAfterSaleRepository: afterSales });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const list = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/after-sales?serviceType=repair`, { headers });
+  assert.equal(list.status, 200); assert.equal((await list.json()).data.list[0].request_no, 'AS1');
+  const address = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/after-sale-service-addresses`, { method: 'POST', headers, body: JSON.stringify({ label: '售后中心', contact: '店员', phone: '13800138000', detail: '测试地址' }) });
+  assert.equal(address.status, 201);
+  const reply = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/after-sales/4/messages`, { method: 'POST', headers, body: JSON.stringify({ content: '请寄回检测' }) });
+  assert.equal(reply.status, 201);
+  assert.deepEqual(calls.map((item) => item.kind), ['address', 'reply']);
+  const shipment = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/after-sales/4/shipment`, { method: 'POST', headers, body: '{}' });
+  assert.equal(shipment.status, 501);
+});
+
 test('administrator operations repository applies bound filters and masks identity columns', async () => {
   const calls = [];
   const repository = createMysqlAdminOperationsRepository({ execute: async (sql, values = []) => { calls.push({ sql, values }); return sql.includes('COUNT(*)') ? [[{ total: 0 }]] : [[]]; } });

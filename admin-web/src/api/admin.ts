@@ -99,16 +99,29 @@ export type ScissorsAfterSaleRow = {
 export type AfterSaleServiceAddress = { id?: number; label: string; contact: string; phone: string; province?: string; city?: string; district?: string; detail: string; is_enabled?: boolean; sort_order?: number };
 
 export async function fetchScissorsAfterSales(query: { status?: string; keyword?: string; serviceType?: string } = {}): Promise<ScissorsAfterSaleRow[]> {
+  if (targetAdminOperationsModeEnabled()) {
+    const params = new URLSearchParams();
+    if (query.status) params.set('status', query.status);
+    if (query.keyword) params.set('keyword', query.keyword);
+    if (query.serviceType) params.set('serviceType', query.serviceType);
+    const data = await targetAdminRequest<{ list: ScissorsAfterSaleRow[] }>(`/api/v1/admin/after-sales?${params.toString()}`);
+    return data.list;
+  }
   const result = await callCloudFunction<CloudFunctionResponse<ScissorsAfterSaleRow[]>>("scissors", { action: "afterSaleAdminList", status: query.status || "", keyword: query.keyword || "", serviceType: query.serviceType || "" });
   return unwrapCloudResponse(result, "获取剪刀售后工单失败");
 }
 
 export async function fetchAfterSaleServiceAddresses(): Promise<AfterSaleServiceAddress[]> {
+  if (targetAdminOperationsModeEnabled()) return targetAdminRequest<AfterSaleServiceAddress[]>('/api/v1/admin/after-sale-service-addresses');
   const result = await callCloudFunction<CloudFunctionResponse<AfterSaleServiceAddress[]>>("scissors", { action: "afterSaleServiceAddressList" });
   return unwrapCloudResponse(result, "获取售后收件地址失败");
 }
 
 export async function saveAfterSaleServiceAddress(address: AfterSaleServiceAddress) {
+  if (targetAdminOperationsModeEnabled()) {
+    const path = address.id ? `/api/v1/admin/after-sale-service-addresses/${address.id}` : '/api/v1/admin/after-sale-service-addresses';
+    return targetAdminRequest<{ id: number }>(path, { method: address.id ? 'PUT' : 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(address) });
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("scissors", { action: "afterSaleServiceAddressSave", address });
   return unwrapCloudResponse(result, "保存售后收件地址失败");
 }
@@ -119,6 +132,7 @@ export async function updateScissorsAfterSale(payload: Record<string, unknown>) 
 }
 
 export async function replyScissorsAfterSale(id: number, content: string) {
+  if (targetAdminOperationsModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/after-sales/${id}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("scissors", { action: "afterSaleAdminReply", id, content });
   return unwrapCloudResponse(result, "发送售后留言失败");
 }

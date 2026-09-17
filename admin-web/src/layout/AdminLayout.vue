@@ -29,9 +29,9 @@
           <el-menu-item index="/order/list">订单列表</el-menu-item>
           <el-menu-item index="/points-order/list">积分订单列表</el-menu-item>
         </el-sub-menu>
-        <el-sub-menu v-if="!targetMode" index="refund">
+        <el-sub-menu v-if="!targetMode || operationsMode" index="refund">
           <template #title>售后管理</template>
-          <el-menu-item index="/refund/list">售后退款</el-menu-item>
+          <el-menu-item v-if="!targetMode" index="/refund/list">售后退款</el-menu-item>
           <el-menu-item index="/scissors/after-sale">剪刀售后</el-menu-item>
         </el-sub-menu>
         <el-sub-menu v-if="operationsMode" index="user">

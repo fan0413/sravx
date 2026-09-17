@@ -90,7 +90,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -557,6 +557,30 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         return send(response, 200, { success: true, data: await adminOperationsRepository.listUsers({ keyword: url.searchParams.get('keyword') || '', status: url.searchParams.get('status') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
       }
       const adminInquiryMatch = /^\/api\/v1\/admin\/inquiries\/(\d+)$/.exec(url.pathname);
+      const adminAfterSaleMatch = /^\/api\/v1\/admin\/after-sales\/(\d+)\/messages$/.exec(url.pathname);
+      const adminServiceAddressMatch = /^\/api\/v1\/admin\/after-sale-service-addresses\/(\d+)$/.exec(url.pathname);
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/after-sales') {
+        if (!adminAfterSaleRepository || typeof adminAfterSaleRepository.list !== 'function') { const result = error('ADMIN_AFTER_SALE_NOT_READY', '后台剪刀售后服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        return send(response, 200, { success: true, data: await adminAfterSaleRepository.list({ keyword: url.searchParams.get('keyword') || '', status: url.searchParams.get('status') || '', serviceType: url.searchParams.get('serviceType') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/after-sale-service-addresses') {
+        if (!adminAfterSaleRepository || typeof adminAfterSaleRepository.listServiceAddresses !== 'function') { const result = error('ADMIN_AFTER_SALE_NOT_READY', '后台剪刀售后服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        return send(response, 200, { success: true, data: await adminAfterSaleRepository.listServiceAddresses() });
+      }
+      if ((request.method === 'POST' && url.pathname === '/api/v1/admin/after-sale-service-addresses') || (request.method === 'PUT' && adminServiceAddressMatch)) {
+        if (!adminAfterSaleRepository || typeof adminAfterSaleRepository.saveServiceAddress !== 'function') { const result = error('ADMIN_AFTER_SALE_NOT_READY', '后台剪刀售后服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        try { const data = await adminAfterSaleRepository.saveServiceAddress(adminServiceAddressMatch ? Number(adminServiceAddressMatch[1]) : null, await readJsonBody(request)); if (!data) { const result = error('NOT_FOUND', '售后收件地址不存在', 404); return send(response, result.status, result.body); } return send(response, request.method === 'POST' ? 201 : 200, { success: true, data }); }
+        catch { const result = error('INVALID_REQUEST', '售后收件地址信息不完整', 400); return send(response, result.status, result.body); }
+      }
+      if (request.method === 'POST' && adminAfterSaleMatch) {
+        if (!adminAfterSaleRepository || typeof adminAfterSaleRepository.reply !== 'function') { const result = error('ADMIN_AFTER_SALE_NOT_READY', '后台剪刀售后服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        try { const data = await adminAfterSaleRepository.reply({ id: Number(adminAfterSaleMatch[1]), adminAccountId: session.subject, content: (await readJsonBody(request)).content }); if (!data) { const result = error('NOT_FOUND', '售后工单不存在', 404); return send(response, result.status, result.body); } return send(response, 201, { success: true, data }); }
+        catch { const result = error('INVALID_REQUEST', '售后留言不能为空', 400); return send(response, result.status, result.body); }
+      }
       if (request.method === 'GET' && url.pathname === '/api/v1/admin/inquiries') {
         if (!adminOperationsRepository || typeof adminOperationsRepository.listInquiries !== 'function') { const result = error('ADMIN_OPERATIONS_NOT_READY', '后台运营服务尚未配置', 503); return send(response, result.status, result.body); }
         if (!await requireOperationsManager()) return;
