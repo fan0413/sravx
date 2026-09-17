@@ -16,7 +16,8 @@ CloudBase 当前仍有 30 个活动云函数，均成功取得运行时、最近
 | 资金或履约后置 | `paymentProxy`、`wxpayFunctions`、`admin-order`、`admin-points-product`、`sf-express` | 支付、退款、库存、积分或物流强耦合；等待专项事务、回调和对账方案。 |
 | 新业务重建设计 | `coupon`、`admin-coupon`、`giftCard`、`admin-scissors`、`admin-stats` | 历史券、礼品卡、剪刀和统计不导入；未来只基于目标新数据重新建立。目标后台剪刀编号库存接口已于本日完成并部署。 |
 | 不迁移的历史重复入口 | `scissors-admin` | 线上制品是已废弃的 NoSQL 版剪刀管理，动作仅为 `add`、`batchAdd`、`list`、`detail`、`delete`；其中删除还会直接删除绑定记录。当前仓库没有调用点，且功能已由受 RBAC 保护、只软删除未使用编号的目标 `admin-scissors` 接口覆盖。保留旧函数，不复制、不删除。 |
-| 需明确归属 | `lowcode-automation`、`lowcode-automation-preview`、`lowcode-datasource`、`lowcode-datasource-preview`、`mysql-api` | 无确认业务调用方；不复制通用 SQL 或低代码运行时，等待负责人确认迁移、保留或退役。 |
+| 不迁移的通用/重复入口 | `mysql-api` | 线上制品包含目录查询的重复动作（轮播、分类、商品、推荐、商品详情）以及可由调用方指定表名和参数的通用查询。目录动作已由目标受控目录 API 覆盖；通用查询会绕过目标端的接口、权限和字段边界，不复制、不开放。保留旧函数，等待后续停用审批。 |
+| 需明确归属 | `lowcode-automation`、`lowcode-automation-preview`、`lowcode-datasource`、`lowcode-datasource-preview` | 两个 automation 是可执行传入脚本的通用 VM 运行时，两个 datasource 是 WeDa 运行时代理；无当前仓库调用点和近 7 天日志命中。不复制通用低代码运行时，等待负责人确认调用方、保留期限或退役。 |
 
 ## 运行时风险
 
