@@ -503,7 +503,7 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         if (code === 'PRODUCT_NOT_AVAILABLE') { const result = error(code, '商品不存在或已下架', 404); return send(response, result.status, result.body); }
         if (code === 'PRODUCT_SPEC_NOT_FOUND') { const result = error(code, '商品规格不存在', 409); return send(response, result.status, result.body); }
         if (code === 'PRODUCT_OUT_OF_STOCK') { const result = error(code, '商品库存不足', 409); return send(response, result.status, result.body); }
-        if (code === 'COUPON_NOT_READY') { const result = error(code, '优惠券功能尚未切换', 409); return send(response, result.status, result.body); }
+        if (['COUPON_NOT_ALLOWED', 'COUPON_UNAVAILABLE', 'COUPON_MINIMUM_NOT_MET'].includes(code)) { const result = error(code, code === 'COUPON_NOT_ALLOWED' ? '该商品不支持优惠券' : code === 'COUPON_MINIMUM_NOT_MET' ? '订单金额未达到优惠券门槛' : '优惠券不可用', 409); return send(response, result.status, result.body); }
         if (code === 'ORDER_NOT_FOUND') { const result = error(code, '订单不存在', 404); return send(response, result.status, result.body); }
         if (code === 'ORDER_NOT_CANCELLABLE' || code === 'ORDER_NOT_RECEIVABLE') { const result = error(code, '当前订单状态不可执行该操作', 409); return send(response, result.status, result.body); }
         const result = error('ORDER_OPERATION_FAILED', '订单服务暂不可用', 503); return send(response, result.status, result.body);

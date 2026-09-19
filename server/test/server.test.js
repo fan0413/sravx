@@ -129,7 +129,7 @@ test('order write repository freezes stock and records an idempotency ledger in 
   assert.equal(committed, 1); assert.equal(rolledBack, 0);
   assert.equal(sql.filter(({ statement }) => statement.startsWith('UPDATE products SET stock')).length, 1);
   assert.equal(sql.filter(({ statement }) => statement.startsWith('INSERT INTO order_creation_requests')).length, 1);
-  await assert.rejects(() => repository.create(8, { productId: 3, addressId: 4, quantity: 1, couponId: 9, idempotencyKey: 'order-create-key-0002' }), /COUPON_NOT_READY/);
+  await assert.rejects(() => repository.create(8, { productId: 3, addressId: 4, quantity: 1, couponId: 9, idempotencyKey: 'order-create-key-0002' }), /COUPON_NOT_ALLOWED/);
 });
 
 test('points-order writes use the signed customer and never accept a user id from the request', async (t) => {
