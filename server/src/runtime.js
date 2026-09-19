@@ -22,6 +22,7 @@ import { createMysqlInquiryRepository } from './repositories/mysql-inquiry-repos
 import { createMysqlPaymentInboundRepository } from './repositories/mysql-payment-inbound-repository.js';
 import { createWechatPayCallbackService, createWechatPayCertificateProvider } from './payments/wechatpay-callback.js';
 import { loadWechatPayPlatformCertificates } from './payments/wechatpay-platform-certificates.js';
+import { paymentInboundConfiguration } from './payments/payment-inbound-configuration.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
 import { createRequestAuditLogger } from './observability/request-audit.js';
@@ -46,15 +47,6 @@ async function createOptionalCosSigner(environment) {
     region: environment.COS_REGION,
     createClient: (options) => new COS(options)
   });
-}
-
-function paymentInboundConfiguration(environment) {
-  const configuration = {
-    host: required(environment, 'PAYMENT_INBOUND_MYSQL_HOST'), port: Number(required(environment, 'PAYMENT_INBOUND_MYSQL_PORT')),
-    user: required(environment, 'PAYMENT_INBOUND_MYSQL_USER'), password: required(environment, 'PAYMENT_INBOUND_MYSQL_PASSWORD'), database: required(environment, 'PAYMENT_INBOUND_MYSQL_DATABASE')
-  };
-  if (configuration.database === required(environment, 'MYSQL_DATABASE') && configuration.host === required(environment, 'MYSQL_HOST')) throw new Error('PAYMENT_INBOUND_MYSQL must use a database separate from the business database.');
-  return configuration;
 }
 
 async function createOptionalPaymentCallbackService(environment, inboundRepository) {
@@ -102,7 +94,9 @@ export async function createRuntimeServer(environment = process.env) {
   const adminScissorsRepository = createMysqlAdminScissorsRepository(pool);
   const adminAfterSaleRepository = createMysqlAdminAfterSaleRepository(pool);
   const inquiryRepository = createMysqlInquiryRepository(pool);
-  const inboundPool = environment.PAYMENT_CALLBACK_ENABLED === 'true' ? mysql.createPool({ ...paymentInboundConfiguration(environment), waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null;
+  const inboundConfiguration = environment.PAYMENT_CALLBACK_ENABLED === 'true' ? paymentInboundConfiguration(environment) : null;
+  const { rehearsal: _rehearsal, ...inboundMysqlConfiguration } = inboundConfiguration || {};
+  const inboundPool = inboundConfiguration ? mysql.createPool({ ...inboundMysqlConfiguration, waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null;
   const paymentInboundRepository = inboundPool ? createMysqlPaymentInboundRepository(inboundPool) : null;
   const mediaSigner = await createOptionalCosSigner(environment);
   const paymentCallbackService = await createOptionalPaymentCallbackService(environment, paymentInboundRepository);
