@@ -128,6 +128,16 @@ export function createMysqlOrderWriteRepository(pool) {
           [createdOrderId, address.name || address.contact, address.phone, address.province || '', address.city || '', address.district || '', address.detail, customerId]
         );
         await connection.execute('INSERT INTO order_creation_requests (user_id, idempotency_key, order_id) VALUES (?, ?, ?)', [customerId, idempotencyKey, createdOrderId]);
+        if (Number(payAmount) === 0) {
+          const [settled] = await connection.execute(`UPDATE orders SET status = 'paid', pay_type = 'other', pay_time = NOW(), updated_at = NOW() WHERE id = ? AND status = 'pending_payment'`, [createdOrderId]);
+          if (settled.affectedRows !== 1) throw problem('ORDER_SETTLEMENT_CONFLICT');
+          const [inventory] = await connection.execute('UPDATE products SET reserved_stock = GREATEST(reserved_stock - ?, 0), sales_count = IFNULL(sales_count, 0) + ? WHERE id = ?', [quantity, quantity, productId]);
+          if (inventory.affectedRows !== 1) throw problem('ORDER_INVENTORY_NOT_FOUND');
+          if (couponClaimId) {
+            const [used] = await connection.execute(`UPDATE coupon_claims SET status = 'used', used_order_id = ?, used_at = NOW() WHERE id = ? AND status = 'reserved' AND reserved_order_id = ?`, [createdOrderId, couponClaimId, createdOrderId]);
+            if (used.affectedRows !== 1) throw problem('ORDER_COUPON_CONFLICT');
+          }
+        }
         const [[row]] = await connection.execute('SELECT id, order_no, total_amount, pay_amount, status FROM orders WHERE id = ? LIMIT 1', [createdOrderId]);
         return { ...output(row), idempotent: false };
       });

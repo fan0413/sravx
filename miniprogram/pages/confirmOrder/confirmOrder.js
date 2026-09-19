@@ -361,6 +361,14 @@ Page({
 
       const orderId = orderResult.orderId
 
+      // 订单金额被优惠完全抵扣时，服务端已经完成库存和权益结算，无需调起微信支付。
+      if (Number(orderResult.payAmount) <= 0) {
+        wx.hideLoading()
+        wx.showToast({ title: '下单成功', icon: 'success' })
+        setTimeout(() => this.goToOrderList(), 1500)
+        return
+      }
+
       // 步骤2：获取微信支付参数
       wx.showLoading({ title: '调起支付...', mask: true })
       console.log('[ConfirmOrder] before createPaymentOrder:', { orderId })
