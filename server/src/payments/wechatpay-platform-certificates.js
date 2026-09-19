@@ -12,7 +12,7 @@ function parseCertificates(contents, source) {
   if (!certificates || typeof certificates !== 'object' || Array.isArray(certificates)) {
     throw new Error(`WeChat Pay platform certificate file must contain a serial-to-PEM object: ${source}`);
   }
-  const valid = Object.entries(certificates).filter(([serial, pem]) => SERIAL.test(serial) && typeof pem === 'string' && pem.includes('BEGIN CERTIFICATE'));
+  const valid = Object.entries(certificates).filter(([serial, pem]) => SERIAL.test(serial) && typeof pem === 'string' && (pem.includes('BEGIN CERTIFICATE') || pem.includes('BEGIN PUBLIC KEY')));
   if (!valid.length || valid.length !== Object.keys(certificates).length) {
     throw new Error(`WeChat Pay platform certificate file contains invalid certificates: ${source}`);
   }
