@@ -21,6 +21,7 @@ import { createMysqlAdminAfterSaleRepository } from './repositories/mysql-admin-
 import { createMysqlInquiryRepository } from './repositories/mysql-inquiry-repository.js';
 import { createMysqlPaymentInboundRepository } from './repositories/mysql-payment-inbound-repository.js';
 import { createWechatPayCallbackService, createWechatPayCertificateProvider } from './payments/wechatpay-callback.js';
+import { loadWechatPayPlatformCertificates } from './payments/wechatpay-platform-certificates.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
 import { createRequestAuditLogger } from './observability/request-audit.js';
@@ -56,9 +57,9 @@ function paymentInboundConfiguration(environment) {
   return configuration;
 }
 
-function createOptionalPaymentCallbackService(environment, inboundRepository) {
+async function createOptionalPaymentCallbackService(environment, inboundRepository) {
   if (environment.PAYMENT_CALLBACK_ENABLED !== 'true') return null;
-  const certificates = JSON.parse(required(environment, 'WECHAT_PAY_PLATFORM_CERTIFICATES_JSON'));
+  const certificates = await loadWechatPayPlatformCertificates(required(environment, 'WECHAT_PAY_PLATFORM_CERTIFICATES_PATH'));
   return createWechatPayCallbackService({
     certificateProvider: createWechatPayCertificateProvider(certificates),
     inboundRepository,
@@ -104,7 +105,7 @@ export async function createRuntimeServer(environment = process.env) {
   const inboundPool = environment.PAYMENT_CALLBACK_ENABLED === 'true' ? mysql.createPool({ ...paymentInboundConfiguration(environment), waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null;
   const paymentInboundRepository = inboundPool ? createMysqlPaymentInboundRepository(inboundPool) : null;
   const mediaSigner = await createOptionalCosSigner(environment);
-  const paymentCallbackService = createOptionalPaymentCallbackService(environment, paymentInboundRepository);
+  const paymentCallbackService = await createOptionalPaymentCallbackService(environment, paymentInboundRepository);
   const loginService = createLoginService({
     codeExchange,
     resolveUser: userRepository.resolveUser,
