@@ -19,6 +19,7 @@ import { createMysqlAdminOperationsRepository } from './repositories/mysql-admin
 import { createMysqlAdminScissorsRepository } from './repositories/mysql-admin-scissors-repository.js';
 import { createMysqlAdminAfterSaleRepository } from './repositories/mysql-admin-after-sale-repository.js';
 import { createMysqlInquiryRepository } from './repositories/mysql-inquiry-repository.js';
+import { createMysqlCouponRepository } from './repositories/mysql-coupon-repository.js';
 import { createMysqlPaymentInboundRepository } from './repositories/mysql-payment-inbound-repository.js';
 import { createWechatPayCallbackService, createWechatPayCertificateProvider } from './payments/wechatpay-callback.js';
 import { loadWechatPayPlatformCertificates } from './payments/wechatpay-platform-certificates.js';
@@ -109,6 +110,7 @@ export async function createRuntimeServer(environment = process.env) {
   const adminScissorsRepository = createMysqlAdminScissorsRepository(pool);
   const adminAfterSaleRepository = createMysqlAdminAfterSaleRepository(pool);
   const inquiryRepository = createMysqlInquiryRepository(pool);
+  const couponRepository = createMysqlCouponRepository(pool);
   const callbackEnabled = environment.PAYMENT_CALLBACK_ENABLED === 'true';
   const rehearsalMode = isPaymentInboundRehearsal(environment);
   const inboundConfiguration = callbackEnabled && !rehearsalMode ? paymentInboundConfiguration(environment) : null;
@@ -130,5 +132,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, paymentOrderService, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, couponRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, paymentOrderService, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
 }

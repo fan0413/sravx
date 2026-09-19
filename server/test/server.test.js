@@ -34,8 +34,53 @@ import { bannerInput, categoryInput, productInput } from '../src/media/admin-cat
 import { hashPassword, verifyPassword } from '../src/security/password.js';
 import { createAdminLoginService } from '../src/auth/admin-login-service.js';
 import { createRequestAuditLogger } from '../src/observability/request-audit.js';
+import { createMysqlCouponRepository } from '../src/repositories/mysql-coupon-repository.js';
 
 const secret = 'test-only-session-secret-which-is-long-enough-123456';
+
+test('coupon endpoints separate public campaigns from a customer claim and reject anonymous writes', async (t) => {
+  const calls = [];
+  const coupons = {
+    listAvailable: async () => [{ id: 4, name: '新人券', value: 10 }],
+    listMine: async (userId, status) => { calls.push({ kind: 'mine', userId, status }); return []; },
+    claim: async (userId, campaignId, key) => { calls.push({ kind: 'claim', userId, campaignId, key }); return { coupon: { id: campaignId, user_coupon_id: 12 }, idempotent: false }; },
+    check: async (userId, claimId, amount) => { calls.push({ kind: 'check', userId, claimId, amount }); return { id: 4, user_coupon_id: claimId }; }
+  };
+  const server = createServer({ sessionSecret: secret, couponRepository: coupons, sessionRepository: { active: async () => true } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  assert.equal((await fetch(`${base}/api/v1/coupons`)).status, 200);
+  assert.equal((await fetch(`${base}/api/v1/coupons/4/claims`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
+  const token = issueSession({ subject: 9, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const claim = await fetch(`${base}/api/v1/coupons/4/claims`, { method: 'POST', headers, body: JSON.stringify({ idempotencyKey: 'coupon-claim-key-0001' }) });
+  assert.equal(claim.status, 201);
+  const checked = await fetch(`${base}/api/v1/coupons/claims/12/check`, { method: 'POST', headers, body: JSON.stringify({ orderAmount: '100.00' }) });
+  assert.equal(checked.status, 200);
+  const mine = await fetch(`${base}/api/v1/me/coupons?status=used`, { headers });
+  assert.equal(mine.status, 200);
+  assert.deepEqual(calls, [
+    { kind: 'claim', userId: 9, campaignId: 4, key: 'coupon-claim-key-0001' },
+    { kind: 'check', userId: 9, claimId: 12, amount: '100.00' },
+    { kind: 'mine', userId: 9, status: 'used' }
+  ]);
+});
+
+test('coupon repository binds public and user filters without reading legacy coupon tables', async () => {
+  const calls = [];
+  const pool = {
+    execute: async (sql, values = []) => { calls.push({ sql, values }); return [[]]; },
+    getConnection: async () => ({ beginTransaction: async () => {}, commit: async () => {}, rollback: async () => {}, release: () => {}, execute: async () => [[]] })
+  };
+  const repository = createMysqlCouponRepository(pool);
+  assert.deepEqual(await repository.listAvailable(), []);
+  assert.deepEqual(await repository.listMine(8, 'unused'), []);
+  await assert.rejects(() => repository.listMine(8, 'other'), /INVALID_REQUEST/);
+  assert.match(calls[0].sql, /FROM coupon_campaigns/);
+  assert.doesNotMatch(calls[0].sql, /FROM coupons\b|user_coupons/);
+  assert.match(calls[1].sql, /cc\.user_id = \?/);
+  assert.deepEqual(calls[1].values, [8]);
+});
 
 test('user-import preflight limits the scope and rejects missing identity data', () => {
   const users = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'varchar(128)' }, { name: 'username', type: 'varchar(50)' }, { name: 'points', type: 'int' }];

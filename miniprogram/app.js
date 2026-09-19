@@ -14,7 +14,7 @@ App({
     // Keep every feature false until its independent migration gate passes.
     // Do not enable payment, order, points, tool binding, gift-card or after-sale
     // routes through this configuration.
-    authenticatedApiMigration: { enabled: true, baseUrl: 'https://api.sravxpet.com', features: { profile: true, addresses: true, inquiries: true, toolsRead: true } },
+    authenticatedApiMigration: { enabled: true, baseUrl: 'https://api.sravxpet.com', features: { profile: true, addresses: true, inquiries: true, toolsRead: true, coupons: false } },
     authenticatedApiSession: null,
     hasPhoneAuth: false,
     userProfileUpdated: false

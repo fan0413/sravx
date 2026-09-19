@@ -95,7 +95,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -372,6 +372,39 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       }
       const result = error('ADDRESS_NOT_READY', '地址服务尚未配置', 503);
       return send(response, result.status, result.body);
+    }
+
+    const couponClaimMatch = /^\/api\/v1\/coupons\/(\d+)\/claims$/.exec(url.pathname);
+    const couponCheckMatch = /^\/api\/v1\/coupons\/claims\/(\d+)\/check$/.exec(url.pathname);
+    if ((request.method === 'GET' && url.pathname === '/api/v1/coupons') || (request.method === 'GET' && url.pathname === '/api/v1/me/coupons') || couponClaimMatch || couponCheckMatch) {
+      if (!couponRepository) { const result = error('COUPON_NOT_READY', '优惠券服务尚未配置', 503); return send(response, result.status, result.body); }
+      if (request.method === 'GET' && url.pathname === '/api/v1/coupons' && typeof couponRepository.listAvailable === 'function') {
+        return send(response, 200, { success: true, data: await couponRepository.listAvailable() });
+      }
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      try {
+        if (request.method === 'GET' && url.pathname === '/api/v1/me/coupons' && typeof couponRepository.listMine === 'function') {
+          return send(response, 200, { success: true, data: await couponRepository.listMine(session.subject, url.searchParams.get('status') || 'unused') });
+        }
+        if (request.method === 'POST' && couponClaimMatch && typeof couponRepository.claim === 'function') {
+          const payload = await readJsonBody(request);
+          const result = await couponRepository.claim(session.subject, positiveInteger(couponClaimMatch[1]), payload?.idempotencyKey);
+          return send(response, result.idempotent ? 200 : 201, { success: true, data: result.coupon });
+        }
+        if (request.method === 'POST' && couponCheckMatch && typeof couponRepository.check === 'function') {
+          const payload = await readJsonBody(request);
+          return send(response, 200, { success: true, data: await couponRepository.check(session.subject, positiveInteger(couponCheckMatch[1]), payload?.orderAmount) });
+        }
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        if (['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST'].includes(code)) { const result = error('INVALID_REQUEST', '优惠券请求无效', 400); return send(response, result.status, result.body); }
+        if (code === 'COUPON_ALREADY_CLAIMED') { const result = error(code, '该优惠券已领取', 409); return send(response, result.status, result.body); }
+        if (code === 'COUPON_MINIMUM_NOT_MET') { const result = error(code, '订单金额未达到优惠券使用门槛', 409); return send(response, result.status, result.body); }
+        if (code === 'COUPON_UNAVAILABLE') { const result = error(code, '优惠券不可用或已领完', 409); return send(response, result.status, result.body); }
+        const result = error('COUPON_OPERATION_FAILED', '优惠券服务暂不可用', 503); return send(response, result.status, result.body);
+      }
+      const result = error('COUPON_NOT_READY', '优惠券服务尚未配置', 503); return send(response, result.status, result.body);
     }
 
     if (url.pathname === '/api/v1/tools' || url.pathname === '/api/v1/tools/warranty' || /^\/api\/v1\/tools\/\d+$/.test(url.pathname)) {

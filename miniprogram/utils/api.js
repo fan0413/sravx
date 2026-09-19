@@ -64,6 +64,9 @@ function authenticatedFeatureEnabled(path, method) {
   if (path === '/api/v1/me' && (method === 'GET' || method === 'PUT')) return features.profile === true
   if (path === '/api/v1/me/phone' && method === 'POST') return features.profile === true
   if (path.indexOf('/api/v1/addresses') === 0) return features.addresses === true
+  if (path === '/api/v1/me/coupons' && method === 'GET') return features.coupons === true
+  if (/^\/api\/v1\/coupons\/\d+\/claims$/.test(path) && method === 'POST') return features.coupons === true
+  if (/^\/api\/v1\/coupons\/claims\/\d+\/check$/.test(path) && method === 'POST') return features.coupons === true
   if (path === '/api/v1/inquiries' && method === 'POST') return features.inquiries === true
   if (path.indexOf('/api/v1/tools/warranty') === 0 && method === 'GET') return features.toolsRead === true
   return false
@@ -680,6 +683,11 @@ function getRefundRequestList(orderId) {
  * 获取可领取的优惠券列表
  */
 function getAvailableCoupons() {
+  const config = app && app.globalData && app.globalData.authenticatedApiMigration
+  if (config && config.enabled === true && config.features && config.features.coupons === true) {
+    const target = requestReadOnlyApi('/api/v1/coupons')
+    if (target) return target
+  }
   return callFunction('coupon', { action: 'list', type: 'available' })
 }
 
@@ -688,7 +696,7 @@ function getAvailableCoupons() {
  * @param {string} status - 'unused' | 'used' | 'expired'
  */
 function getMyCoupons(status = 'unused') {
-  return callFunction('coupon', { action: 'my', status }, true)
+  return authenticatedMigrationRequest(`/api/v1/me/coupons?status=${encodeURIComponent(status)}`, 'GET', undefined, () => callFunction('coupon', { action: 'my', status }, true))
 }
 
 /**
@@ -696,7 +704,8 @@ function getMyCoupons(status = 'unused') {
  * @param {number} couponId - 优惠券ID
  */
 function receiveCoupon(couponId) {
-  return callFunction('coupon', { action: 'receive', couponId }, true)
+  const idempotencyKey = `cp-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+  return authenticatedMigrationRequest(`/api/v1/coupons/${encodeURIComponent(Number(couponId))}/claims`, 'POST', { idempotencyKey }, () => callFunction('coupon', { action: 'receive', couponId }, true))
 }
 
 /**
@@ -705,7 +714,7 @@ function receiveCoupon(couponId) {
  * @param {number} orderAmount - 订单金额
  */
 function checkCoupon(couponId, orderAmount) {
-  return callFunction('coupon', { action: 'check', couponId, orderAmount })
+  return authenticatedMigrationRequest(`/api/v1/coupons/claims/${encodeURIComponent(Number(couponId))}/check`, 'POST', { orderAmount }, () => callFunction('coupon', { action: 'check', couponId, orderAmount }))
 }
 
 // ==================== 礼品卡模块 ====================
