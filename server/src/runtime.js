@@ -31,6 +31,7 @@ import { createPaymentOrderService } from './payments/payment-order-service.js';
 import { createMysqlPaymentOrderRepository } from './repositories/mysql-payment-order-repository.js';
 import { createMysqlOrderWriteRepository } from './repositories/mysql-order-write-repository.js';
 import { createMysqlPointsOrderWriteRepository } from './repositories/mysql-points-order-write-repository.js';
+import { createMysqlRefundRepository } from './repositories/mysql-refund-repository.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
 import { createRequestAuditLogger } from './observability/request-audit.js';
@@ -104,6 +105,7 @@ export async function createRuntimeServer(environment = process.env) {
   const orderReadRepository = createMysqlOrderReadRepository(pool);
   const orderWriteRepository = createMysqlOrderWriteRepository(pool);
   const pointsOrderWriteRepository = createMysqlPointsOrderWriteRepository(pool);
+  const refundRepository = createMysqlRefundRepository(pool);
   const giftCardReadRepository = createMysqlGiftCardReadRepository(pool);
   const sessionRepository = createMysqlSessionRepository(pool);
   const adminRepository = createMysqlAdminRepository(pool);
@@ -136,5 +138,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, orderWriteRepository, pointsOrderWriteRepository, giftCardReadRepository, couponRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, paymentOrderService, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, orderWriteRepository, pointsOrderWriteRepository, refundRepository, giftCardReadRepository, couponRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, paymentOrderService, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
 }

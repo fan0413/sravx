@@ -148,6 +148,29 @@ test('points-order writes use the signed customer and never accept a user id fro
   assert.deepEqual(calls, [{ kind: 'create', userId: 6, payload }, { kind: 'cancel', userId: 6, orderId: 19, reason: '不需要了' }]);
 });
 
+test('refund and logistics endpoints keep requests scoped to the signed customer', async (t) => {
+  const calls = [];
+  const refunds = {
+    request: async (userId, payload) => { calls.push({ kind: 'request', userId, payload }); return { requestId: 4, status: 'pending_review' }; },
+    list: async (userId, orderId) => { calls.push({ kind: 'list', userId, orderId }); return []; },
+    waybill: async (userId, orderId, type) => { calls.push({ kind: 'waybill', userId, orderId, type }); return { waybillToken: 'token' }; }
+  };
+  const server = createServer({ sessionSecret: secret, refundRepository: refunds, sessionRepository: { active: async () => true } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const token = issueSession({ subject: 12, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const body = { userId: 999, orderId: 8, reason: '不需要了', refundType: 'refund_only', idempotencyKey: 'refund-request-key-0001' };
+  assert.equal((await fetch(`${base}/api/v1/refund-requests`, { method: 'POST', headers, body: JSON.stringify(body) })).status, 201);
+  assert.equal((await fetch(`${base}/api/v1/refund-requests?orderId=8`, { headers })).status, 200);
+  assert.equal((await fetch(`${base}/api/v1/orders/8/waybill?type=points`, { headers })).status, 200);
+  assert.deepEqual(calls, [
+    { kind: 'request', userId: 12, payload: body },
+    { kind: 'list', userId: 12, orderId: '8' },
+    { kind: 'waybill', userId: 12, orderId: 8, type: 'points' }
+  ]);
+});
+
 test('user-import preflight limits the scope and rejects missing identity data', () => {
   const users = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'varchar(128)' }, { name: 'username', type: 'varchar(50)' }, { name: 'points', type: 'int' }];
   const result = evaluatePreflight({

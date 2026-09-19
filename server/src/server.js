@@ -95,7 +95,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, pointsOrderWriteRepository = null, giftCardReadRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, pointsOrderWriteRepository = null, refundRepository = null, giftCardReadRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -531,6 +531,27 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         const result = error('ORDER_OPERATION_FAILED', '订单服务暂不可用', 503); return send(response, result.status, result.body);
       }
       const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body);
+    }
+
+    if (url.pathname === '/api/v1/refund-requests' || /^\/api\/v1\/orders\/\d+\/waybill$/.test(url.pathname)) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!refundRepository) { const result = error('REFUND_NOT_READY', '退款与物流服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        if (request.method === 'POST' && url.pathname === '/api/v1/refund-requests' && typeof refundRepository.request === 'function') return send(response, 201, { success: true, data: await refundRepository.request(session.subject, await readJsonBody(request)) });
+        if (request.method === 'GET' && url.pathname === '/api/v1/refund-requests' && typeof refundRepository.list === 'function') return send(response, 200, { success: true, data: await refundRepository.list(session.subject, url.searchParams.get('orderId')) });
+        const waybill = /^\/api\/v1\/orders\/(\d+)\/waybill$/.exec(url.pathname);
+        if (request.method === 'GET' && waybill && typeof refundRepository.waybill === 'function') return send(response, 200, { success: true, data: await refundRepository.waybill(session.subject, positiveInteger(waybill[1]), url.searchParams.get('type') || 'normal') });
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        if (['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST'].includes(code)) { const result = error('INVALID_REQUEST', '退款或物流请求无效', 400); return send(response, result.status, result.body); }
+        if (code === 'ORDER_NOT_FOUND') { const result = error(code, '订单不存在', 404); return send(response, result.status, result.body); }
+        if (code === 'ORDER_NOT_REFUNDABLE') { const result = error(code, '当前订单不可申请退款', 409); return send(response, result.status, result.body); }
+        if (code === 'REFUND_ALREADY_OPEN') { const result = error(code, '该订单已有处理中退款申请', 409); return send(response, result.status, result.body); }
+        if (code === 'WAYBILL_NOT_AVAILABLE') { const result = error(code, '该订单暂无物流信息', 404); return send(response, result.status, result.body); }
+        const result = error('REFUND_OPERATION_FAILED', '退款或物流服务暂不可用', 503); return send(response, result.status, result.body);
+      }
+      const result = error('REFUND_NOT_READY', '退款与物流服务尚未配置', 503); return send(response, result.status, result.body);
     }
 
     const pointsOrderMatch = /^\/api\/v1\/points-orders\/(\d+)$/.exec(url.pathname);
