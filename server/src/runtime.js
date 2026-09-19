@@ -19,6 +19,8 @@ import { createMysqlAdminOperationsRepository } from './repositories/mysql-admin
 import { createMysqlAdminScissorsRepository } from './repositories/mysql-admin-scissors-repository.js';
 import { createMysqlAdminAfterSaleRepository } from './repositories/mysql-admin-after-sale-repository.js';
 import { createMysqlInquiryRepository } from './repositories/mysql-inquiry-repository.js';
+import { createMysqlPaymentInboundRepository } from './repositories/mysql-payment-inbound-repository.js';
+import { createWechatPayCallbackService, createWechatPayCertificateProvider } from './payments/wechatpay-callback.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
 import { createRequestAuditLogger } from './observability/request-audit.js';
@@ -42,6 +44,26 @@ async function createOptionalCosSigner(environment) {
     bucket: environment.COS_BUCKET,
     region: environment.COS_REGION,
     createClient: (options) => new COS(options)
+  });
+}
+
+function paymentInboundConfiguration(environment) {
+  const configuration = {
+    host: required(environment, 'PAYMENT_INBOUND_MYSQL_HOST'), port: Number(required(environment, 'PAYMENT_INBOUND_MYSQL_PORT')),
+    user: required(environment, 'PAYMENT_INBOUND_MYSQL_USER'), password: required(environment, 'PAYMENT_INBOUND_MYSQL_PASSWORD'), database: required(environment, 'PAYMENT_INBOUND_MYSQL_DATABASE')
+  };
+  if (configuration.database === required(environment, 'MYSQL_DATABASE') && configuration.host === required(environment, 'MYSQL_HOST')) throw new Error('PAYMENT_INBOUND_MYSQL must use a database separate from the business database.');
+  return configuration;
+}
+
+function createOptionalPaymentCallbackService(environment, inboundRepository) {
+  if (environment.PAYMENT_CALLBACK_ENABLED !== 'true') return null;
+  const certificates = JSON.parse(required(environment, 'WECHAT_PAY_PLATFORM_CERTIFICATES_JSON'));
+  return createWechatPayCallbackService({
+    certificateProvider: createWechatPayCertificateProvider(certificates),
+    inboundRepository,
+    apiV3Key: required(environment, 'WECHAT_PAY_API_V3_KEY'),
+    inboundEncryptionKey: required(environment, 'PAYMENT_INBOUND_ENCRYPTION_KEY')
   });
 }
 
@@ -79,7 +101,10 @@ export async function createRuntimeServer(environment = process.env) {
   const adminScissorsRepository = createMysqlAdminScissorsRepository(pool);
   const adminAfterSaleRepository = createMysqlAdminAfterSaleRepository(pool);
   const inquiryRepository = createMysqlInquiryRepository(pool);
+  const inboundPool = environment.PAYMENT_CALLBACK_ENABLED === 'true' ? mysql.createPool({ ...paymentInboundConfiguration(environment), waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null;
+  const paymentInboundRepository = inboundPool ? createMysqlPaymentInboundRepository(inboundPool) : null;
   const mediaSigner = await createOptionalCosSigner(environment);
+  const paymentCallbackService = createOptionalPaymentCallbackService(environment, paymentInboundRepository);
   const loginService = createLoginService({
     codeExchange,
     resolveUser: userRepository.resolveUser,
@@ -92,5 +117,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
 }

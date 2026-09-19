@@ -16,6 +16,15 @@ const JSON_HEADERS = Object.freeze({
 });
 
 async function readJsonBody(request, maximumBytes = 8192) {
+  const raw = await readRawBody(request, maximumBytes);
+  try {
+    return JSON.parse(raw.toString('utf8'));
+  } catch {
+    throw new Error('INVALID_JSON');
+  }
+}
+
+async function readRawBody(request, maximumBytes) {
   let size = 0;
   const chunks = [];
   for await (const chunk of request) {
@@ -23,11 +32,7 @@ async function readJsonBody(request, maximumBytes = 8192) {
     if (size > maximumBytes) throw new Error('REQUEST_TOO_LARGE');
     chunks.push(chunk);
   }
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  } catch {
-    throw new Error('INVALID_JSON');
-  }
+  return Buffer.concat(chunks);
 }
 
 function send(response, status, body) {
@@ -90,7 +95,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -128,6 +133,30 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         return send(response, 200, { success: true, data: { status: 'ready' } });
       } catch {
         const result = error('NOT_READY', '服务暂不可用', 503);
+        return send(response, result.status, result.body);
+      }
+    }
+
+    if (request.method === 'POST' && url.pathname === '/api/v1/payments/wechat/notifications') {
+      // This endpoint is deliberately absent until the explicit runtime flag and all payment secrets are configured.
+      if (!paymentCallbackService || typeof paymentCallbackService.receive !== 'function') {
+        const result = error('NOT_FOUND', '接口不存在', 404);
+        return send(response, result.status, result.body);
+      }
+      let rawBody;
+      try {
+        rawBody = await readRawBody(request, 1024 * 1024);
+      } catch {
+        const result = error('CALLBACK_REJECTED', '支付通知无效', 400);
+        return send(response, result.status, result.body);
+      }
+      try {
+        await paymentCallbackService.receive({ headers: request.headers, rawBody, receivedAt: new Date() });
+        response.writeHead(204, JSON_HEADERS);
+        return response.end();
+      } catch (cause) {
+        const retryable = cause?.retryable === true;
+        const result = error(retryable ? 'CALLBACK_UNAVAILABLE' : 'CALLBACK_REJECTED', retryable ? '支付通知暂不可处理' : '支付通知无效', retryable ? 503 : 401);
         return send(response, result.status, result.body);
       }
     }
