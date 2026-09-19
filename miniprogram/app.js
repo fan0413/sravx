@@ -8,13 +8,13 @@ App({
     cloudEnvId: 'cloud1-8gk3bptqefbf01d6',
     // Read-only API migration remains disabled until the new HTTPS endpoint is
     // accepted in the mini program's request-domain configuration.
-    readOnlyApiMigration: { enabled: false, baseUrl: 'https://api.sravxpet.com' },
+    readOnlyApiMigration: { enabled: true, baseUrl: 'https://api.sravxpet.com' },
     // Authenticated migration traffic remains disabled until the target HTTPS
     // endpoint has passed the internal user-session and address-book checks.
     // Keep every feature false until its independent migration gate passes.
     // Do not enable payment, order, points, tool binding, gift-card or after-sale
     // routes through this configuration.
-    authenticatedApiMigration: { enabled: false, baseUrl: 'https://api.sravxpet.com', features: { profile: false, addresses: false, inquiries: false, toolsRead: false } },
+    authenticatedApiMigration: { enabled: true, baseUrl: 'https://api.sravxpet.com', features: { profile: true, addresses: true, inquiries: true, toolsRead: true } },
     authenticatedApiSession: null,
     hasPhoneAuth: false,
     userProfileUpdated: false
