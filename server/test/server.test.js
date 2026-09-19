@@ -731,6 +731,16 @@ test('address route reads only addresses owned by the signed session subject', a
   assert.deepEqual((await response.json()).data, []);
 });
 
+test('payment creation uses only the authenticated customer and server path order id', async (t) => {
+  let request;
+  const server = createServer({ sessionSecret: secret, paymentOrderService: { create: async (userId, orderId) => { request = { userId, orderId }; return { package: 'prepay_id=test' }; } } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 44, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/payments/wechat/orders/18`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ amountFen: 1, openid: 'forged' }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(request, { userId: 44, orderId: 18 });
+});
+
 test('address writes use only the signed session subject and validate the address', async (t) => {
   let created;
   const server = createServer({ sessionSecret: secret, addressRepository: { create: async (userId, input) => { created = { userId, input }; return { id: 18 }; } } });

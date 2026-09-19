@@ -95,7 +95,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -157,6 +157,22 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       } catch (cause) {
         const retryable = cause?.retryable === true;
         const result = error(retryable ? 'CALLBACK_UNAVAILABLE' : 'CALLBACK_REJECTED', retryable ? '支付通知暂不可处理' : '支付通知无效', retryable ? 503 : 401);
+        return send(response, result.status, result.body);
+      }
+    }
+
+    const paymentOrderMatch = /^\/api\/v1\/payments\/wechat\/orders\/(\d+)$/.exec(url.pathname);
+    if (request.method === 'POST' && paymentOrderMatch) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!paymentOrderService || typeof paymentOrderService.create !== 'function') { const result = error('NOT_FOUND', '接口不存在', 404); return send(response, result.status, result.body); }
+      try {
+        return send(response, 200, { success: true, data: await paymentOrderService.create(session.subject, Number(paymentOrderMatch[1])) });
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        if (code === 'ORDER_NOT_FOUND') { const result = error(code, '订单不存在', 404); return send(response, result.status, result.body); }
+        if (code === 'ORDER_NOT_PAYABLE') { const result = error(code, '当前订单不可支付', 409); return send(response, result.status, result.body); }
+        const result = error('PAYMENT_CREATION_FAILED', '暂时无法创建支付订单', 503);
         return send(response, result.status, result.body);
       }
     }

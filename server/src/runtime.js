@@ -24,6 +24,10 @@ import { createWechatPayCallbackService, createWechatPayCertificateProvider } fr
 import { loadWechatPayPlatformCertificates } from './payments/wechatpay-platform-certificates.js';
 import { paymentInboundConfiguration } from './payments/payment-inbound-configuration.js';
 import { isPaymentInboundRehearsal } from './payments/payment-inbound-mode.js';
+import { createWechatPayJsapiClient } from './payments/wechatpay-jsapi-client.js';
+import { createWechatPayRequester } from './payments/wechatpay-requester.js';
+import { createPaymentOrderService } from './payments/payment-order-service.js';
+import { createMysqlPaymentOrderRepository } from './repositories/mysql-payment-order-repository.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
 import { createRequestAuditLogger } from './observability/request-audit.js';
@@ -59,6 +63,16 @@ async function createOptionalPaymentCallbackService(environment, inboundReposito
     apiV3Key: required(environment, 'WECHAT_PAY_API_V3_KEY'),
     inboundEncryptionKey: required(environment, 'PAYMENT_INBOUND_ENCRYPTION_KEY')
   });
+}
+
+function createOptionalPaymentOrderService(environment, pool) {
+  if (environment.PAYMENT_ORDERS_ENABLED !== 'true') return null;
+  const client = createWechatPayJsapiClient({
+    appId: required(environment, 'WECHAT_MINIPROGRAM_APP_ID'), mchId: required(environment, 'WECHAT_PAY_MCH_ID'),
+    merchantSerialNo: required(environment, 'WECHAT_PAY_MERCHANT_SERIAL_NO'), merchantPrivateKeyPath: required(environment, 'WECHAT_PAY_MERCHANT_PRIVATE_KEY_PATH'),
+    request: createWechatPayRequester()
+  });
+  return createPaymentOrderService({ loadPayableOrder: createMysqlPaymentOrderRepository(pool).loadPayableOrder, createTransaction: client, notifyUrl: required(environment, 'WECHAT_PAY_NOTIFY_URL') });
 }
 
 export async function createRuntimeServer(environment = process.env) {
@@ -103,6 +117,7 @@ export async function createRuntimeServer(environment = process.env) {
   const paymentInboundRepository = inboundPool ? createMysqlPaymentInboundRepository(inboundPool) : null;
   const mediaSigner = await createOptionalCosSigner(environment);
   const paymentCallbackService = await createOptionalPaymentCallbackService(environment, paymentInboundRepository);
+  const paymentOrderService = createOptionalPaymentOrderService(environment, pool);
   const loginService = createLoginService({
     codeExchange,
     resolveUser: userRepository.resolveUser,
@@ -115,5 +130,5 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
+  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, giftCardReadRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, paymentOrderService, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
 }
