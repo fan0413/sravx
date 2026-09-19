@@ -23,6 +23,7 @@ import { createMysqlPaymentInboundRepository } from './repositories/mysql-paymen
 import { createWechatPayCallbackService, createWechatPayCertificateProvider } from './payments/wechatpay-callback.js';
 import { loadWechatPayPlatformCertificates } from './payments/wechatpay-platform-certificates.js';
 import { paymentInboundConfiguration } from './payments/payment-inbound-configuration.js';
+import { isPaymentInboundRehearsal } from './payments/payment-inbound-mode.js';
 import { createAdminLoginService } from './auth/admin-login-service.js';
 import { createCosUploadSigner } from './media/cos-upload-signer.js';
 import { createRequestAuditLogger } from './observability/request-audit.js';
@@ -94,9 +95,11 @@ export async function createRuntimeServer(environment = process.env) {
   const adminScissorsRepository = createMysqlAdminScissorsRepository(pool);
   const adminAfterSaleRepository = createMysqlAdminAfterSaleRepository(pool);
   const inquiryRepository = createMysqlInquiryRepository(pool);
-  const inboundConfiguration = environment.PAYMENT_CALLBACK_ENABLED === 'true' ? paymentInboundConfiguration(environment) : null;
+  const callbackEnabled = environment.PAYMENT_CALLBACK_ENABLED === 'true';
+  const rehearsalMode = isPaymentInboundRehearsal(environment);
+  const inboundConfiguration = callbackEnabled && !rehearsalMode ? paymentInboundConfiguration(environment) : null;
   const { rehearsal: _rehearsal, ...inboundMysqlConfiguration } = inboundConfiguration || {};
-  const inboundPool = inboundConfiguration ? mysql.createPool({ ...inboundMysqlConfiguration, waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null;
+  const inboundPool = rehearsalMode ? pool : (inboundConfiguration ? mysql.createPool({ ...inboundMysqlConfiguration, waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null);
   const paymentInboundRepository = inboundPool ? createMysqlPaymentInboundRepository(inboundPool) : null;
   const mediaSigner = await createOptionalCosSigner(environment);
   const paymentCallbackService = await createOptionalPaymentCallbackService(environment, paymentInboundRepository);
