@@ -58,17 +58,23 @@ function authenticatedFeatureEnabled(path, method) {
   const config = app && app.globalData && app.globalData.authenticatedApiMigration
   const features = config && config.features
   if (!config || config.enabled !== true || !features || typeof features !== 'object') return false
+  const route = String(path || '').split('?')[0]
   // A target session resolves or creates a target user. Profile cutover is
   // therefore the prerequisite for every other authenticated target feature.
   if (features.profile !== true) return false
-  if (path === '/api/v1/me' && (method === 'GET' || method === 'PUT')) return features.profile === true
-  if (path === '/api/v1/me/phone' && method === 'POST') return features.profile === true
-  if (path.indexOf('/api/v1/addresses') === 0) return features.addresses === true
-  if (path === '/api/v1/me/coupons' && method === 'GET') return features.coupons === true
-  if (/^\/api\/v1\/coupons\/\d+\/claims$/.test(path) && method === 'POST') return features.coupons === true
-  if (/^\/api\/v1\/coupons\/claims\/\d+\/check$/.test(path) && method === 'POST') return features.coupons === true
-  if (path === '/api/v1/inquiries' && method === 'POST') return features.inquiries === true
-  if (path.indexOf('/api/v1/tools/warranty') === 0 && method === 'GET') return features.toolsRead === true
+  if (route === '/api/v1/me' && (method === 'GET' || method === 'PUT')) return features.profile === true
+  if (route === '/api/v1/me/phone' && method === 'POST') return features.profile === true
+  if (route.indexOf('/api/v1/addresses') === 0) return features.addresses === true
+  if (route === '/api/v1/me/coupons' && method === 'GET') return features.coupons === true
+  if (/^\/api\/v1\/coupons\/\d+\/claims$/.test(route) && method === 'POST') return features.coupons === true
+  if (/^\/api\/v1\/coupons\/claims\/\d+\/check$/.test(route) && method === 'POST') return features.coupons === true
+  if (route === '/api/v1/inquiries' && method === 'POST') return features.inquiries === true
+  if (route.indexOf('/api/v1/tools/warranty') === 0 && method === 'GET') return features.toolsRead === true
+  if (route === '/api/v1/orders' || /^\/api\/v1\/orders\/\d+(?:\/receive)?$/.test(route)) return features.orders === true
+  if (route.indexOf('/api/v1/points-orders') === 0) return features.pointsOrders === true
+  if (route.indexOf('/api/v1/refund-requests') === 0 || /^\/api\/v1\/orders\/\d+\/waybill$/.test(route)) return features.refunds === true
+  if (route === '/api/v1/gift-cards/redeem' || /^\/api\/v1\/gift-card-redemptions\/\d+\/address$/.test(route)) return features.giftCards === true
+  if (/^\/api\/v1\/payments\/wechat\/orders\/\d+$/.test(route) && method === 'POST') return features.payments === true
   return false
 }
 
@@ -494,6 +500,8 @@ function getBanners(position = 'home') {
  * @returns {Promise<Object>} { appId, timeStamp, nonceStr, package, signType, paySign }
  */
 function createPaymentOrder(params) {
+  const id = Number(params && params.orderId)
+  if (id > 0) return authenticatedMigrationRequest(`/api/v1/payments/wechat/orders/${id}`, 'POST', undefined, () => callFunction('paymentProxy', { action: 'createOrder', ...params }, true))
   return callFunction('paymentProxy', { action: 'createOrder', ...params }, true)
 }
 
@@ -546,7 +554,9 @@ function getOrderDetail(orderIdOrNo) {
  * @param {Object} params - { addressId, productId, quantity, couponId, remark }
  */
 function createOrder(params) {
-  return callFunction('order', { action: 'create', ...params }, true)
+  const payload = { ...params }
+  if (!payload.idempotencyKey) payload.idempotencyKey = `od-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+  return authenticatedMigrationRequest('/api/v1/orders', 'POST', payload, () => callFunction('order', { action: 'create', ...params }, true))
 }
 
 /**
@@ -558,7 +568,7 @@ function createPointsOrder(params) {
   if (!payload.idempotencyKey) {
     payload.idempotencyKey = `pp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   }
-  return callFunction('order', { action: 'createPointsOrder', ...payload }, true)
+  return authenticatedMigrationRequest('/api/v1/points-orders', 'POST', payload, () => callFunction('order', { action: 'createPointsOrder', ...payload }, true))
 }
 
 /**
@@ -618,7 +628,7 @@ function getPointsOrderDetail(orderIdOrNo) {
  * @param {string} cancelReason - 取消原因
  */
 function cancelPointsOrder(orderId, cancelReason = '用户取消') {
-  return callFunction('order', { action: 'cancelPointsOrder', orderId, cancelReason }, true)
+  return authenticatedMigrationRequest(`/api/v1/points-orders/${Number(orderId)}`, 'POST', { cancelReason }, () => callFunction('order', { action: 'cancelPointsOrder', orderId, cancelReason }, true))
 }
 
 /**
@@ -642,7 +652,7 @@ function applyPointsRefundRequest(params) {
  * @param {number} orderId - 订单ID
  */
 function cancelOrder(orderId) {
-  return callFunction('order', { action: 'cancel', orderId }, true)
+  return authenticatedMigrationRequest(`/api/v1/orders/${Number(orderId)}`, 'POST', undefined, () => callFunction('order', { action: 'cancel', orderId }, true))
 }
 
 /**
@@ -650,7 +660,7 @@ function cancelOrder(orderId) {
  * @param {number} orderId - 订单ID
  */
 function confirmReceive(orderId) {
-  return callFunction('order', { action: 'confirmReceive', orderId }, true)
+  return authenticatedMigrationRequest(`/api/v1/orders/${Number(orderId)}/receive`, 'POST', undefined, () => callFunction('order', { action: 'confirmReceive', orderId }, true))
 }
 
 /**
@@ -658,7 +668,7 @@ function confirmReceive(orderId) {
  * @param {number} orderId - 订单ID
  */
 function getWaybillToken(orderId) {
-  return callFunction('order', { action: 'getWaybillToken', orderId }, true)
+  return authenticatedMigrationRequest(`/api/v1/orders/${Number(orderId)}/waybill`, 'GET', undefined, () => callFunction('order', { action: 'getWaybillToken', orderId }, true))
 }
 
 /**
@@ -666,7 +676,9 @@ function getWaybillToken(orderId) {
  * @param {Object} params - { orderId, reason, refundType, amount }
  */
 function applyRefundRequest(params) {
-  return callFunction('order', { action: 'applyRefund', ...params }, true)
+  const payload = { ...params }
+  if (!payload.idempotencyKey) payload.idempotencyKey = `rf-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
+  return authenticatedMigrationRequest('/api/v1/refund-requests', 'POST', payload, () => callFunction('order', { action: 'applyRefund', ...params }, true))
 }
 
 /**
@@ -674,7 +686,8 @@ function applyRefundRequest(params) {
  * @param {number} orderId - 可选，按订单筛选
  */
 function getRefundRequestList(orderId) {
-  return callFunction('order', { action: 'listRefundRequests', orderId }, true)
+  const path = `/api/v1/refund-requests${orderId ? `?orderId=${encodeURIComponent(String(orderId))}` : ''}`
+  return authenticatedMigrationRequest(path, 'GET', undefined, () => callFunction('order', { action: 'listRefundRequests', orderId }, true))
 }
 
 // ==================== 优惠券模块 ====================
@@ -727,7 +740,7 @@ function redeemGiftCard(codeOrParams) {
   const payload = typeof codeOrParams === 'object' && codeOrParams !== null
     ? codeOrParams
     : { code: codeOrParams }
-  return callFunction('giftCard', { action: 'redeem', ...payload }, true)
+  return authenticatedMigrationRequest('/api/v1/gift-cards/redeem', 'POST', payload, () => callFunction('giftCard', { action: 'redeem', ...payload }, true))
 }
 
 /**
@@ -735,7 +748,9 @@ function redeemGiftCard(codeOrParams) {
  * @param {Object} params - { recordId, addressId }
  */
 function confirmGiftCardProductAddress(params) {
-  return callFunction('giftCard', { action: 'confirmProductAddress', ...params }, true)
+  const recordId = Number(params && params.recordId)
+  if (!recordId) return Promise.reject({ message: '兑换记录无效', code: 'INVALID_GIFT_RECORD' })
+  return authenticatedMigrationRequest(`/api/v1/gift-card-redemptions/${recordId}/address`, 'POST', params, () => callFunction('giftCard', { action: 'confirmProductAddress', ...params }, true))
 }
 
 /**
