@@ -171,6 +171,22 @@ test('refund and logistics endpoints keep requests scoped to the signed customer
   ]);
 });
 
+test('gift-card redemption is scoped to the signed customer and supports pending-address completion', async (t) => {
+  const calls = [];
+  const gifts = {
+    redeem: async (userId, payload) => { calls.push({ kind: 'redeem', userId, payload }); return { recordId: 7, fulfillmentStatus: 'pending_address' }; },
+    confirmProductAddress: async (userId, recordId, addressId) => { calls.push({ kind: 'address', userId, recordId, addressId }); return { recordId, fulfillmentStatus: 'fulfilled' }; }
+  };
+  const server = createServer({ sessionSecret: secret, giftCardRepository: gifts, sessionRepository: { active: async () => true } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 18, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }; const base = `http://127.0.0.1:${server.address().port}`;
+  const payload = { userId: 999, code: 'GIFT-001' };
+  assert.equal((await fetch(`${base}/api/v1/gift-cards/redeem`, { method: 'POST', headers, body: JSON.stringify(payload) })).status, 200);
+  assert.equal((await fetch(`${base}/api/v1/gift-card-redemptions/7/address`, { method: 'POST', headers, body: JSON.stringify({ addressId: 3 }) })).status, 200);
+  assert.deepEqual(calls, [{ kind: 'redeem', userId: 18, payload }, { kind: 'address', userId: 18, recordId: 7, addressId: 3 }]);
+});
+
 test('user-import preflight limits the scope and rejects missing identity data', () => {
   const users = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'varchar(128)' }, { name: 'username', type: 'varchar(50)' }, { name: 'points', type: 'int' }];
   const result = evaluatePreflight({

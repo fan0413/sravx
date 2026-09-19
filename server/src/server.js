@@ -95,7 +95,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, pointsOrderWriteRepository = null, refundRepository = null, giftCardReadRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, pointsOrderWriteRepository = null, refundRepository = null, giftCardReadRepository = null, giftCardRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -606,6 +606,29 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       if (!giftCardReadRepository || typeof giftCardReadRepository.list !== 'function') { const result = error('GIFT_CARD_NOT_READY', '礼品卡服务尚未配置', 503); return send(response, result.status, result.body); }
       try { return send(response, 200, { success: true, data: await giftCardReadRepository.list(session.subject, { page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) }); }
       catch { const result = error('GIFT_CARD_OPERATION_FAILED', '礼品卡记录暂不可用', 503); return send(response, result.status, result.body); }
+    }
+
+    const giftConfirm = /^\/api\/v1\/gift-card-redemptions\/(\d+)\/address$/.exec(url.pathname);
+    if ((request.method === 'POST' && url.pathname === '/api/v1/gift-cards/redeem') || (request.method === 'POST' && giftConfirm)) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!giftCardRepository) { const result = error('GIFT_CARD_NOT_READY', '礼品卡服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        if (request.method === 'POST' && url.pathname === '/api/v1/gift-cards/redeem' && typeof giftCardRepository.redeem === 'function') return send(response, 200, { success: true, data: await giftCardRepository.redeem(session.subject, await readJsonBody(request)) });
+        if (request.method === 'POST' && giftConfirm && typeof giftCardRepository.confirmProductAddress === 'function') {
+          const payload = await readJsonBody(request);
+          return send(response, 200, { success: true, data: await giftCardRepository.confirmProductAddress(session.subject, positiveInteger(giftConfirm[1]), payload?.addressId) });
+        }
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        if (['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST'].includes(code)) { const result = error('INVALID_REQUEST', '礼品卡请求无效', 400); return send(response, result.status, result.body); }
+        if (code === 'GIFT_CARD_NOT_FOUND' || code === 'GIFT_REDEEM_NOT_FOUND') { const result = error(code, '礼品卡或兑换记录不存在', 404); return send(response, result.status, result.body); }
+        if (code === 'ADDRESS_NOT_FOUND') { const result = error(code, '收货地址不存在或不完整', 404); return send(response, result.status, result.body); }
+        if (['GIFT_CARD_ALREADY_REDEEMED', 'GIFT_CARD_UNAVAILABLE', 'GIFT_COUPON_UNAVAILABLE', 'GIFT_COUPON_ALREADY_CLAIMED', 'GIFT_PRODUCT_OUT_OF_STOCK', 'GIFT_REDEEM_NOT_PENDING_ADDRESS'].includes(code)) { const result = error(code, '礼品卡当前不可兑换或完成', 409); return send(response, result.status, result.body); }
+        if (['GIFT_CARD_TYPE_UNSUPPORTED', 'GIFT_POINTS_INVALID', 'GIFT_COUPON_INVALID', 'GIFT_PRODUCT_INVALID', 'GIFT_PRODUCT_UNAVAILABLE', 'GIFT_PRODUCT_SPEC_NOT_FOUND'].includes(code)) { const result = error(code, '礼品卡配置无效', 409); return send(response, result.status, result.body); }
+        const result = error('GIFT_CARD_OPERATION_FAILED', '礼品卡服务暂不可用', 503); return send(response, result.status, result.body);
+      }
+      const result = error('GIFT_CARD_NOT_READY', '礼品卡服务尚未配置', 503); return send(response, result.status, result.body);
     }
 
     if (request.method === 'POST' && url.pathname === '/api/v1/inquiries') {
