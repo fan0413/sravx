@@ -95,7 +95,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, giftCardReadRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, pointsOrderWriteRepository = null, giftCardReadRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -534,6 +534,31 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
     }
 
     const pointsOrderMatch = /^\/api\/v1\/points-orders\/(\d+)$/.exec(url.pathname);
+    if ((request.method === 'POST' && url.pathname === '/api/v1/points-orders') || (request.method === 'POST' && pointsOrderMatch)) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!pointsOrderWriteRepository) { const result = error('POINTS_ORDER_NOT_READY', '积分订单服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        if (request.method === 'POST' && url.pathname === '/api/v1/points-orders' && typeof pointsOrderWriteRepository.create === 'function') return send(response, 201, { success: true, data: await pointsOrderWriteRepository.create(session.subject, await readJsonBody(request)) });
+        if (request.method === 'POST' && pointsOrderMatch && typeof pointsOrderWriteRepository.cancel === 'function') {
+          const payload = await readJsonBody(request);
+          return send(response, 200, { success: true, data: await pointsOrderWriteRepository.cancel(session.subject, positiveInteger(pointsOrderMatch[1]), payload?.cancelReason) });
+        }
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        if (['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST'].includes(code)) { const result = error('INVALID_REQUEST', '积分订单信息无效', 400); return send(response, result.status, result.body); }
+        if (code === 'ADDRESS_NOT_FOUND') { const result = error(code, '收货地址不存在或不完整', 404); return send(response, result.status, result.body); }
+        if (code === 'POINTS_PRODUCT_NOT_AVAILABLE') { const result = error(code, '积分商品不存在或已下架', 404); return send(response, result.status, result.body); }
+        if (code === 'MEMBERSHIP_LEVEL_TOO_LOW') { const result = error(code, '当前会员等级无法兑换该商品', 409); return send(response, result.status, result.body); }
+        if (code === 'INSUFFICIENT_POINTS') { const result = error(code, '积分不足', 409); return send(response, result.status, result.body); }
+        if (code === 'POINTS_PRODUCT_OUT_OF_STOCK') { const result = error(code, '积分商品库存不足', 409); return send(response, result.status, result.body); }
+        if (code === 'POINTS_ORDER_NOT_FOUND') { const result = error(code, '积分订单不存在', 404); return send(response, result.status, result.body); }
+        if (code === 'POINTS_ORDER_NOT_CANCELLABLE') { const result = error(code, '当前积分订单不可取消', 409); return send(response, result.status, result.body); }
+        const result = error('POINTS_ORDER_OPERATION_FAILED', '积分订单服务暂不可用', 503); return send(response, result.status, result.body);
+      }
+      const result = error('POINTS_ORDER_NOT_READY', '积分订单服务尚未配置', 503); return send(response, result.status, result.body);
+    }
+
     if ((request.method === 'GET' && url.pathname === '/api/v1/points-orders') || (request.method === 'GET' && pointsOrderMatch)) {
       const session = await authenticatedSession();
       if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }

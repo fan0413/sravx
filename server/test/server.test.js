@@ -132,6 +132,22 @@ test('order write repository freezes stock and records an idempotency ledger in 
   await assert.rejects(() => repository.create(8, { productId: 3, addressId: 4, quantity: 1, couponId: 9, idempotencyKey: 'order-create-key-0002' }), /COUPON_NOT_READY/);
 });
 
+test('points-order writes use the signed customer and never accept a user id from the request', async (t) => {
+  const calls = [];
+  const pointsWrites = {
+    create: async (userId, payload) => { calls.push({ kind: 'create', userId, payload }); return { orderId: 19, orderNo: 'SP1' }; },
+    cancel: async (userId, orderId, reason) => { calls.push({ kind: 'cancel', userId, orderId, reason }); return { id: orderId, status: 'cancelled' }; }
+  };
+  const server = createServer({ sessionSecret: secret, pointsOrderWriteRepository: pointsWrites, sessionRepository: { active: async () => true } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 6, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }; const base = `http://127.0.0.1:${server.address().port}`;
+  const payload = { userId: 999, pointsProductId: 3, addressId: 7, quantity: 1, idempotencyKey: 'points-create-key-0001' };
+  assert.equal((await fetch(`${base}/api/v1/points-orders`, { method: 'POST', headers, body: JSON.stringify(payload) })).status, 201);
+  assert.equal((await fetch(`${base}/api/v1/points-orders/19`, { method: 'POST', headers, body: JSON.stringify({ cancelReason: '不需要了' }) })).status, 200);
+  assert.deepEqual(calls, [{ kind: 'create', userId: 6, payload }, { kind: 'cancel', userId: 6, orderId: 19, reason: '不需要了' }]);
+});
+
 test('user-import preflight limits the scope and rejects missing identity data', () => {
   const users = [{ name: 'id', type: 'bigint' }, { name: 'status', type: 'varchar(20)' }, { name: 'openid', type: 'varchar(128)' }, { name: 'username', type: 'varchar(50)' }, { name: 'points', type: 'int' }];
   const result = evaluatePreflight({
