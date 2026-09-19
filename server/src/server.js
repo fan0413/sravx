@@ -95,7 +95,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, giftCardReadRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, giftCardReadRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -481,6 +481,36 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
     }
 
     const orderMatch = /^\/api\/v1\/orders\/(\d+)$/.exec(url.pathname);
+    const orderReceiveMatch = /^\/api\/v1\/orders\/(\d+)\/receive$/.exec(url.pathname);
+    if ((request.method === 'POST' && url.pathname === '/api/v1/orders') || (request.method === 'POST' && orderMatch) || (request.method === 'POST' && orderReceiveMatch)) {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!orderWriteRepository) { const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body); }
+      try {
+        if (request.method === 'POST' && url.pathname === '/api/v1/orders' && typeof orderWriteRepository.create === 'function') {
+          return send(response, 201, { success: true, data: await orderWriteRepository.create(session.subject, await readJsonBody(request)) });
+        }
+        if (request.method === 'POST' && orderMatch && typeof orderWriteRepository.cancel === 'function') {
+          return send(response, 200, { success: true, data: await orderWriteRepository.cancel(session.subject, positiveInteger(orderMatch[1])) });
+        }
+        if (request.method === 'POST' && orderReceiveMatch && typeof orderWriteRepository.confirmReceive === 'function') {
+          return send(response, 200, { success: true, data: await orderWriteRepository.confirmReceive(session.subject, positiveInteger(orderReceiveMatch[1])) });
+        }
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        if (['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST'].includes(code)) { const result = error('INVALID_REQUEST', '订单信息无效', 400); return send(response, result.status, result.body); }
+        if (code === 'ADDRESS_NOT_FOUND') { const result = error(code, '收货地址不存在或不完整', 404); return send(response, result.status, result.body); }
+        if (code === 'PRODUCT_NOT_AVAILABLE') { const result = error(code, '商品不存在或已下架', 404); return send(response, result.status, result.body); }
+        if (code === 'PRODUCT_SPEC_NOT_FOUND') { const result = error(code, '商品规格不存在', 409); return send(response, result.status, result.body); }
+        if (code === 'PRODUCT_OUT_OF_STOCK') { const result = error(code, '商品库存不足', 409); return send(response, result.status, result.body); }
+        if (code === 'COUPON_NOT_READY') { const result = error(code, '优惠券功能尚未切换', 409); return send(response, result.status, result.body); }
+        if (code === 'ORDER_NOT_FOUND') { const result = error(code, '订单不存在', 404); return send(response, result.status, result.body); }
+        if (code === 'ORDER_NOT_CANCELLABLE' || code === 'ORDER_NOT_RECEIVABLE') { const result = error(code, '当前订单状态不可执行该操作', 409); return send(response, result.status, result.body); }
+        const result = error('ORDER_OPERATION_FAILED', '订单服务暂不可用', 503); return send(response, result.status, result.body);
+      }
+      const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body);
+    }
+
     if ((request.method === 'GET' && url.pathname === '/api/v1/orders') || (request.method === 'GET' && orderMatch)) {
       const session = await authenticatedSession();
       if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }

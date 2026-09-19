@@ -35,6 +35,7 @@ import { hashPassword, verifyPassword } from '../src/security/password.js';
 import { createAdminLoginService } from '../src/auth/admin-login-service.js';
 import { createRequestAuditLogger } from '../src/observability/request-audit.js';
 import { createMysqlCouponRepository } from '../src/repositories/mysql-coupon-repository.js';
+import { createMysqlOrderWriteRepository } from '../src/repositories/mysql-order-write-repository.js';
 
 const secret = 'test-only-session-secret-which-is-long-enough-123456';
 
@@ -80,6 +81,55 @@ test('coupon repository binds public and user filters without reading legacy cou
   assert.doesNotMatch(calls[0].sql, /FROM coupons\b|user_coupons/);
   assert.match(calls[1].sql, /cc\.user_id = \?/);
   assert.deepEqual(calls[1].values, [8]);
+});
+
+test('order write endpoints rely only on the signed customer and preserve idempotent creation', async (t) => {
+  const calls = [];
+  const writes = {
+    create: async (userId, payload) => { calls.push({ kind: 'create', userId, payload }); return { orderId: 15, orderNo: 'SR1', idempotent: false }; },
+    cancel: async (userId, orderId) => { calls.push({ kind: 'cancel', userId, orderId }); return { id: orderId, status: 'cancelled' }; },
+    confirmReceive: async (userId, orderId) => { calls.push({ kind: 'receive', userId, orderId }); return { id: orderId, status: 'completed' }; }
+  };
+  const server = createServer({ sessionSecret: secret, orderWriteRepository: writes, sessionRepository: { active: async () => true } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const base = `http://127.0.0.1:${server.address().port}`;
+  assert.equal((await fetch(`${base}/api/v1/orders`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })).status, 401);
+  const token = issueSession({ subject: 6, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+  const body = { productId: 3, addressId: 7, quantity: 1, idempotencyKey: 'order-create-key-0001' };
+  assert.equal((await fetch(`${base}/api/v1/orders`, { method: 'POST', headers, body: JSON.stringify(body) })).status, 201);
+  assert.equal((await fetch(`${base}/api/v1/orders/15`, { method: 'POST', headers })).status, 200);
+  assert.equal((await fetch(`${base}/api/v1/orders/15/receive`, { method: 'POST', headers })).status, 200);
+  assert.deepEqual(calls, [
+    { kind: 'create', userId: 6, payload: body },
+    { kind: 'cancel', userId: 6, orderId: 15 },
+    { kind: 'receive', userId: 6, orderId: 15 }
+  ]);
+});
+
+test('order write repository freezes stock and records an idempotency ledger in one transaction', async () => {
+  const sql = []; let committed = 0; let rolledBack = 0;
+  const connection = {
+    beginTransaction: async () => {}, commit: async () => { committed += 1; }, rollback: async () => { rolledBack += 1; }, release: () => {},
+    execute: async (statement, values = []) => {
+      sql.push({ statement, values });
+      if (statement.includes('FROM order_creation_requests')) return [[]];
+      if (statement.includes('FROM addresses')) return [[{ name: '王女士', contact: '王女士', phone: '13800138000', province: '上海', city: '上海', district: '浦东', detail: '测试路 1 号' }]];
+      if (statement.includes('FROM products WHERE')) return [[{ id: 3, name: '专业剪', price: '299.00', cover_image: 'catalog/a.png', stock: 2, is_on_sale: 1, deleted_at: null, shipping_type: 'normal', ship_deadline_days: 2, shipping_promise: '两天内发货', shipping_delay_reason: '', shipping_note: '' }]];
+      if (statement.startsWith('UPDATE products SET stock')) return [{ affectedRows: 1 }];
+      if (statement.startsWith('INSERT INTO orders')) return [{ affectedRows: 1, insertId: 15 }];
+      if (statement.startsWith('INSERT INTO order_items') || statement.startsWith('INSERT INTO order_addresses') || statement.startsWith('INSERT INTO order_creation_requests')) return [{ affectedRows: 1 }];
+      if (statement.startsWith('SELECT id, order_no, total_amount')) return [[{ id: 15, order_no: 'SR1', total_amount: '598.00', pay_amount: '598.00', status: 'pending_payment' }]];
+      throw new Error(`unexpected statement: ${statement}`);
+    }
+  };
+  const repository = createMysqlOrderWriteRepository({ getConnection: async () => connection });
+  const result = await repository.create(8, { productId: 3, addressId: 4, quantity: 2, idempotencyKey: 'order-create-key-0001', selectedColor: '', remark: '' });
+  assert.deepEqual(result, { orderId: 15, orderNo: 'SR1', totalAmount: '598.00', payAmount: '598.00', status: 'pending_payment', idempotent: false });
+  assert.equal(committed, 1); assert.equal(rolledBack, 0);
+  assert.equal(sql.filter(({ statement }) => statement.startsWith('UPDATE products SET stock')).length, 1);
+  assert.equal(sql.filter(({ statement }) => statement.startsWith('INSERT INTO order_creation_requests')).length, 1);
+  await assert.rejects(() => repository.create(8, { productId: 3, addressId: 4, quantity: 1, couponId: 9, idempotencyKey: 'order-create-key-0002' }), /COUPON_NOT_READY/);
 });
 
 test('user-import preflight limits the scope and rejects missing identity data', () => {

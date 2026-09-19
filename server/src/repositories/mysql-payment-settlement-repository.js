@@ -15,6 +15,14 @@ export function createMysqlPaymentSettlementRepository(pool) {
         if (order.status !== 'pending_payment' || (order.pay_transaction_id && order.pay_transaction_id !== transactionId)) throw new Error('ORDER_SETTLEMENT_CONFLICT');
         const [result] = await connection.execute("UPDATE orders SET status = 'paid', pay_type = 'wechat', pay_time = NOW(), pay_transaction_id = ? WHERE id = ? AND status = 'pending_payment'", [transactionId, order.id]);
         if (result.affectedRows !== 1) throw new Error('ORDER_SETTLEMENT_CONFLICT');
+        const [items] = await connection.execute('SELECT product_id, quantity FROM order_items WHERE order_id = ? FOR UPDATE', [order.id]);
+        for (const item of items) {
+          const [inventory] = await connection.execute(
+            'UPDATE products SET reserved_stock = GREATEST(reserved_stock - ?, 0), sales_count = IFNULL(sales_count, 0) + ? WHERE id = ?',
+            [Number(item.quantity), Number(item.quantity), item.product_id]
+          );
+          if (inventory.affectedRows !== 1) throw new Error('ORDER_INVENTORY_NOT_FOUND');
+        }
         await connection.commit();
         return Object.freeze({ settled: true, duplicate: false });
       } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
