@@ -179,6 +179,7 @@ import {
 } from "@/api/admin";
 import type { ProductRow } from "@/api/types";
 import type { UploadFile, UploadFiles, UploadRawFile, UploadUserFile } from "element-plus";
+import { targetAdminCatalogModeEnabled } from "@/lib/target-admin-auth";
 
 const route = useRoute();
 const router = useRouter();
@@ -188,6 +189,7 @@ const isEditMode = computed(() => {
 });
 const editingId = computed(() => Number(route.params.id || 0));
 const saving = ref(false);
+const targetMode = targetAdminCatalogModeEnabled();
 
 const form = reactive<CreatePointsProductInput & { stock_available?: number }>({
   product_id: 0,
@@ -507,7 +509,9 @@ const loadDetail = async () => {
   form.desc = String(detail.desc || "");
   form.cover_image = detail.cover_image || "";
   form.images = toImageList(detail.images);
-  form.detail_images = toImageList(detail.detail_images);
+  form.detail_images = Array.isArray(detail.raw_detail_images)
+    ? detail.raw_detail_images
+    : toImageList(detail.detail_images);
   form.category_id = detail.category_id || null;
   form.points_price = Number(detail.points_price || 0);
   form.cash_price = Number(detail.cash_price || 0);
@@ -625,6 +629,9 @@ const handleSave = async () => {
       payload.id = editingId.value;
       await updatePointsProduct(payload);
       ElMessage.success("更新成功");
+    } else if (targetMode) {
+      await createPointsProduct(await buildPayload("points-products"));
+      ElMessage.success("创建成功");
     } else {
       const created = await createPointsProduct(await buildPayload(null));
       await updatePointsProduct({

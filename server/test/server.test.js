@@ -132,6 +132,23 @@ test('order write repository freezes stock and records an idempotency ledger in 
   await assert.rejects(() => repository.create(8, { productId: 3, addressId: 4, quantity: 1, couponId: 9, idempotencyKey: 'order-create-key-0002' }), /COUPON_NOT_ALLOWED/);
 });
 
+test('structured checkout routes use the signed customer and never trust a request user id', async (t) => {
+  const calls = [];
+  const checkout = {
+    createQuote: async (userId, payload) => { calls.push({ kind: 'quote', userId, payload }); return { quoteId: '993d4f87-0ac6-4cae-bf55-7199168e87e9', payableAmountFen: 59800 }; },
+    createOrder: async (userId, payload) => { calls.push({ kind: 'order', userId, payload }); return { orderId: 31, orderNo: 'SR31', status: 'pending_payment' }; }
+  };
+  const server = createServer({ sessionSecret: secret, structuredCheckoutRepository: checkout, orderWriteRepository: { create: async () => assert.fail('legacy order creation must not be used for a quote') }, sessionRepository: { active: async () => true } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 6, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }; const base = `http://127.0.0.1:${server.address().port}`;
+  const quotePayload = { userId: 999, skuId: 12, quantity: 1 };
+  const orderPayload = { userId: 999, quoteId: '993d4f87-0ac6-4cae-bf55-7199168e87e9', addressId: 4, idempotencyKey: 'structured-order-create-1' };
+  assert.equal((await fetch(`${base}/api/v1/checkout/quotes`, { method: 'POST', headers, body: JSON.stringify(quotePayload) })).status, 201);
+  assert.equal((await fetch(`${base}/api/v1/orders`, { method: 'POST', headers, body: JSON.stringify(orderPayload) })).status, 201);
+  assert.deepEqual(calls, [{ kind: 'quote', userId: 6, payload: quotePayload }, { kind: 'order', userId: 6, payload: orderPayload }]);
+});
+
 test('points-order writes use the signed customer and never accept a user id from the request', async (t) => {
   const calls = [];
   const pointsWrites = {
@@ -881,14 +898,17 @@ test('address route reads only addresses owned by the signed session subject', a
   assert.deepEqual((await response.json()).data, []);
 });
 
-test('payment creation uses only the authenticated customer and server path order id', async (t) => {
+test('payment creation uses only the authenticated customer, path order id, and an allowlisted order type', async (t) => {
   let request;
-  const server = createServer({ sessionSecret: secret, paymentOrderService: { create: async (userId, orderId) => { request = { userId, orderId }; return { package: 'prepay_id=test' }; } } });
+  const server = createServer({ sessionSecret: secret, paymentOrderService: { create: async (userId, orderId, orderType) => { request = { userId, orderId, orderType }; return { package: 'prepay_id=test' }; } } });
   server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
   const token = issueSession({ subject: 44, role: 'customer', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
   const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/payments/wechat/orders/18`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ amountFen: 1, openid: 'forged' }) });
   assert.equal(response.status, 200);
-  assert.deepEqual(request, { userId: 44, orderId: 18 });
+  assert.deepEqual(request, { userId: 44, orderId: 18, orderType: 'goods' });
+  const points = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/payments/wechat/orders/19`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ orderType: 'points', amountFen: 1 }) });
+  assert.equal(points.status, 200);
+  assert.deepEqual(request, { userId: 44, orderId: 19, orderType: 'points' });
 });
 
 test('address writes use only the signed session subject and validate the address', async (t) => {
@@ -1089,6 +1109,33 @@ test('administrator catalog list endpoints require catalog editor and return rep
   assert.equal(body.data.query.page, '2');
 });
 
+test('structured product variant routes stay feature-gated and validate model-color SKU ownership', async (t) => {
+  let received;
+  const repository = {
+    getStructuredProductVariants: async (id) => ({ id: Number(id), models: [], colors: [], skus: [] }),
+    replaceStructuredProductVariants: async (id, input) => { received = { id, input }; return { id, ...input }; }
+  };
+  const server = createServer({
+    sessionSecret: secret,
+    structuredCheckoutEnabled: true,
+    adminSessionRepository: { active: async () => true },
+    adminRepository: { hasRole: async () => true },
+    adminCatalogRepository: repository
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const payload = {
+    series: 'Pro', models: [{ name: '7.0 英寸' }], colors: [{ name: '深空黑', swatch: '#111111' }],
+    skus: [{ modelName: '7.0 英寸', colorName: '深空黑', skuCode: 'PRO-7-BLACK', priceFen: 59800, stockAvailable: 3, shippingType: 'normal', shipDeadlineDays: 2, shippingPromise: '48 小时内发货' }]
+  };
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products/6/variants`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+  assert.equal(response.status, 200);
+  assert.equal(received.id, 6);
+  assert.equal(received.input.skus[0].priceFen, 59800);
+  const invalid = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products/6/variants`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ ...payload, skus: [{ ...payload.skus[0], colorName: '不存在的颜色' }] }) });
+  assert.equal(invalid.status, 400);
+});
+
 test('administrator product stock update requires catalog editor and uses an exact non-negative quantity', async (t) => {
   const calls = [];
   const catalog = { restockProduct: async (id, stock) => { calls.push({ id, stock }); return id === 6 ? { id, stock } : null; } };
@@ -1100,6 +1147,24 @@ test('administrator product stock update requires catalog editor and uses an exa
   assert.deepEqual(calls, [{ id: 6, stock: 24 }]);
   const missing = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/products/9/stock`, { method: 'PUT', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ stock: 1 }) });
   assert.equal(missing.status, 404);
+});
+
+test('administrator points products and orders use their dedicated role-scoped repositories', async (t) => {
+  const calls = [];
+  const points = {
+    list: async (query) => ({ list: [], total: 0, query }),
+    create: async (input) => { calls.push({ kind: 'points-create', input }); return { id: 9 }; },
+    get: async (id) => ({ id, specs: [] }), update: async () => true, setOnSale: async () => true
+  };
+  const orders = { list: async (query) => ({ list: [], total: 0, query }), get: async (id) => ({ id, type: 'goods', items: [] }), markShipped: async (id, input) => { calls.push({ kind: 'ship', id, input }); return { id, status: 'shipped' }; } };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async ({ roleCode }) => roleCode === 'catalog_editor' || roleCode === 'operations_manager' }, mediaIntentRepository: { getConfirmed: async ({ id }) => id === '11111111-1111-1111-1111-111111111111' ? { objectKey: 'catalog/points-products/a.png' } : null }, adminPointsProductRepository: points, adminOrderRepository: orders });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret); const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' }; const base = `http://127.0.0.1:${server.address().port}`;
+  const pointsList = await fetch(`${base}/api/v1/admin/points-products?status=1`, { headers }); assert.equal(pointsList.status, 200); assert.equal((await pointsList.json()).data.query.status, 1);
+  const created = await fetch(`${base}/api/v1/admin/points-products`, { method: 'POST', headers, body: JSON.stringify({ name: '积分剪刀', coverImage: { intentId: '11111111-1111-1111-1111-111111111111' }, pointsPrice: 500, stock: 2 }) }); assert.equal(created.status, 201);
+  const orderList = await fetch(`${base}/api/v1/admin/orders?type=goods`, { headers }); assert.equal(orderList.status, 200);
+  const shipped = await fetch(`${base}/api/v1/admin/orders/4/shipment`, { method: 'POST', headers, body: JSON.stringify({ logisticsCompany: '顺丰', logisticsNo: 'SF123' }) }); assert.equal(shipped.status, 200);
+  assert.deepEqual(calls.map((item) => item.kind), ['points-create', 'ship']);
 });
 
 test('administrator scissors inventory endpoints are catalog-scoped and exclude binding operations', async (t) => {
@@ -1347,3 +1412,34 @@ test('administrator session introspection returns only the signed session identi
   assert.deepEqual((await response.json()).data.administrator, { id: 7, roles: ['catalog_editor'] });
 });
 
+test('payment health is available only to an operations manager and returns aggregate state', async (t) => {
+  const summary = { byStatus: { received: 0, processing: 1, processed: 2, blocked: 0 }, oldestPendingAt: '2026-09-22T00:00:00.000Z' };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async () => true }, paymentInboundRepository: { healthSummary: async () => summary } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/payments/health`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json()).data, summary);
+});
+
+test('refund review routes are restricted to operations managers and do not execute a payment', async (t) => {
+  let reviewed;
+  let refundQuery;
+  const refunds = {
+    listForReview: async (query) => { refundQuery = query; return { list: [{ id: 4, status: 'pending_review' }], total: 1 }; },
+    getForReview: async (requestId) => requestId === 4 ? { refund: { id: 4 }, order: { id: 9 }, user: null, address: null, items: [] } : null,
+    review: async (value) => { reviewed = value; return { requestId: 4, status: 'approved' }; }
+  };
+  const server = createServer({ sessionSecret: secret, adminSessionRepository: { active: async () => true }, adminRepository: { hasRole: async () => true }, refundRepository: refunds });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.close());
+  const token = issueSession({ subject: 7, role: 'admin', expiresAt: Math.floor(Date.now() / 1000) + 60 }, secret);
+  const listed = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/refund-requests?status=pending_review&keyword=SR2026&page=2&pageSize=20`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(listed.status, 200);
+  assert.deepEqual(refundQuery, { status: 'pending_review', keyword: 'SR2026', page: '2', pageSize: '20' });
+  const detail = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/refund-requests/4`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(detail.status, 200);
+  assert.equal((await detail.json()).data.order.id, 9);
+  const reviewedResponse = await fetch(`http://127.0.0.1:${server.address().port}/api/v1/admin/refund-requests/4/decision`, { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' }, body: JSON.stringify({ decision: 'approve', adminNote: '核验通过' }) });
+  assert.equal(reviewedResponse.status, 200);
+  assert.deepEqual(reviewed, { requestId: 4, decision: 'approve', adminNote: '核验通过' });
+});

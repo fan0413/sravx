@@ -15,21 +15,30 @@ import { createMysqlAdminRepository } from './repositories/mysql-admin-repositor
 import { createMysqlAdminSessionRepository } from './repositories/mysql-admin-session-repository.js';
 import { createMysqlMediaIntentRepository } from './repositories/mysql-media-intent-repository.js';
 import { createMysqlAdminCatalogRepository } from './repositories/mysql-admin-catalog-repository.js';
+import { createMysqlAdminPointsProductRepository } from './repositories/mysql-admin-points-product-repository.js';
 import { createMysqlAdminOperationsRepository } from './repositories/mysql-admin-operations-repository.js';
+import { createMysqlAdminOrderRepository } from './repositories/mysql-admin-order-repository.js';
 import { createMysqlAdminScissorsRepository } from './repositories/mysql-admin-scissors-repository.js';
 import { createMysqlAdminAfterSaleRepository } from './repositories/mysql-admin-after-sale-repository.js';
 import { createMysqlInquiryRepository } from './repositories/mysql-inquiry-repository.js';
 import { createMysqlCouponRepository } from './repositories/mysql-coupon-repository.js';
 import { createMysqlPaymentInboundRepository } from './repositories/mysql-payment-inbound-repository.js';
+import { createMysqlPaymentSettlementRepository } from './repositories/mysql-payment-settlement-repository.js';
 import { createWechatPayCallbackService, createWechatPayCertificateProvider } from './payments/wechatpay-callback.js';
 import { loadWechatPayPlatformCertificates } from './payments/wechatpay-platform-certificates.js';
 import { paymentInboundConfiguration } from './payments/payment-inbound-configuration.js';
-import { isPaymentInboundRehearsal } from './payments/payment-inbound-mode.js';
+import { usesBusinessDatabaseForPaymentInbound } from './payments/payment-inbound-mode.js';
 import { createWechatPayJsapiClient } from './payments/wechatpay-jsapi-client.js';
 import { createWechatPayRequester } from './payments/wechatpay-requester.js';
+import { createWechatPayRefundClient } from './payments/wechatpay-refund-client.js';
+import { createWechatPayRefundRequester } from './payments/wechatpay-refund-requester.js';
+import { createRefundExecutionService } from './payments/refund-execution-service.js';
 import { createPaymentOrderService } from './payments/payment-order-service.js';
+import { createPaymentEventConsumer } from './payments/payment-event-consumer.js';
+import { createPaymentEventWorker } from './payments/payment-event-worker.js';
 import { createMysqlPaymentOrderRepository } from './repositories/mysql-payment-order-repository.js';
 import { createMysqlOrderWriteRepository } from './repositories/mysql-order-write-repository.js';
+import { createMysqlStructuredCheckoutRepository } from './repositories/mysql-structured-checkout-repository.js';
 import { createMysqlPointsOrderWriteRepository } from './repositories/mysql-points-order-write-repository.js';
 import { createMysqlRefundRepository } from './repositories/mysql-refund-repository.js';
 import { createMysqlGiftCardRepository } from './repositories/mysql-gift-card-repository.js';
@@ -77,7 +86,34 @@ function createOptionalPaymentOrderService(environment, pool) {
     merchantSerialNo: required(environment, 'WECHAT_PAY_MERCHANT_SERIAL_NO'), merchantPrivateKeyPath: required(environment, 'WECHAT_PAY_MERCHANT_PRIVATE_KEY_PATH'),
     request: createWechatPayRequester()
   });
-  return createPaymentOrderService({ loadPayableOrder: createMysqlPaymentOrderRepository(pool).loadPayableOrder, createTransaction: client, notifyUrl: required(environment, 'WECHAT_PAY_NOTIFY_URL') });
+  const orderRepository = createMysqlPaymentOrderRepository(pool);
+  return createPaymentOrderService({
+    loadPayableOrder: orderRepository.loadPayableOrder,
+    loadPayablePointsOrder: orderRepository.loadPayablePointsOrder,
+    createTransaction: client,
+    notifyUrl: required(environment, 'WECHAT_PAY_NOTIFY_URL')
+  });
+}
+
+function createOptionalPaymentEventWorker(environment, inboundRepository, businessPool) {
+  if (environment.PAYMENT_CALLBACK_ENABLED !== 'true' || environment.PAYMENT_CONSUMER_ENABLED !== 'true') return null;
+  if (!inboundRepository) throw new Error('PAYMENT_CONSUMER_ENABLED requires payment inbound storage.');
+  const consumer = createPaymentEventConsumer({
+    inboundRepository,
+    settlementRepository: createMysqlPaymentSettlementRepository(businessPool, { structuredCheckout: environment.STRUCTURED_CHECKOUT_ENABLED === 'true' }),
+    apiV3Key: required(environment, 'WECHAT_PAY_API_V3_KEY'),
+    inboundEncryptionKey: required(environment, 'PAYMENT_INBOUND_ENCRYPTION_KEY')
+  });
+  return createPaymentEventWorker({
+    consumer,
+    onError: () => console.error('payment event consumer failed')
+  });
+}
+
+function createOptionalRefundExecutionService(environment, refundRepository) {
+  if (environment.PAYMENT_REFUNDS_ENABLED !== 'true') return null;
+  const client = createWechatPayRefundClient({ mchId: required(environment, 'WECHAT_PAY_MCH_ID'), merchantSerialNo: required(environment, 'WECHAT_PAY_MERCHANT_SERIAL_NO'), merchantPrivateKeyPath: required(environment, 'WECHAT_PAY_MERCHANT_PRIVATE_KEY_PATH'), notifyUrl: required(environment, 'WECHAT_PAY_NOTIFY_URL'), request: createWechatPayRefundRequester() });
+  return createRefundExecutionService({ prepareRefund: refundRepository.prepareRefund, createRefund: client });
 }
 
 export async function createRuntimeServer(environment = process.env) {
@@ -99,14 +135,18 @@ export async function createRuntimeServer(environment = process.env) {
     requestIdentity: createWechatIdentityRequester()
   });
   const userRepository = createMysqlUserRepository(pool);
-  const catalogRepository = createMysqlCatalogRepository(pool);
+  const structuredCheckoutEnabled = environment.STRUCTURED_CHECKOUT_ENABLED === 'true';
+  const catalogRepository = createMysqlCatalogRepository(pool, { structuredCatalog: structuredCheckoutEnabled });
   const addressRepository = createMysqlAddressRepository(pool);
   const toolRepository = createMysqlToolRepository(pool);
   const afterSaleRepository = createMysqlAfterSaleRepository(pool);
   const orderReadRepository = createMysqlOrderReadRepository(pool);
   const orderWriteRepository = createMysqlOrderWriteRepository(pool);
+  // Kept opt-in until migration 012 has passed a rehearsal and is applied.
+  const structuredCheckoutRepository = structuredCheckoutEnabled ? createMysqlStructuredCheckoutRepository(pool) : null;
   const pointsOrderWriteRepository = createMysqlPointsOrderWriteRepository(pool);
   const refundRepository = createMysqlRefundRepository(pool);
+  const refundExecutionService = createOptionalRefundExecutionService(environment, refundRepository);
   const giftCardRepository = createMysqlGiftCardRepository(pool);
   const giftCardReadRepository = createMysqlGiftCardReadRepository(pool);
   const sessionRepository = createMysqlSessionRepository(pool);
@@ -114,20 +154,23 @@ export async function createRuntimeServer(environment = process.env) {
   const adminSessionRepository = createMysqlAdminSessionRepository(pool);
   const mediaIntentRepository = createMysqlMediaIntentRepository(pool);
   const adminCatalogRepository = createMysqlAdminCatalogRepository(pool);
+  const adminPointsProductRepository = createMysqlAdminPointsProductRepository(pool);
   const adminOperationsRepository = createMysqlAdminOperationsRepository(pool);
+  const adminOrderRepository = createMysqlAdminOrderRepository(pool);
   const adminScissorsRepository = createMysqlAdminScissorsRepository(pool);
   const adminAfterSaleRepository = createMysqlAdminAfterSaleRepository(pool);
   const inquiryRepository = createMysqlInquiryRepository(pool);
   const couponRepository = createMysqlCouponRepository(pool);
   const callbackEnabled = environment.PAYMENT_CALLBACK_ENABLED === 'true';
-  const rehearsalMode = isPaymentInboundRehearsal(environment);
-  const inboundConfiguration = callbackEnabled && !rehearsalMode ? paymentInboundConfiguration(environment) : null;
-  const { rehearsal: _rehearsal, ...inboundMysqlConfiguration } = inboundConfiguration || {};
-  const inboundPool = rehearsalMode ? pool : (inboundConfiguration ? mysql.createPool({ ...inboundMysqlConfiguration, waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null);
+  const inboundUsesBusinessDatabase = usesBusinessDatabaseForPaymentInbound(environment);
+  const inboundConfiguration = callbackEnabled && !inboundUsesBusinessDatabase ? paymentInboundConfiguration(environment) : null;
+  const { usesBusinessDatabase: _usesBusinessDatabase, ...inboundMysqlConfiguration } = inboundConfiguration || {};
+  const inboundPool = inboundUsesBusinessDatabase ? pool : (inboundConfiguration ? mysql.createPool({ ...inboundMysqlConfiguration, waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null);
   const paymentInboundRepository = inboundPool ? createMysqlPaymentInboundRepository(inboundPool) : null;
   const mediaSigner = await createOptionalCosSigner(environment);
   const paymentCallbackService = await createOptionalPaymentCallbackService(environment, paymentInboundRepository);
   const paymentOrderService = createOptionalPaymentOrderService(environment, pool);
+  const paymentEventWorker = createOptionalPaymentEventWorker(environment, paymentInboundRepository, pool);
   const loginService = createLoginService({
     codeExchange,
     resolveUser: userRepository.resolveUser,
@@ -140,5 +183,7 @@ export async function createRuntimeServer(environment = process.env) {
     createSession: adminSessionRepository.create,
     sessionSecret: required(environment, 'SESSION_SIGNING_SECRET')
   });
-  return createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, orderWriteRepository, pointsOrderWriteRepository, refundRepository, giftCardReadRepository, giftCardRepository, couponRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminOperationsRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, paymentOrderService, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
+  const server = createServer({ sessionSecret: required(environment, 'SESSION_SIGNING_SECRET'), loginService, adminLoginService, phoneService, userRepository, catalogRepository, addressRepository, toolRepository, afterSaleRepository, orderReadRepository, orderWriteRepository, structuredCheckoutRepository, structuredCheckoutEnabled, pointsOrderWriteRepository, refundRepository, refundExecutionService, giftCardReadRepository, giftCardRepository, couponRepository, sessionRepository, adminSessionRepository, adminRepository, adminCatalogRepository, adminPointsProductRepository, adminOperationsRepository, adminOrderRepository, adminScissorsRepository, adminAfterSaleRepository, inquiryRepository, mediaIntentRepository, mediaSigner, paymentCallbackService, paymentOrderService, paymentInboundRepository, healthCheck: async () => { await pool.query('SELECT 1'); }, auditLogger: createRequestAuditLogger() });
+  paymentEventWorker?.start();
+  return server;
 }

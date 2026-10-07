@@ -3,7 +3,7 @@
     <el-card>
       <template #header>
         <div class="header-row">
-          <span>编辑用户</span>
+          <span>{{ targetOperations ? "用户资料" : "编辑用户" }}</span>
           <div class="header-actions">
             <el-button @click="goBack">返回</el-button>
             <el-button v-if="!targetOperations" type="primary" :loading="saving" @click="handleSave">保存</el-button>
@@ -18,7 +18,7 @@
               <el-input :model-value="String(form.id || '-')" disabled />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col v-if="!targetOperations" :span="12">
             <el-form-item label="OpenID">
               <el-input v-model="form.openid" disabled />
             </el-form-item>
@@ -60,7 +60,7 @@
       </el-form>
     </el-card>
 
-    <el-card class="mt12">
+    <el-card v-if="!targetOperations" class="mt12">
       <template #header>历史下单</template>
       <el-table :data="orders" border>
         <el-table-column prop="id" label="订单ID" width="90" />
@@ -100,7 +100,7 @@
       </el-table>
     </el-card>
 
-    <el-card class="mt12">
+    <el-card v-if="!targetOperations" class="mt12">
       <template #header>优惠券情况</template>
       <el-table :data="coupons" border>
         <el-table-column prop="id" label="ID" width="90" />

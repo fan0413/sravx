@@ -138,3 +138,71 @@ export function productUpdateInput(payload) {
     }))
   };
 }
+
+function optionalStructuredText(value, maximum, name) {
+  return text(value, maximum, name);
+}
+
+function colorSwatch(value) {
+  const normalized = text(value, 32, 'color.swatch') || '';
+  if (normalized && !/^(#[0-9a-f]{3,8}|[a-z]{1,24})$/i.test(normalized)) throw new Error('Invalid color.swatch.');
+  return normalized;
+}
+
+function uniqueNames(items, name) {
+  const seen = new Set();
+  for (const item of items) {
+    const key = item.name.toLocaleLowerCase('en-US');
+    if (seen.has(key)) throw new Error(`Duplicate ${name}.`);
+    seen.add(key);
+  }
+}
+
+// This input is deliberately separate from the legacy product-specification
+// input. It is accepted only when the runtime SKU feature flag is enabled and
+// the migration-012 tables are present.
+export function structuredProductVariantsInput(payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid structured variants payload.');
+  const models = Array.isArray(payload.models) ? payload.models : [];
+  const colors = Array.isArray(payload.colors) ? payload.colors : [];
+  const skus = Array.isArray(payload.skus) ? payload.skus : [];
+  if (models.length < 1 || models.length > 50 || colors.length < 1 || colors.length > 50 || skus.length < 1 || skus.length > 250) throw new Error('Invalid structured variant count.');
+  const normalizedModels = models.map((item, index) => ({ id: integer(item?.id, null, 1), name: text(item?.name, 80, 'model.name', { required: true }), sortOrder: integer(item?.sortOrder, index) }));
+  const normalizedColors = colors.map((item, index) => ({ id: integer(item?.id, null, 1), name: text(item?.name, 80, 'color.name', { required: true }), swatch: colorSwatch(item?.swatch), sortOrder: integer(item?.sortOrder, index) }));
+  uniqueNames(normalizedModels, 'model name');
+  uniqueNames(normalizedColors, 'color name');
+  const modelNames = new Set(normalizedModels.map((item) => item.name));
+  const colorNames = new Set(normalizedColors.map((item) => item.name));
+  const normalizedSkus = skus.map((item, index) => {
+    const modelName = text(item?.modelName, 80, 'sku.modelName', { required: true });
+    const colorName = text(item?.colorName, 80, 'sku.colorName', { required: true });
+    if (!modelNames.has(modelName) || !colorNames.has(colorName)) throw new Error('SKU references an unknown model or color.');
+    return {
+      id: integer(item?.id, null, 1), modelName, colorName,
+      skuCode: text(item?.skuCode, 64, 'sku.skuCode', { required: true }),
+      priceFen: integer(item?.priceFen, null, 0, 999999999),
+      stockAvailable: integer(item?.stockAvailable, null, 0, 10000000),
+      isOnSale: flag(item?.isOnSale, 1),
+      shippingType: text(item?.shippingType, 32, 'sku.shippingType', { required: true }),
+      shipDeadlineDays: integer(item?.shipDeadlineDays, null, 0, 365),
+      shippingPromise: text(item?.shippingPromise, 255, 'sku.shippingPromise', { required: true }),
+      sortOrder: integer(item?.sortOrder, index)
+    };
+  });
+  if (normalizedSkus.some((item) => item.priceFen === null || item.stockAvailable === null || item.shipDeadlineDays === null)) throw new Error('Invalid SKU numeric value.');
+  const combinationKeys = new Set();
+  const skuCodes = new Set();
+  for (const item of normalizedSkus) {
+    const combination = `${item.modelName}\u0000${item.colorName}`;
+    if (combinationKeys.has(combination) || skuCodes.has(item.skuCode)) throw new Error('Duplicate SKU combination or code.');
+    combinationKeys.add(combination); skuCodes.add(item.skuCode);
+  }
+  return {
+    series: optionalStructuredText(payload.series, 32, 'series'),
+    toolGroup: optionalStructuredText(payload.toolGroup, 64, 'toolGroup'),
+    toolSubtype: optionalStructuredText(payload.toolSubtype, 64, 'toolSubtype'),
+    displaySize: optionalStructuredText(payload.displaySize, 32, 'displaySize'),
+    steelMaterial: optionalStructuredText(payload.steelMaterial, 128, 'steelMaterial'),
+    models: normalizedModels, colors: normalizedColors, skus: normalizedSkus
+  };
+}

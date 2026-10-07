@@ -2,11 +2,23 @@
   <div class="category-page">
     <div class="page-toolbar">
       <div>
-        <h2>分类管理</h2>
-        <p>维护商城前台展示的商品分类、排序和上下架状态</p>
+        <p class="page-eyebrow">FRONT STORE STRUCTURE</p>
+        <h2>分类与首页入口</h2>
+        <p>分类名称、封面、展示状态和排序会决定用户端首页看到的目录入口。</p>
       </div>
       <el-button type="primary" @click="openCreate">新增分类</el-button>
     </div>
+
+    <section v-if="rows.length" class="storefront-preview">
+      <div class="preview-heading"><div><p class="page-eyebrow">USER EXPERIENCE</p><h3>用户端分类预览</h3></div><span>拖动排序功能将随后接入；当前按排序值展示</span></div>
+      <div class="storefront-grid">
+        <article v-for="row in sortedRows" :key="row.id" class="storefront-card" :class="{ disabled: row.is_show !== 1 }" @click="openEdit(row)">
+          <div class="storefront-image"><img v-if="row.image" :src="row.image" :alt="row.name" /><span v-else>{{ row.name.slice(0, 1) }}</span></div>
+          <div class="storefront-copy"><small>排序 {{ row.sort_order || 0 }} · {{ row.is_show === 1 ? '用户可见' : '已隐藏' }}</small><strong>{{ row.name }}</strong><p>{{ row.description || '未填写分类说明' }}</p></div>
+          <span class="storefront-action">编辑 ›</span>
+        </article>
+      </div>
+    </section>
 
     <el-card class="filter-card" shadow="never">
       <el-form :inline="true" :model="query" class="filter-form" @submit.prevent>
@@ -124,7 +136,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadFile } from "element-plus";
 import {
   createAdminCategory,
@@ -147,6 +159,7 @@ const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
 const formRef = ref<FormInstance>();
 const targetMode = targetAdminCatalogModeEnabled();
+const sortedRows = computed(() => [...rows.value].sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0)));
 
 const query = reactive<CategoryQuery>({
   keyword: "",
@@ -319,6 +332,23 @@ onMounted(loadCategories);
   font-weight: 600;
 }
 
+.page-eyebrow { margin: 0 0 7px; color: var(--sravx-accent); font-size: 10px; font-weight: 700; letter-spacing: .14em; }
+.storefront-preview { padding: 24px; border-radius: 22px; background: #fff; box-shadow: 0 8px 28px rgba(29,29,31,.05); }
+.preview-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.preview-heading h3 { margin: 0; color: var(--sravx-ink); font-size: 18px; letter-spacing: -.02em; }
+.preview-heading > span { color: var(--sravx-muted); font-size: 12px; }
+.storefront-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.storefront-card { position: relative; overflow: hidden; min-height: 198px; border: 1px solid var(--sravx-line); border-radius: 18px; background: #fff; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease; }
+.storefront-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(29,29,31,.09); }
+.storefront-card.disabled { opacity: .58; }
+.storefront-image { height: 92px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f7eee8, #eee5dc); color: var(--sravx-accent); font-size: 34px; font-weight: 700; }
+.storefront-image img { width: 100%; height: 100%; object-fit: cover; }
+.storefront-copy { padding: 14px 16px; }
+.storefront-copy small { color: var(--sravx-accent); font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+.storefront-copy strong { display: block; margin-top: 6px; color: var(--sravx-ink); font-size: 16px; }
+.storefront-copy p { display: -webkit-box; margin: 6px 0 0; overflow: hidden; color: var(--sravx-muted); font-size: 12px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.storefront-action { position: absolute; right: 14px; bottom: 13px; color: var(--sravx-accent); font-size: 12px; font-weight: 650; }
+
 .page-toolbar p {
   margin: 6px 0 0;
   color: #6b7280;
@@ -351,4 +381,7 @@ onMounted(loadCategories);
   color: #6b7280;
   font-size: 14px;
 }
+
+@media (max-width: 900px) { .storefront-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .storefront-grid { grid-template-columns: 1fr; } .preview-heading { align-items: flex-start; flex-direction: column; } }
 </style>

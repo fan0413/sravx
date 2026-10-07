@@ -4,7 +4,8 @@ import { EmptyCatalogRepository } from './repositories/catalog-repository.js';
 import { catalogResponse } from './routes/catalog.js';
 import { getBearerToken, validateSigningSecret, verifySession } from './security/session.js';
 import { createUploadIntent } from './media/upload-policy.js';
-import { bannerInput, categoryInput, productInput, productUpdateInput } from './media/admin-catalog-input.js';
+import { bannerInput, categoryInput, productInput, productUpdateInput, structuredProductVariantsInput } from './media/admin-catalog-input.js';
+import { pointsProductInput } from './media/admin-points-product-input.js';
 
 const JSON_HEADERS = Object.freeze({
   'content-type': 'application/json; charset=utf-8',
@@ -95,7 +96,7 @@ function inquiryInput(value) {
   });
 }
 
-export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, pointsOrderWriteRepository = null, refundRepository = null, giftCardReadRepository = null, giftCardRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminOperationsRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, healthCheck = null, auditLogger = null }) {
+export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, structuredCheckoutRepository = null, structuredCheckoutEnabled = false, pointsOrderWriteRepository = null, refundRepository = null, refundExecutionService = null, giftCardReadRepository = null, giftCardRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminPointsProductRepository = null, adminOperationsRepository = null, adminOrderRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, paymentInboundRepository = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
     void (async () => {
@@ -167,11 +168,13 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
       if (!paymentOrderService || typeof paymentOrderService.create !== 'function') { const result = error('NOT_FOUND', '接口不存在', 404); return send(response, result.status, result.body); }
       try {
-        return send(response, 200, { success: true, data: await paymentOrderService.create(session.subject, Number(paymentOrderMatch[1])) });
+        const payload = await readJsonBody(request);
+        const orderType = payload?.orderType === 'points' ? 'points' : 'goods';
+        return send(response, 200, { success: true, data: await paymentOrderService.create(session.subject, Number(paymentOrderMatch[1]), orderType) });
       } catch (cause) {
         const code = cause instanceof Error ? cause.message : '';
         if (code === 'ORDER_NOT_FOUND') { const result = error(code, '订单不存在', 404); return send(response, result.status, result.body); }
-        if (code === 'ORDER_NOT_PAYABLE') { const result = error(code, '当前订单不可支付', 409); return send(response, result.status, result.body); }
+        if (code === 'ORDER_NOT_PAYABLE' || code === 'ORDER_TYPE_NOT_PAYABLE') { const result = error(code, '当前订单不可支付', 409); return send(response, result.status, result.body); }
         const result = error('PAYMENT_CREATION_FAILED', '暂时无法创建支付订单', 503);
         return send(response, result.status, result.body);
       }
@@ -480,6 +483,22 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       const result = error('AFTER_SALE_NOT_READY', '售后服务尚未配置', 503); return send(response, result.status, result.body);
     }
 
+    if (request.method === 'POST' && url.pathname === '/api/v1/checkout/quotes') {
+      const session = await authenticatedSession();
+      if (!session || session.role !== 'customer') { const result = error('UNAUTHENTICATED', '登录状态无效或已过期', 401); return send(response, result.status, result.body); }
+      if (!structuredCheckoutRepository || typeof structuredCheckoutRepository.createQuote !== 'function') { const result = error('STRUCTURED_CHECKOUT_NOT_READY', '结构化选配尚未启用', 503); return send(response, result.status, result.body); }
+      try {
+        return send(response, 201, { success: true, data: await structuredCheckoutRepository.createQuote(session.subject, await readJsonBody(request)) });
+      } catch (cause) {
+        const code = cause instanceof Error ? cause.message : '';
+        if (['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST'].includes(code)) { const result = error('INVALID_REQUEST', '选配信息无效', 400); return send(response, result.status, result.body); }
+        if (code === 'SKU_NOT_AVAILABLE') { const result = error(code, '该型号或颜色组合不可购买', 409); return send(response, result.status, result.body); }
+        if (code === 'SKU_OUT_OF_STOCK') { const result = error(code, '该型号或颜色组合库存不足', 409); return send(response, result.status, result.body); }
+        if (code === 'PROTECT_OFFER_NOT_AVAILABLE') { const result = error(code, '该保障服务当前不可选', 409); return send(response, result.status, result.body); }
+        const result = error('CHECKOUT_QUOTE_FAILED', '暂时无法生成报价', 503); return send(response, result.status, result.body);
+      }
+    }
+
     const orderMatch = /^\/api\/v1\/orders\/(\d+)$/.exec(url.pathname);
     const orderReceiveMatch = /^\/api\/v1\/orders\/(\d+)\/receive$/.exec(url.pathname);
     if ((request.method === 'POST' && url.pathname === '/api/v1/orders') || (request.method === 'POST' && orderMatch) || (request.method === 'POST' && orderReceiveMatch)) {
@@ -488,7 +507,18 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       if (!orderWriteRepository) { const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body); }
       try {
         if (request.method === 'POST' && url.pathname === '/api/v1/orders' && typeof orderWriteRepository.create === 'function') {
-          return send(response, 201, { success: true, data: await orderWriteRepository.create(session.subject, await readJsonBody(request)) });
+          const payload = await readJsonBody(request);
+          if (payload?.quoteId) {
+            if (!structuredCheckoutRepository || typeof structuredCheckoutRepository.createOrder !== 'function') { const result = error('STRUCTURED_CHECKOUT_NOT_READY', '结构化选配尚未启用', 503); return send(response, result.status, result.body); }
+            return send(response, 201, { success: true, data: await structuredCheckoutRepository.createOrder(session.subject, payload) });
+          }
+          return send(response, 201, { success: true, data: await orderWriteRepository.create(session.subject, payload) });
+        }
+        if (request.method === 'POST' && orderMatch && structuredCheckoutRepository && typeof structuredCheckoutRepository.cancel === 'function') {
+          const cancelled = await structuredCheckoutRepository.cancel(session.subject, positiveInteger(orderMatch[1]));
+          if (cancelled) return send(response, 200, { success: true, data: cancelled });
+          if (typeof orderWriteRepository.cancel !== 'function') { const result = error('ORDER_NOT_READY', '订单服务尚未配置', 503); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: await orderWriteRepository.cancel(session.subject, positiveInteger(orderMatch[1])) });
         }
         if (request.method === 'POST' && orderMatch && typeof orderWriteRepository.cancel === 'function') {
           return send(response, 200, { success: true, data: await orderWriteRepository.cancel(session.subject, positiveInteger(orderMatch[1])) });
@@ -500,6 +530,11 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         const code = cause instanceof Error ? cause.message : '';
         if (['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST'].includes(code)) { const result = error('INVALID_REQUEST', '订单信息无效', 400); return send(response, result.status, result.body); }
         if (code === 'ADDRESS_NOT_FOUND') { const result = error(code, '收货地址不存在或不完整', 404); return send(response, result.status, result.body); }
+        if (code === 'QUOTE_NOT_FOUND') { const result = error(code, '报价不存在或不属于当前用户', 404); return send(response, result.status, result.body); }
+        if (['QUOTE_NOT_ACTIVE', 'QUOTE_EXPIRED', 'QUOTE_INVALID'].includes(code)) { const result = error(code, '报价已失效，请重新确认选配', 409); return send(response, result.status, result.body); }
+        if (code === 'PROTECT_PURCHASE_NOT_ENABLED') { const result = error(code, '保障服务尚未开放购买', 409); return send(response, result.status, result.body); }
+        if (code === 'SKU_NOT_AVAILABLE') { const result = error(code, '该型号或颜色组合不可购买', 409); return send(response, result.status, result.body); }
+        if (code === 'SKU_OUT_OF_STOCK' || code === 'SKU_INVENTORY_CONFLICT') { const result = error(code, '该型号或颜色组合库存状态已变化', 409); return send(response, result.status, result.body); }
         if (code === 'PRODUCT_NOT_AVAILABLE') { const result = error(code, '商品不存在或已下架', 404); return send(response, result.status, result.body); }
         if (code === 'PRODUCT_SPEC_NOT_FOUND') { const result = error(code, '商品规格不存在', 409); return send(response, result.status, result.body); }
         if (code === 'PRODUCT_OUT_OF_STOCK') { const result = error(code, '商品库存不足', 409); return send(response, result.status, result.body); }
@@ -678,6 +713,68 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         }
         return true;
       };
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/payments/health') {
+        if (!paymentInboundRepository || typeof paymentInboundRepository.healthSummary !== 'function') { const result = error('PAYMENT_MONITOR_NOT_READY', '支付监控尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        return send(response, 200, { success: true, data: await paymentInboundRepository.healthSummary() });
+      }
+      const adminOrderDetail = /^\/api\/v1\/admin\/orders\/(\d+)$/.exec(url.pathname);
+      const adminOrderShipment = /^\/api\/v1\/admin\/orders\/(\d+)\/shipment$/.exec(url.pathname);
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/orders') {
+        if (!adminOrderRepository) { const result = error('ADMIN_ORDER_NOT_READY', '后台订单服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        return send(response, 200, { success: true, data: await adminOrderRepository.list({ type: url.searchParams.get('type'), keyword: url.searchParams.get('keyword') || '', status: url.searchParams.get('status') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'GET' && adminOrderDetail) {
+        if (!adminOrderRepository) { const result = error('ADMIN_ORDER_NOT_READY', '后台订单服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        const order = await adminOrderRepository.get(Number(adminOrderDetail[1]), { type: url.searchParams.get('type') }); if (!order) { const result = error('NOT_FOUND', '订单不存在', 404); return send(response, result.status, result.body); } return send(response, 200, { success: true, data: order });
+      }
+      if (request.method === 'POST' && adminOrderShipment) {
+        if (!adminOrderRepository) { const result = error('ADMIN_ORDER_NOT_READY', '后台订单服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        try { return send(response, 200, { success: true, data: await adminOrderRepository.markShipped(Number(adminOrderShipment[1]), { ...(await readJsonBody(request)), type: url.searchParams.get('type') }) }); }
+        catch (cause) { const code = cause?.message; const known = ['INVALID_REQUEST', 'ORDER_NOT_FOUND', 'ORDER_NOT_SHIPPABLE']; const result = error(known.includes(code) ? code : 'ORDER_SHIPMENT_FAILED', known.includes(code) ? '订单状态或物流信息无效' : '订单发货状态更新失败，请稍后重试', known.includes(code) ? 409 : 503); return send(response, result.status, result.body); }
+      }
+      const adminRefundDecision = /^\/api\/v1\/admin\/refund-requests\/(\d+)\/decision$/.exec(url.pathname);
+      const adminRefundExecution = /^\/api\/v1\/admin\/refund-requests\/(\d+)\/execute$/.exec(url.pathname);
+      const adminRefundDetail = /^\/api\/v1\/admin\/refund-requests\/(\d+)$/.exec(url.pathname);
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/refund-requests') {
+        if (!refundRepository || typeof refundRepository.listForReview !== 'function') { const result = error('REFUND_REVIEW_NOT_READY', '退款审核服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        try {
+          return send(response, 200, { success: true, data: await refundRepository.listForReview({ status: url.searchParams.get('status') || '', keyword: url.searchParams.get('keyword') || '', page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+        } catch (cause) {
+          const result = error('INVALID_REQUEST', '退款筛选条件无效', 400);
+          return send(response, result.status, result.body);
+        }
+      }
+      if (request.method === 'GET' && adminRefundDetail) {
+        if (!refundRepository || typeof refundRepository.getForReview !== 'function') { const result = error('REFUND_REVIEW_NOT_READY', '退款审核服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        try {
+          const data = await refundRepository.getForReview(Number(adminRefundDetail[1]));
+          if (!data) { const result = error('NOT_FOUND', '退款申请不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data });
+        } catch { const result = error('INVALID_REQUEST', '退款申请编号无效', 400); return send(response, result.status, result.body); }
+      }
+      if (request.method === 'POST' && adminRefundDecision) {
+        if (!refundRepository || typeof refundRepository.review !== 'function') { const result = error('REFUND_REVIEW_NOT_READY', '退款审核服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        try { return send(response, 200, { success: true, data: await refundRepository.review({ requestId: Number(adminRefundDecision[1]), ...(await readJsonBody(request)) }) }); }
+        catch (cause) {
+          const code = cause instanceof Error ? cause.message : '';
+          const known = new Set(['INVALID_JSON', 'REQUEST_TOO_LARGE', 'INVALID_REQUEST', 'REFUND_NOT_FOUND', 'REFUND_NOT_REVIEWABLE', 'ORDER_REFUND_STATE_CONFLICT']);
+          const result = error(known.has(code) ? code : 'REFUND_REVIEW_FAILED', known.has(code) ? '退款审核状态无效或已发生变化' : '退款审核失败，请稍后重试', known.has(code) ? 409 : 503);
+          return send(response, result.status, result.body);
+        }
+      }
+      if (request.method === 'POST' && adminRefundExecution) {
+        if (!refundExecutionService || typeof refundExecutionService.execute !== 'function') { const result = error('REFUND_EXECUTION_DISABLED', '真实退款执行尚未启用', 503); return send(response, result.status, result.body); }
+        if (!await requireOperationsManager()) return;
+        try { return send(response, 202, { success: true, data: await refundExecutionService.execute(Number(adminRefundExecution[1])) }); }
+        catch { const result = error('REFUND_EXECUTION_FAILED', '退款请求暂未创建，请在支付监控中核对后重试', 503); return send(response, result.status, result.body); }
+      }
       const requireScissorsAdmin = async () => {
         if (!adminScissorsRepository) {
           const result = error('ADMIN_SCISSORS_NOT_READY', '剪刀编号服务尚未配置', 503);
@@ -780,6 +877,79 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         }
         if (!await requireCatalogEditor()) return;
         return send(response, 200, { success: true, data: await adminCatalogRepository.overview() });
+      }
+      const pointsProductDetail = /^\/api\/v1\/admin\/points-products\/(\d+)$/.exec(url.pathname);
+      const resolvePointsProductMedia = async (payload, current = null) => {
+        const parseKeys = (value) => {
+          if (Array.isArray(value)) return value.filter((item) => typeof item === 'string');
+          if (typeof value !== 'string') return [];
+          try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : []; }
+          catch { return []; }
+        };
+        const allowed = new Set(current ? [current.cover_image, ...parseKeys(current.images), ...parseKeys(current.detail_images), ...(Array.isArray(current.specs) ? current.specs.map((spec) => spec?.image) : [])]
+          .filter((key) => typeof key === 'string' && key.startsWith('catalog/points-products/')) : []);
+        const resolve = async (reference) => {
+          if (reference === null || reference === undefined || reference === '') return null;
+          if (!reference || typeof reference !== 'object' || Array.isArray(reference)) throw new Error('Unverified media.');
+          const intentId = typeof reference.intentId === 'string' ? reference.intentId : '';
+          const existingObjectKey = typeof reference.existingObjectKey === 'string' ? reference.existingObjectKey : '';
+          if (intentId && existingObjectKey) throw new Error('Unverified media.');
+          if (existingObjectKey) {
+            if (!allowed.has(existingObjectKey)) throw new Error('Unverified media.');
+            return existingObjectKey;
+          }
+          const media = await mediaIntentRepository.getConfirmed({ adminAccountId: session.subject, id: intentId });
+          if (!media || !media.objectKey.startsWith('catalog/points-products/')) throw new Error('Unverified media.');
+          return media.objectKey;
+        };
+        const resolveList = async (references) => {
+          if (!Array.isArray(references)) throw new Error('Unverified media.');
+          return Promise.all(references.map(resolve));
+        };
+        return {
+          ...payload,
+          coverImage: await resolve(payload.coverImage),
+          images: await resolveList(payload.images || []),
+          detailImages: await resolveList(payload.detailImages || []),
+          specs: Array.isArray(payload.specs) ? await Promise.all(payload.specs.map(async (spec) => ({ ...spec, image: await resolve(spec?.image) }))) : payload.specs
+        };
+      };
+      if (request.method === 'GET' && url.pathname === '/api/v1/admin/points-products') {
+        if (!adminPointsProductRepository) { const result = error('ADMIN_POINTS_NOT_READY', '后台积分商品服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        const status = url.searchParams.get('status');
+        return send(response, 200, { success: true, data: await adminPointsProductRepository.list({ keyword: url.searchParams.get('keyword') || '', status: status === null || status === '' ? undefined : Number(status), page: url.searchParams.get('page'), pageSize: url.searchParams.get('pageSize') }) });
+      }
+      if (request.method === 'POST' && url.pathname === '/api/v1/admin/points-products') {
+        if (!adminPointsProductRepository || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') { const result = error('ADMIN_POINTS_NOT_READY', '后台积分商品服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try { return send(response, 201, { success: true, data: await adminPointsProductRepository.create(pointsProductInput(await resolvePointsProductMedia(await readJsonBody(request)))) }); }
+        catch { const result = error('INVALID_REQUEST', '积分商品内容、库存或图片无效', 400); return send(response, result.status, result.body); }
+      }
+      if (pointsProductDetail && request.method === 'GET') {
+        if (!adminPointsProductRepository) { const result = error('ADMIN_POINTS_NOT_READY', '后台积分商品服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        const product = await adminPointsProductRepository.get(Number(pointsProductDetail[1]));
+        if (!product) { const result = error('NOT_FOUND', '积分商品不存在', 404); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data: product });
+      }
+      if (pointsProductDetail && request.method === 'PUT') {
+        if (!adminPointsProductRepository || !mediaIntentRepository || typeof mediaIntentRepository.getConfirmed !== 'function') { const result = error('ADMIN_POINTS_NOT_READY', '后台积分商品服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const current = await adminPointsProductRepository.get(Number(pointsProductDetail[1]));
+          if (!current) { const result = error('NOT_FOUND', '积分商品不存在', 404); return send(response, result.status, result.body); }
+          if (!await adminPointsProductRepository.update(Number(pointsProductDetail[1]), pointsProductInput(await resolvePointsProductMedia(await readJsonBody(request), current), { update: true }))) { const result = error('NOT_FOUND', '积分商品不存在或库存不足', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data: { id: Number(pointsProductDetail[1]) } });
+        }
+        catch { const result = error('INVALID_REQUEST', '积分商品内容、库存或图片无效', 400); return send(response, result.status, result.body); }
+      }
+      const pointsProductSale = /^\/api\/v1\/admin\/points-products\/(\d+)\/on-sale$/.exec(url.pathname);
+      if (pointsProductSale && request.method === 'PUT') {
+        if (!adminPointsProductRepository) { const result = error('ADMIN_POINTS_NOT_READY', '后台积分商品服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try { const payload = await readJsonBody(request); if (!await adminPointsProductRepository.setOnSale(Number(pointsProductSale[1]), payload.isOnSale === 1 ? 1 : payload.isOnSale === 0 ? 0 : (() => { throw new Error('invalid'); })())) { const result = error('NOT_FOUND', '积分商品不存在', 404); return send(response, result.status, result.body); } return send(response, 200, { success: true, data: { id: Number(pointsProductSale[1]) } }); }
+        catch { const result = error('INVALID_REQUEST', '上下架状态无效', 400); return send(response, result.status, result.body); }
       }
       if (request.method === 'GET' && url.pathname === '/api/v1/admin/categories') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.listCategories !== 'function') {
@@ -906,6 +1076,25 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
       }
       const productDetail = /^\/api\/v1\/admin\/products\/(\d+)$/.exec(url.pathname);
       const productStock = /^\/api\/v1\/admin\/products\/(\d+)\/stock$/.exec(url.pathname);
+      const productVariants = /^\/api\/v1\/admin\/products\/(\d+)\/variants$/.exec(url.pathname);
+      if (productVariants && request.method === 'GET') {
+        if (!structuredCheckoutEnabled) { const result = error('STRUCTURED_CHECKOUT_DISABLED', '结构化商品功能尚未启用', 404); return send(response, result.status, result.body); }
+        if (!adminCatalogRepository || typeof adminCatalogRepository.getStructuredProductVariants !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        const data = await adminCatalogRepository.getStructuredProductVariants(Number(productVariants[1]));
+        if (!data) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); }
+        return send(response, 200, { success: true, data });
+      }
+      if (productVariants && request.method === 'PUT') {
+        if (!structuredCheckoutEnabled) { const result = error('STRUCTURED_CHECKOUT_DISABLED', '结构化商品功能尚未启用', 404); return send(response, result.status, result.body); }
+        if (!adminCatalogRepository || typeof adminCatalogRepository.replaceStructuredProductVariants !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
+        if (!await requireCatalogEditor()) return;
+        try {
+          const data = await adminCatalogRepository.replaceStructuredProductVariants(Number(productVariants[1]), structuredProductVariantsInput(await readJsonBody(request, 65536)));
+          if (!data) { const result = error('NOT_FOUND', '商品不存在', 404); return send(response, result.status, result.body); }
+          return send(response, 200, { success: true, data });
+        } catch { const result = error('INVALID_REQUEST', '型号、颜色或 SKU 组合无效', 400); return send(response, result.status, result.body); }
+      }
       if (productStock && request.method === 'PUT') {
         if (!adminCatalogRepository || typeof adminCatalogRepository.restockProduct !== 'function') { const result = error('ADMIN_CATALOG_NOT_READY', '后台目录服务尚未配置', 503); return send(response, result.status, result.body); }
         if (!await requireCatalogEditor()) return;

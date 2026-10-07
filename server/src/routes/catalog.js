@@ -12,7 +12,11 @@ export async function catalogResponse(pathname, searchParams, repository) {
       categoryId: positiveId(searchParams.get('categoryId')),
       keyword: searchParams.get('keyword') || '',
       page: positiveId(searchParams.get('page')) || 1,
-      pageSize: positiveId(searchParams.get('pageSize')) || 20
+      pageSize: positiveId(searchParams.get('pageSize')) || 20,
+      series: searchParams.get('series') || '',
+      toolGroup: searchParams.get('toolGroup') || '',
+      toolSubtype: searchParams.get('toolSubtype') || '',
+      size: searchParams.get('size') || ''
     }) };
   }
   if (pathname.startsWith('/api/v1/catalog/products/')) {
@@ -24,6 +28,10 @@ export async function catalogResponse(pathname, searchParams, repository) {
   }
   if (pathname === '/api/v1/catalog/banners') {
     return { status: 200, data: await repository.listBanners(searchParams.get('position') || 'home') };
+  }
+  if (pathname.startsWith('/api/v1/catalog/service-contents/')) {
+    const content = typeof repository.getServiceContent === 'function' ? await repository.getServiceContent(pathname.slice('/api/v1/catalog/service-contents/'.length)) : null;
+    return content ? { status: 200, data: content } : { status: 404, error: { code: 'SERVICE_CONTENT_NOT_FOUND', message: '服务内容不存在或尚未发布' } };
   }
   if (pathname === '/api/v1/catalog/points-products') {
     return { status: 200, data: await repository.listPointsProducts({ categoryId: positiveId(searchParams.get('categoryId')) || 0 }) };

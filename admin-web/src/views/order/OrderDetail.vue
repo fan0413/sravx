@@ -51,7 +51,7 @@
       <el-descriptions-item label="快递单号">
         {{ data.order.logistics_no || "-" }}
         <el-button
-          v-if="isSfWaybill"
+          v-if="!targetMode && isSfWaybill"
           link
           type="primary"
           size="small"
@@ -62,7 +62,7 @@
           查看物流
         </el-button>
         <el-button
-          v-if="canCancelWaybill"
+          v-if="!targetMode && canCancelWaybill"
           link
           type="warning"
           size="small"
@@ -72,7 +72,7 @@
           取消运单
         </el-button>
         <el-button
-          v-if="canInterceptWaybill"
+          v-if="!targetMode && canInterceptWaybill"
           link
           type="danger"
           size="small"
@@ -92,7 +92,7 @@
         {{ data.order.expected_ship_time || "-" }}
         <el-tag v-if="isShippingOverdue" size="small" type="danger" style="margin-left: 8px">已超时</el-tag>
         <el-button
-          v-if="canDelay"
+          v-if="!targetMode && canDelay"
           link
           type="warning"
           size="small"
@@ -144,8 +144,17 @@
     </el-table>
 
     <div class="action-row">
+      <el-button v-if="canManualShip" type="primary" @click="openManualShipDialog">填写物流并发货</el-button>
       <el-button @click="$router.back()">返回</el-button>
     </div>
+
+    <el-dialog v-model="manualShipDialogVisible" title="手动发货" width="480px" destroy-on-close>
+      <el-form label-width="90px">
+        <el-form-item label="物流公司" required><el-input v-model="manualShipForm.logisticsCompany" maxlength="50" /></el-form-item>
+        <el-form-item label="快递单号" required><el-input v-model="manualShipForm.logisticsNo" maxlength="100" /></el-form-item>
+      </el-form>
+      <template #footer><el-button @click="manualShipDialogVisible = false">取消</el-button><el-button type="primary" :loading="manualShipSaving" @click="handleManualShip">确认发货</el-button></template>
+    </el-dialog>
 
     <el-dialog v-model="routeDialogVisible" title="物流轨迹" width="600px" destroy-on-close>
       <el-timeline v-if="routeList.length > 0">
@@ -218,12 +227,15 @@ import {
   sfCancelWaybill,
   sfInterceptWaybill,
   sfRoute,
+  shipOrders,
   type OrderDetailResult
 } from "@/api/admin";
+import { targetAdminOperationsModeEnabled } from "@/lib/target-admin-auth";
 
 const route = useRoute();
 const orderId = computed(() => String(route.params.id || ""));
 const data = ref<OrderDetailResult>();
+const targetMode = targetAdminOperationsModeEnabled();
 let timer: number | undefined;
 
 const toFixed = (v?: string | number) => Number(v || 0).toFixed(2);
@@ -296,9 +308,40 @@ const isShippingOverdue = computed(() => {
 });
 
 const canDelay = computed(() => {
+  if (targetMode) return false;
   const status = String(data.value?.order?.status || "");
   return ["pending_payment", "paid"].includes(status);
 });
+
+const canManualShip = computed(() => targetMode && data.value?.order.status === "paid");
+const manualShipDialogVisible = ref(false);
+const manualShipSaving = ref(false);
+const manualShipForm = reactive({ logisticsCompany: "", logisticsNo: "" });
+
+const openManualShipDialog = () => {
+  manualShipForm.logisticsCompany = "";
+  manualShipForm.logisticsNo = "";
+  manualShipDialogVisible.value = true;
+};
+
+const handleManualShip = async () => {
+  const order = data.value?.order;
+  if (!order?.id || !manualShipForm.logisticsCompany.trim() || !manualShipForm.logisticsNo.trim()) {
+    ElMessage.warning("请填写物流公司和快递单号");
+    return;
+  }
+  manualShipSaving.value = true;
+  try {
+    await shipOrders([Number(order.id)], manualShipForm.logisticsCompany.trim(), manualShipForm.logisticsNo.trim());
+    ElMessage.success("订单已发货");
+    manualShipDialogVisible.value = false;
+    await loadDetail();
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : "订单发货失败");
+  } finally {
+    manualShipSaving.value = false;
+  }
+};
 
 const isSfWaybill = computed(() => {
   const company = String(data.value?.order?.logistics_company || "");

@@ -19,6 +19,10 @@ export class EmptyCatalogRepository {
     return [];
   }
 
+  async getServiceContent() {
+    return null;
+  }
+
   async listPointsProducts() {
     return { products: [], categories: [] };
   }

@@ -24,6 +24,9 @@ const artifactFiles = [
     .sort(),
   ...(await sourceFiles(resolve(repositoryRoot, 'server/scripts'), ['.mjs', '.sh']))
     .map((path) => relative(resolve(repositoryRoot, 'server'), path).replaceAll('\\', '/'))
+    .sort(),
+  ...(await sourceFiles(resolve(repositoryRoot, 'server/migrations'), ['.sql']))
+    .map((path) => relative(resolve(repositoryRoot, 'server'), path).replaceAll('\\', '/'))
     .sort()
 ];
 
@@ -46,6 +49,7 @@ const manifest = {
   generatedAt: new Date().toISOString(),
   gitCommit: git('rev-parse', 'HEAD'),
   gitCommitShort: git('rev-parse', '--short', 'HEAD'),
+  workingTreeDirty: git('status', '--porcelain') !== '',
   repositoryPath: relative(repositoryRoot, resolve(repositoryRoot)) || '.',
   deploymentRoot: 'server',
   files: await Promise.all(artifactFiles.map(fileDigest))

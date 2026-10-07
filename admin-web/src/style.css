@@ -1,3 +1,5 @@
+@import url("https://fonts.loli.net/css2?family=Geist:wght@400;500;600;700&display=swap");
+
 * {
   box-sizing: border-box;
 }
@@ -12,6 +14,7 @@ body,
 
 :root {
   --app-font-family:
+    "Geist",
     "PingFang SC",
     "Microsoft YaHei",
     "Hiragino Sans GB",
@@ -21,6 +24,21 @@ body,
     Arial,
     sans-serif;
   --el-font-family: var(--app-font-family);
+  --el-color-primary: #9b6234;
+  --el-color-primary-light-3: #b4825d;
+  --el-color-primary-light-5: #c9a083;
+  --el-color-primary-light-7: #dfc3ad;
+  --el-color-primary-light-8: #ead5c5;
+  --el-color-primary-light-9: #f7eee8;
+  --el-border-radius-base: 12px;
+  --el-border-radius-small: 10px;
+  --el-border-color: #e4e4e8;
+  --sravx-ink: #1d1d1f;
+  --sravx-muted: #6e6e73;
+  --sravx-canvas: #f2f2f7;
+  --sravx-accent: #9b6234;
+  --sravx-accent-soft: #f7eee8;
+  --sravx-line: rgba(60, 60, 67, 0.14);
 }
 
 html {
@@ -30,6 +48,62 @@ html {
 body {
   font-family:
     var(--app-font-family);
-  color: #1f2329;
-  background-color: #f6f8fa;
+  color: var(--sravx-ink);
+  background-color: var(--sravx-canvas);
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--sravx-accent);
+  --el-button-border-color: var(--sravx-accent);
+  --el-button-hover-bg-color: #7e4e29;
+  --el-button-hover-border-color: #7e4e29;
+  border-radius: 999px;
+  font-weight: 650;
+}
+
+.el-button:not(.el-button--primary):not(.is-text):not(.is-link) {
+  border-radius: 999px;
+  border-color: #dedee3;
+  color: var(--sravx-ink);
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px var(--sravx-line) inset !important;
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 2px rgba(161, 110, 59, 0.42) !important;
+}
+
+.el-card {
+  border: 0;
+  border-radius: 20px;
+  box-shadow: 0 8px 28px rgba(29, 29, 31, 0.06);
+}
+
+.el-button--primary.is-plain {
+  --el-button-bg-color: var(--sravx-accent-soft);
+  --el-button-border-color: transparent;
+  --el-button-text-color: var(--sravx-accent);
+}
+
+.el-card__header {
+  border-bottom-color: var(--sravx-line);
+}
+
+.el-table {
+  --el-table-border-color: var(--sravx-line);
+  --el-table-header-bg-color: #f7f7f8;
+  --el-table-row-hover-bg-color: #faf8f5;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.el-tag {
+  border-radius: 999px;
 }

@@ -3,7 +3,7 @@ function positiveInteger(value, fallback = null) {
   return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
-export function createMysqlCatalogRepository(pool) {
+export function createMysqlCatalogRepository(pool, { structuredCatalog = false } = {}) {
   if (!pool || typeof pool.execute !== 'function') throw new Error('A MySQL pool is required.');
 
   return Object.freeze({
@@ -20,9 +20,16 @@ export function createMysqlCatalogRepository(pool) {
          FROM categories WHERE deleted_at IS NULL AND is_show = 1
          ORDER BY sort_order ASC, id ASC`
       );
-      return { products, categories };
+      if (!structuredCatalog) return { products, categories };
+      const [serviceContents] = await pool.execute(
+        `SELECT code, title, summary, effective_at, sort_order
+           FROM service_contents
+          WHERE status = 'active' AND (effective_at IS NULL OR effective_at <= NOW())
+          ORDER BY sort_order ASC, id ASC`
+      );
+      return { products, categories, serviceContents };
     },
-    async listProducts({ categoryId, keyword, page, pageSize }) {
+    async listProducts({ categoryId, keyword, page, pageSize, series, toolGroup, toolSubtype, size }) {
       const limit = Math.min(100, positiveInteger(pageSize, 20));
       const offset = (positiveInteger(page, 1) - 1) * limit;
       let sql = `SELECT p.* FROM products p
@@ -39,6 +46,16 @@ export function createMysqlCatalogRepository(pool) {
         sql += ' AND (p.name LIKE ? OR p.short_name LIKE ? OR p.`desc` LIKE ?)';
         const term = `%${keyword.trim().slice(0, 80)}%`;
         values.push(term, term, term);
+      }
+      if (structuredCatalog) {
+        const filters = [
+          ['series', series, 32], ['tool_group', toolGroup, 64], ['tool_subtype', toolSubtype, 64], ['display_size', size, 32]
+        ];
+        for (const [column, raw, maximum] of filters) {
+          if (typeof raw !== 'string' || !raw.trim()) continue;
+          sql += ` AND p.${column} = ?`;
+          values.push(raw.trim().slice(0, maximum));
+        }
       }
       sql += ' ORDER BY p.sort_order ASC, p.id DESC LIMIT ? OFFSET ?';
       values.push(limit, offset);
@@ -64,7 +81,39 @@ export function createMysqlCatalogRepository(pool) {
          FROM product_specs WHERE product_id = ? ORDER BY sort_order ASC, id ASC`,
         [id]
       );
-      return { ...product, specs };
+      if (!structuredCatalog) return { ...product, specs };
+      const [[models], [colors], [skus], [media], [offers]] = await Promise.all([
+        pool.execute('SELECT id, name, sort_order FROM product_models WHERE product_id = ? ORDER BY sort_order ASC, id ASC', [id]),
+        pool.execute('SELECT id, name, swatch, sort_order FROM product_colors WHERE product_id = ? ORDER BY sort_order ASC, id ASC', [id]),
+        pool.execute(`SELECT id, model_id, color_id, sku_code, price_fen, stock_available, stock_frozen, is_on_sale, image_object_key, shipping_type, ship_deadline_days, shipping_promise, sort_order
+                        FROM product_skus WHERE product_id = ? AND is_on_sale = 1 ORDER BY sort_order ASC, id ASC`, [id]),
+        pool.execute('SELECT sku_id, purpose, object_key, sort_order FROM product_media WHERE product_id = ? ORDER BY purpose ASC, sort_order ASC, id ASC', [id]),
+        pool.execute(`SELECT spo.id, spo.sku_id, spo.price_fen, spo.warranty_extension_months, spo.tradein_rule, sp.code AS plan_code, sp.name AS plan_name, sp.terms_version
+                        FROM service_plan_offers spo INNER JOIN service_plans sp ON sp.id = spo.plan_id
+                       WHERE spo.status = 'active' AND sp.status = 'active'
+                         AND ((spo.product_id IS NULL AND spo.sku_id IS NULL) OR spo.product_id = ? OR spo.sku_id IN (SELECT id FROM product_skus WHERE product_id = ?))
+                         AND spo.effective_from <= NOW() AND (spo.effective_to IS NULL OR spo.effective_to > NOW())
+                       ORDER BY spo.id ASC`, [id, id])
+      ]);
+      return {
+        ...product,
+        specs,
+        models,
+        colors,
+        skus: skus.map((sku) => ({ ...sku, available: Math.max(0, Number(sku.stock_available) || 0) })),
+        media,
+        // Offers are informational until their purchase and activation rules are approved.
+        protectOffers: offers.map((offer) => ({ ...offer, displayOnly: true }))
+      };
+    },
+    async getServiceContent(code) {
+      if (!structuredCatalog || typeof code !== 'string' || !/^[a-z0-9_-]{1,64}$/i.test(code)) return null;
+      const [rows] = await pool.execute(
+        `SELECT code, title, summary, detail, effective_at, sort_order
+           FROM service_contents WHERE code = ? AND status = 'active' AND (effective_at IS NULL OR effective_at <= NOW()) LIMIT 1`,
+        [code]
+      );
+      return rows[0] || null;
     },
     async listCategories() {
       const [categories] = await pool.execute(

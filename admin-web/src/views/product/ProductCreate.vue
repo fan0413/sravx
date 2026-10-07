@@ -1,8 +1,21 @@
 <template>
-  <el-card>
-    <template #header>{{ isDeleteMode ? "删除商品" : isEditMode ? "编辑商品" : "新建商品" }}</template>
+  <el-card class="product-editor-page">
+    <template #header>
+      <div class="editor-heading">
+        <div>
+          <div class="editor-eyebrow">PRODUCT CATALOG</div>
+          <h1>{{ isDeleteMode ? "删除商品" : isEditMode ? "编辑商品" : "新建商品" }}</h1>
+          <p>{{ isDeleteMode ? "请确认本次操作不会影响正在进行的订单。" : "以用户端的商品浏览体验为准，完善商品信息、影像和规格。" }}</p>
+        </div>
+        <div class="editor-mode">{{ isEditMode ? "编辑模式" : "草稿模式" }}</div>
+      </div>
+    </template>
     <div class="create-grid">
       <el-form label-width="100px" :model="form" class="form">
+        <div class="form-section-heading">
+          <span>01</span>
+          <div><strong>基础资料</strong><small>定义用户首先看到的商品信息</small></div>
+        </div>
         <el-form-item label="商品分类">
           <el-select v-model="form.category_id" placeholder="请选择分类" style="width: 240px">
             <el-option
@@ -25,6 +38,10 @@
         <el-form-item label="库存">
           <el-input-number v-model="form.stock" :min="0" />
         </el-form-item>
+        <div class="form-section-heading">
+          <span>02</span>
+          <div><strong>产品影像</strong><small>上传列表、详情和展示所需的图片</small></div>
+        </div>
         <el-form-item label="商品图片">
           <div class="image-uploader-row">
             <div class="uploader-wrap">
@@ -139,6 +156,10 @@
           <el-input-number v-model="form.warranty_months" :min="0" :step="1" />
           <span class="warranty-tip">0=终身质保</span>
         </el-form-item>
+        <div class="form-section-heading">
+          <span>03</span>
+          <div><strong>技术信息</strong><small>补充参数、规格与可选型号</small></div>
+        </div>
         <el-form-item label="主要参数">
           <div class="param-editor">
             <div
@@ -252,7 +273,7 @@
             <el-button text type="primary" @click="addSpecRow">+ 新增规格</el-button>
           </div>
         </el-form-item>
-        <el-form-item>
+        <el-form-item class="form-actions">
           <el-button
             v-if="!isDeleteMode"
             type="primary"
@@ -274,38 +295,31 @@
       </el-form>
 
       <div class="preview-panel">
-        <div class="preview-title">实时预览</div>
+        <div class="preview-title">用户端预览</div>
+        <p class="preview-hint">这里展示用户浏览商品时看到的信息层级。</p>
         <div class="phone">
           <div class="hero">
             <img class="hero-image" :src="previewImage" alt="商品图" />
             <span class="image-count">1/{{ Math.max(coverImages.length, 1) }}</span>
           </div>
           <div class="content">
-            <div class="price">¥{{ displayPrice }}</div>
+            <div class="preview-eyebrow">SRAVX PROFESSIONAL TOOLS</div>
             <div class="name">{{ form.name || "请输入商品名称" }}</div>
-            <div class="desc">{{ form.desc || "请输入商品描述，预览会实时更新。" }}</div>
+            <div class="desc">{{ form.desc || "请输入商品简介，帮助用户理解产品用途。" }}</div>
           </div>
-          <div class="row">
-            <span class="label">分类</span>
-            <span>{{ categoryName }}</span>
-          </div>
-          <div class="row">
-            <span class="label">短名称</span>
-            <span>{{ form.short_name || "-" }}</span>
-          </div>
-          <div class="row">
-            <span class="label">库存</span>
-            <span>{{ form.stock }}</span>
-          </div>
-          <div class="row">
-            <span class="label">发货</span>
-            <span>{{ shippingPreviewText }}</span>
-          </div>
-          <div class="row">
-            <span class="label">已选</span>
-            <span>null</span>
+          <div class="preview-models">
+            <div class="preview-section-title">型号：选择适合你的工具。</div>
+            <div v-for="(spec, index) in specRows.filter((item) => item.name.trim()).slice(0, 2)" :key="spec.uid" class="preview-model" :class="{ selected: index === 0 }">
+              <div><strong>{{ spec.name }}</strong><small>{{ spec.sku || "SKU 将自动生成" }}</small></div>
+              <strong>¥{{ Number(spec.price || form.price || 0).toFixed(2) }}</strong>
+            </div>
+            <div v-if="!specRows.some((item) => item.name.trim())" class="preview-model selected">
+              <div><strong>请先添加型号</strong><small>例如：标准款</small></div>
+              <strong>¥{{ displayPrice }}</strong>
+            </div>
           </div>
           <div class="params-wrap">
+            <div class="preview-eyebrow">TECHNICAL DETAILS</div>
             <div class="params-title">主要参数</div>
             <div class="params-card">
               <div v-for="(item, index) in paramRows" :key="index" class="param-item">
@@ -335,7 +349,6 @@ import {
   uploadAdminImages
 } from "../../api/admin";
 import { targetAdminCatalogModeEnabled } from "../../lib/target-admin-auth";
-import { getLoginUser, signInWithUsernamePassword } from "../../lib/cloudbase";
 import type { UploadFile, UploadFiles, UploadRawFile, UploadUserFile } from "element-plus";
 import type { CategoryRow } from "../../api/types";
 
@@ -441,8 +454,6 @@ const buildSpecShippingPromise = (spec?: Pick<SpecEditorRow, "shipping_type" | "
   if (type === "normal" && days <= 2) return "付款后48小时内发货";
   return `${getShippingTypeText(type)}，付款后${days}天内发货`;
 };
-const firstConfiguredSpec = computed(() => specRows.value.find((item) => item.name.trim()) || specRows.value[0]);
-const shippingPreviewText = computed(() => buildSpecShippingPromise(firstConfiguredSpec.value));
 
 type StoredUploadUserFile = UploadUserFile & { storedUrl?: string };
 
@@ -879,6 +890,28 @@ const buildConfirmHtml = () => {
 
 const handleDelete = async () => {
   if (!isDeleteMode.value || !editingId.value) return;
+  if (targetAdminCatalogModeEnabled()) {
+    try {
+      await ElMessageBox.confirm("删除后将不再在商城展示，历史订单不会受影响。确认删除吗？", "删除确认", {
+        confirmButtonText: "确认删除",
+        cancelButtonText: "取消",
+        type: "warning"
+      });
+    } catch {
+      return;
+    }
+    saving.value = true;
+    try {
+      const res = await deleteAdminProduct(editingId.value);
+      ElMessage.success(`商品删除成功，ID：${res.id}`);
+      await router.push("/product/list");
+    } catch (error) {
+      ElMessage.error(error instanceof Error ? error.message : "删除失败");
+    } finally {
+      saving.value = false;
+    }
+    return;
+  }
   let adminPassword = "";
   try {
     const { value } = await ElMessageBox.prompt("请输入管理员密码确认删除", "删除确认", {
@@ -894,6 +927,7 @@ const handleDelete = async () => {
   }
   saving.value = true;
   try {
+    const { getLoginUser, signInWithUsernamePassword } = await import("../../lib/cloudbase");
     const user = await getLoginUser();
     const username = String(user?.username || "").trim();
     if (!username) {
@@ -1082,13 +1116,117 @@ const handleSave = async () => {
 <style scoped>
 .create-grid {
   display: grid;
-  grid-template-columns: minmax(420px, 1fr) 360px;
-  gap: 24px;
+  grid-template-columns: minmax(520px, 1fr) 390px;
+  gap: 28px;
   align-items: start;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
 .form {
   max-width: 100%;
+  padding: 30px 32px 12px;
+  border: 1px solid rgba(60, 60, 67, 0.12);
+  border-radius: 22px;
+  background: #fff;
+}
+
+.editor-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.editor-eyebrow {
+  margin-bottom: 8px;
+  color: #a16e3b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.editor-heading h1 {
+  margin: 0;
+  color: #1d1d1f;
+  font-size: 28px;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.editor-heading p {
+  margin: 10px 0 0;
+  color: #6e6e73;
+  font-size: 14px;
+}
+
+.editor-mode {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #f2f2f7;
+  color: #6e6e73;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.form-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 22px;
+  padding: 6px 0 2px;
+}
+
+.form-section-heading:not(:first-child) {
+  margin-top: 38px;
+  padding-top: 30px;
+  border-top: 1px solid rgba(60, 60, 67, 0.12);
+}
+
+.form-section-heading > span {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #1d1d1f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.form-section-heading strong,
+.form-section-heading small {
+  display: block;
+}
+
+.form :deep(.el-form-item) {
+  max-width: 840px;
+  margin-bottom: 20px;
+}
+
+.form :deep(.el-form-item__label) {
+  color: #515154;
+  font-weight: 600;
+}
+
+.form-section-heading strong {
+  color: #1d1d1f;
+  font-size: 16px;
+}
+
+.form-section-heading small {
+  margin-top: 3px;
+  color: #86868b;
+  font-size: 12px;
+}
+
+.form-actions {
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(60, 60, 67, 0.12);
 }
 
 .param-editor {
@@ -1260,27 +1398,38 @@ const handleSave = async () => {
 
 .preview-panel {
   position: sticky;
-  top: 12px;
+  top: 92px;
+  padding: 20px;
+  border: 1px solid rgba(60, 60, 67, 0.12);
+  border-radius: 22px;
+  background: #fff;
 }
 
 .preview-title {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
+  color: #1d1d1f;
+  font-size: 16px;
+  font-weight: 720;
+}
+
+.preview-hint {
+  margin: 6px 0 16px;
+  color: #86868b;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .phone {
-  width: 340px;
-  border: 1px solid #e9e9e9;
-  border-radius: 20px;
+  width: 100%;
+  border: 1px solid rgba(60, 60, 67, 0.12);
+  border-radius: 18px;
   background: #fff;
   overflow: hidden;
 }
 
 .hero {
   position: relative;
-  background: #f6f6f6;
-  height: 280px;
+  background: #f2f2f7;
+  height: 300px;
 }
 
 .hero-image {
@@ -1301,20 +1450,23 @@ const handleSave = async () => {
 }
 
 .content {
-  padding: 12px 14px;
+  padding: 22px 18px 14px;
 }
 
-.price {
-  color: #b08b54;
-  font-size: 38px;
-  font-weight: 600;
+.preview-eyebrow {
+  color: #a16e3b;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
 }
 
 .name {
-  margin-top: 8px;
-  font-size: 30px;
-  font-weight: 600;
-  color: #333;
+  margin-top: 9px;
+  color: #1d1d1f;
+  font-size: 23px;
+  font-weight: 720;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
 }
 
 .desc {
@@ -1323,32 +1475,64 @@ const handleSave = async () => {
   font-size: 14px;
 }
 
-.row {
-  display: flex;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border-top: 1px solid #f0f0f0;
-  color: #666;
+.preview-models {
+  margin: 4px 14px 18px;
+  padding: 18px 14px;
+  border-radius: 14px;
+  background: #f7f7f8;
 }
 
-.label {
-  color: #9a9a9a;
+.preview-section-title {
+  margin-bottom: 12px;
+  color: #1d1d1f;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.preview-model {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e2e2e6;
+  border-radius: 11px;
+  background: #fff;
+  color: #1d1d1f;
+  font-size: 13px;
+}
+
+.preview-model.selected {
+  border: 2px solid #1d1d1f;
+}
+
+.preview-model strong,
+.preview-model small {
+  display: block;
+}
+
+.preview-model small {
+  margin-top: 3px;
+  color: #6e6e73;
+  font-size: 10px;
 }
 
 .params-wrap {
-  border-top: 8px solid #f3f4f6;
-  padding: 14px 12px 16px;
+  border-top: 8px solid #f2f2f7;
+  padding: 20px 16px;
 }
 
 .params-title {
-  font-size: 22px;
-  color: #333;
+  margin-top: 8px;
+  font-size: 18px;
+  color: #1d1d1f;
   font-weight: 700;
   margin-bottom: 10px;
 }
 
 .params-card {
-  background: #f2f2f4;
+  background: #f2f2f7;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -1399,6 +1583,25 @@ const handleSave = async () => {
 
   .spec-image-fields {
     grid-template-columns: repeat(2, 140px);
+  }
+}
+
+@media (max-width: 720px) {
+  .form {
+    padding: 22px 18px 8px;
+  }
+
+  .editor-heading {
+    display: block;
+  }
+
+  .editor-mode {
+    display: inline-flex;
+    margin-top: 14px;
+  }
+
+  .form-section-heading {
+    margin-left: 0;
   }
 }
 </style>

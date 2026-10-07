@@ -32,6 +32,7 @@ export interface PointsProductRow {
   raw_cover_image?: string;
   images?: string[] | string;
   raw_images?: string[];
+  raw_detail_images?: string[];
   detail_images?: string[] | string;
   category_id?: number;
   specs?: PointsProductSpecRow[];
@@ -278,6 +279,8 @@ export interface RefundRow {
 export interface RefundQuery {
   orderNo?: string;
   status?: string;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface OrderItemRow {
@@ -403,6 +406,33 @@ export interface CreateProductInput {
   specs?: CreateProductSpecInput[];
 }
 
+export interface StructuredProductVariantInput {
+  series?: string;
+  toolGroup?: string;
+  toolSubtype?: string;
+  displaySize?: string;
+  steelMaterial?: string;
+  models: Array<{ id?: number; name: string; sortOrder?: number }>;
+  colors: Array<{ id?: number; name: string; swatch?: string; sortOrder?: number }>;
+  skus: Array<{
+    id?: number; modelName: string; colorName: string; skuCode: string; priceFen: number; stockAvailable: number;
+    isOnSale?: number; shippingType: "normal" | "presale" | "custom" | "delayed"; shipDeadlineDays: number;
+    shippingPromise: string; sortOrder?: number;
+  }>;
+}
+
+export interface StructuredProductVariantResult {
+  id: number;
+  series?: string | null;
+  tool_group?: string | null;
+  tool_subtype?: string | null;
+  display_size?: string | null;
+  steel_material?: string | null;
+  models: Array<{ id: number; name: string; sort_order: number }>;
+  colors: Array<{ id: number; name: string; swatch: string; sort_order: number }>;
+  skus: Array<{ id: number; model_id: number; model_name: string; color_id: number; color_name: string; sku_code: string; price_fen: number; stock_available: number; stock_frozen: number; is_on_sale: number; shipping_type: string; ship_deadline_days: number; shipping_promise: string; sort_order: number }>;
+}
+
 type CloudFunctionResponse<T> = {
   success: boolean;
   data?: T;
@@ -479,6 +509,7 @@ export async function fetchAdminProducts(query: ProductQuery): Promise<AdminProd
 }
 
 export async function createPointsProduct(payload: CreatePointsProductInput): Promise<{ id: number }> {
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>('/api/v1/admin/points-products', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(targetPointsProductPayload(payload)) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-points-product", {
     action: "add",
     ...payload
@@ -487,6 +518,11 @@ export async function createPointsProduct(payload: CreatePointsProductInput): Pr
 }
 
 export async function updatePointsProduct(payload: CreatePointsProductInput): Promise<{ id: number }> {
+  if (targetAdminCatalogModeEnabled()) {
+    const id = Number(payload.id);
+    if (!Number.isSafeInteger(id) || id <= 0) throw new Error('积分商品编号无效');
+    return targetAdminRequest<{ id: number }>(`/api/v1/admin/points-products/${id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(targetPointsProductPayload(payload)) });
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-points-product", {
     action: "update",
     ...payload
@@ -495,6 +531,7 @@ export async function updatePointsProduct(payload: CreatePointsProductInput): Pr
 }
 
 export async function togglePointsProduct(id: number, is_on_sale: number): Promise<{ id: number }> {
+  if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/points-products/${id}/on-sale`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ isOnSale: is_on_sale }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-points-product", {
     action: "toggle",
     id,
@@ -504,6 +541,12 @@ export async function togglePointsProduct(id: number, is_on_sale: number): Promi
 }
 
 export async function fetchAdminPointsProducts(query: PointsProductQuery): Promise<AdminPointsProductListResult> {
+  if (targetAdminCatalogModeEnabled()) {
+    const params = new URLSearchParams();
+    Object.entries({ keyword: query.keyword?.trim(), status: query.status, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)); });
+    const data = await targetAdminRequest<AdminPointsProductListResult>(`/api/v1/admin/points-products?${params}`);
+    return { list: await Promise.all((data.list || []).map(normalizeTargetPointsProduct)), total: Number(data.total || 0) };
+  }
   const result = await callCloudFunction<CloudFunctionResponse<AdminPointsProductListResult>>("admin-points-product", {
     action: "list",
     keyword: (query.keyword || "").trim(),
@@ -531,6 +574,7 @@ export async function fetchAdminPointsProducts(query: PointsProductQuery): Promi
 }
 
 export async function fetchPointsProductDetail(id: number): Promise<PointsProductRow | undefined> {
+  if (targetAdminCatalogModeEnabled()) return normalizeTargetPointsProduct(await targetAdminRequest<PointsProductRow>(`/api/v1/admin/points-products/${id}`));
   const result = await callCloudFunction<CloudFunctionResponse<PointsProductRow>>("admin-points-product", {
     action: "detail",
     id
@@ -579,6 +623,11 @@ export async function fetchPointsProductDetail(id: number): Promise<PointsProduc
 }
 
 export async function fetchOrders(query: OrderQuery): Promise<AdminOrderListResult> {
+  if (targetAdminOperationsModeEnabled()) {
+    const params = new URLSearchParams();
+    Object.entries({ type: 'goods', keyword: query.orderNo?.trim(), status: query.status?.trim(), page: query.page || 1, pageSize: query.pageSize || 20 }).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)); });
+    return targetAdminRequest<AdminOrderListResult>(`/api/v1/admin/orders?${params}`);
+  }
   const result = await callCloudFunction<CloudFunctionResponse<AdminOrderListResult>>("admin-order", {
     action: "list",
     orderNo: (query.orderNo || "").trim(),
@@ -597,6 +646,16 @@ export async function fetchOrders(query: OrderQuery): Promise<AdminOrderListResu
 export async function fetchOrderById(id: string): Promise<OrderDetailResult | undefined> {
   const orderId = Number(id);
   if (!Number.isFinite(orderId) || orderId <= 0) return undefined;
+  if (targetAdminOperationsModeEnabled()) {
+    const data = await targetAdminRequest<Record<string, unknown>>(`/api/v1/admin/orders/${orderId}?type=goods`);
+    const items = Array.isArray(data.items) ? data.items.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object').map((item) => ({ id: Number(item.id || 0), product_id: Number(item.product_id || 0), product_name: String(item.product_name || ''), product_image: typeof item.product_image === 'string' ? item.product_image : null, price: String(item.price || '0'), quantity: Number(item.quantity || 0), selected_color: typeof item.selected_color === 'string' ? item.selected_color : null, selected_spec: typeof item.selected_spec === 'string' ? item.selected_spec : null, spec_text: typeof item.spec_text === 'string' ? item.spec_text : null, sku: typeof item.sku === 'string' ? item.sku : null })) : [];
+    const addressSource = data.address && typeof data.address === 'object' ? data.address as Record<string, unknown> : null;
+    const address = addressSource ? { name: String(addressSource.name || ''), phone: String(addressSource.phone || ''), province: String(addressSource.province || ''), city: String(addressSource.city || ''), district: String(addressSource.district || ''), detail: String(addressSource.detail || '') } : null;
+    const order: OrderRow = { id: Number(data.id || 0), order_no: String(data.order_no || ''), user_id: Number(data.user_id || 0), _openid: typeof data._openid === 'string' ? data._openid : undefined, total_amount: String(data.total_amount || '0'), freight: String(data.freight || '0'), discount_amount: String(data.discount_amount || '0'), coupon_amount: String(data.coupon_amount || '0'), points_amount: String(data.points_amount || '0'), pay_amount: String(data.pay_amount || '0'), status: String(data.status || 'pending_payment') as OrderRow['status'], pay_type: typeof data.pay_type === 'string' ? data.pay_type : null, pay_time: typeof data.pay_time === 'string' ? data.pay_time : null, pay_transaction_id: typeof data.pay_transaction_id === 'string' ? data.pay_transaction_id : null, logistics_company: typeof data.logistics_company === 'string' ? data.logistics_company : null, logistics_no: typeof data.logistics_no === 'string' ? data.logistics_no : null, ship_time: typeof data.ship_time === 'string' ? data.ship_time : null, receive_time: typeof data.receive_time === 'string' ? data.receive_time : null, buyer_message: typeof data.buyer_message === 'string' ? data.buyer_message : null, used_coupon_id: Number(data.used_coupon_id || 0) || null, used_points: Number(data.used_points || 0), need_invoice: Number(data.need_invoice || 0), invoice_title: typeof data.invoice_title === 'string' ? data.invoice_title : null, cancel_time: typeof data.cancel_time === 'string' ? data.cancel_time : null, complete_time: typeof data.complete_time === 'string' ? data.complete_time : null, created_at: String(data.created_at || ''), updated_at: String(data.updated_at || '') };
+    const username = typeof data.customer_name === 'string' ? data.customer_name : '';
+    const phone = typeof data.customer_phone === 'string' ? data.customer_phone : '';
+    return { order, items, address, user: username || phone ? { id: order.user_id, username, phone, member_level: 0, points: 0 } : null, coupon: null };
+  }
   const result = await callCloudFunction<CloudFunctionResponse<OrderDetailResult>>("admin-order", {
     action: "detail",
     id: orderId
@@ -605,6 +664,12 @@ export async function fetchOrderById(id: string): Promise<OrderDetailResult | un
 }
 
 export async function fetchPointsOrders(query: PointsOrderQuery): Promise<AdminPointsOrderListResult> {
+  if (targetAdminOperationsModeEnabled()) {
+    const params = new URLSearchParams();
+    Object.entries({ type: 'points', keyword: query.orderNo?.trim(), status: query.status?.trim(), page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([key, value]) => { if (value !== undefined && value !== '') params.set(key, String(value)); });
+    const data = await targetAdminRequest<{ list: PointsOrderRow[]; total: number }>(`/api/v1/admin/orders?${params}`);
+    return { list: data.list || [], total: Number(data.total || 0) };
+  }
   const result = await callCloudFunction<CloudFunctionResponse<AdminPointsOrderListResult>>("admin-order", {
     action: "pointsList",
     orderNo: (query.orderNo || "").trim(),
@@ -620,6 +685,12 @@ export async function fetchPointsOrders(query: PointsOrderQuery): Promise<AdminP
 }
 
 export async function fetchPointsOrderDetail(id: number): Promise<PointsOrderDetail | undefined> {
+  if (targetAdminOperationsModeEnabled()) {
+    const data = await targetAdminRequest<Record<string, unknown>>(`/api/v1/admin/orders/${id}?type=points`);
+    const items = Array.isArray(data.items) ? data.items.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object').map((item) => ({ id: Number(item.id || 0), points_product_id: Number(item.points_product_id || 0), product_name: String(item.product_name || ''), product_image: typeof item.product_image === 'string' ? item.product_image : null, points_price: Number(item.points_price || 0), quantity: Number(item.quantity || 0), spec_text: typeof item.spec_text === 'string' ? item.spec_text : null, sku: typeof item.sku === 'string' ? item.sku : null, created_at: String(item.created_at || '') })) : [];
+    const order: PointsOrderDetail['order'] = { id: Number(data.id || 0), order_no: String(data.order_no || ''), idempotency_key: String(data.idempotency_key || ''), user_id: Number(data.user_id || 0), _openid: String(data._openid || ''), points_product_id: Number(data.points_product_id || 0), product_id: Number(data.product_id || 0), product_name_snapshot: String(data.product_name_snapshot || ''), product_image_snapshot: String(data.product_image_snapshot || ''), selected_spec_snapshot: String(data.selected_spec_snapshot || ''), quantity: Number(data.quantity || 0), unit_points: Number(data.unit_points || 0), total_points: Number(data.total_points || 0), unit_cash: String(data.unit_cash || '0'), total_cash: String(data.total_cash || '0'), payable_cash: String(data.payable_cash || '0'), status: String(data.status || 'pending_payment'), payment_status: String(data.payment_status || 'pending'), payment_channel: typeof data.payment_channel === 'string' ? data.payment_channel : null, pay_transaction_id: typeof data.pay_transaction_id === 'string' ? data.pay_transaction_id : null, refund_transaction_id: typeof data.refund_transaction_id === 'string' ? data.refund_transaction_id : null, receiver_name: String(data.receiver_name || ''), receiver_phone: String(data.receiver_phone || ''), address_text: String(data.address_text || ''), logistics_company: String(data.logistics_company || ''), logistics_no: String(data.logistics_no || ''), pay_time: typeof data.pay_time === 'string' ? data.pay_time : null, ship_time: typeof data.ship_time === 'string' ? data.ship_time : null, completed_at: typeof data.completed_at === 'string' ? data.completed_at : null, cancelled_at: typeof data.cancelled_at === 'string' ? data.cancelled_at : null, cancel_reason: String(data.cancel_reason || ''), remark: typeof data.remark === 'string' ? data.remark : null, created_at: String(data.created_at || ''), updated_at: String(data.updated_at || '') };
+    return { order, items };
+  }
   const result = await callCloudFunction<CloudFunctionResponse<PointsOrderDetail>>("admin-order", {
     action: "pointsDetail",
     id
@@ -696,6 +767,11 @@ export async function updateOrderShippingAddress(
 }
 
 export async function shipOrders(ids: number[], logisticsCompany: string, logisticsNo: string): Promise<ShipOrdersResult> {
+  if (targetAdminOperationsModeEnabled()) {
+    if (ids.length !== 1) throw new Error('目标模式暂只支持在订单详情中逐单手动发货');
+    await targetAdminRequest<{ id: number }>(`/api/v1/admin/orders/${ids[0]}/shipment?type=goods`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ logisticsCompany, logisticsNo }) });
+    return { shipped: 1, ids };
+  }
   const result = await callCloudFunction<CloudFunctionResponse<ShipOrdersResult>>("admin-order", {
     action: "ship",
     ids,
@@ -749,12 +825,21 @@ export async function delayOrderShipping(payload: {
 }
 
 export async function fetchAdminRefunds(query: RefundQuery): Promise<AdminRefundListResult> {
+  if (targetAdminOperationsModeEnabled()) {
+    const params = new URLSearchParams();
+    if (query.status) params.set('status', query.status);
+    const keyword = String(query.orderNo || '').trim();
+    if (keyword) params.set('keyword', keyword);
+    params.set('page', String(query.page || 1));
+    params.set('pageSize', String(query.pageSize || 20));
+    return targetAdminRequest<AdminRefundListResult>(`/api/v1/admin/refund-requests?${params}`);
+  }
   const result = await callCloudFunction<CloudFunctionResponse<AdminRefundListResult>>("admin-order", {
     action: "refundList",
     orderNo: (query.orderNo || "").trim(),
     status: (query.status || "").trim(),
-    page: 1,
-    pageSize: 200
+    page: query.page || 1,
+    pageSize: query.pageSize || 20
   });
   const data = unwrapCloudResponse(result, "获取退款列表失败");
   return {
@@ -764,6 +849,7 @@ export async function fetchAdminRefunds(query: RefundQuery): Promise<AdminRefund
 }
 
 export async function fetchPendingRefundCount(): Promise<number> {
+  if (targetAdminOperationsModeEnabled()) return (await targetAdminRequest<AdminRefundListResult>('/api/v1/admin/refund-requests?status=pending_review&page=1&pageSize=1')).total || 0;
   const result = await callCloudFunction<CloudFunctionResponse<AdminRefundListResult>>("admin-order", {
     action: "refundList",
     orderNo: "",
@@ -776,6 +862,9 @@ export async function fetchPendingRefundCount(): Promise<number> {
 }
 
 export async function fetchAdminRefundDetail(requestId: number): Promise<RefundDetailResult> {
+  if (targetAdminOperationsModeEnabled()) {
+    return targetAdminRequest<RefundDetailResult>(`/api/v1/admin/refund-requests/${requestId}`);
+  }
   const result = await callCloudFunction<CloudFunctionResponse<RefundDetailResult>>("admin-order", {
     action: "refundDetail",
     requestId
@@ -791,6 +880,7 @@ export async function fetchAdminRefundDetail(requestId: number): Promise<RefundD
 }
 
 export async function reviewAdminRefund(payload: RefundReviewInput): Promise<{ requestId: number; decision: string }> {
+  if (targetAdminOperationsModeEnabled()) return targetAdminRequest<{ requestId: number; decision: string }>(`/api/v1/admin/refund-requests/${payload.requestId}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: payload.decision, adminNote: payload.adminNote || '' }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ requestId: number; decision: string }>>("admin-order", {
     action: "refundReview",
     ...payload
@@ -1938,6 +2028,75 @@ function targetProductMediaReference(value: string | undefined | null): TargetPr
   throw new Error('商品图片已失效，请重新上传后再保存');
 }
 
+type TargetMediaReference = { intentId: string } | { existingObjectKey: string } | null;
+
+function targetMediaReference(value: string | undefined | null): TargetMediaReference {
+  const source = String(value || '').trim();
+  if (!source) return null;
+  const intentId = targetMediaIntentId(source);
+  return intentId ? { intentId } : { existingObjectKey: source };
+}
+
+function targetPointsProductPayload(payload: CreatePointsProductInput) {
+  return {
+    productId: payload.product_id || null,
+    name: String(payload.name || '').trim(),
+    shortName: String(payload.short_name || '').trim(),
+    description: String(payload.desc || '').trim(),
+    coverImage: targetMediaReference(payload.cover_image),
+    images: (payload.images || []).map(targetMediaReference),
+    detailImages: (payload.detail_images || []).map(targetMediaReference),
+    categoryId: payload.category_id || null,
+    pointsPrice: Number(payload.points_price || 0),
+    cashPrice: Number(payload.cash_price || 0),
+    stock: Number(payload.stock_total || 0),
+    stockAdjustment: Number(payload.add_stock || 0),
+    minMemberLevel: Number(payload.min_member_level || 1),
+    supportMixedPay: Number(payload.support_mixed_pay || 0),
+    isOnSale: Number(payload.is_on_sale || 0),
+    sortOrder: Number(payload.sort_order || 0),
+    specs: (payload.specs || []).map((spec) => ({
+      name: spec.name,
+      image: targetMediaReference(spec.image),
+      pointsPrice: Number(spec.points_price || 0),
+      cashPrice: Number(spec.cash_price || 0),
+      sortOrder: Number(spec.sort_order || 0)
+    }))
+  };
+}
+
+function asStringArray(value: string[] | string | undefined): string[] {
+  if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean);
+  if (typeof value !== 'string' || !value.trim()) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map((item) => String(item || '').trim()).filter(Boolean) : [value.trim()];
+  } catch { return [value.trim()]; }
+}
+
+async function normalizeTargetPointsProduct(detail: PointsProductRow): Promise<PointsProductRow> {
+  const rawCover = String(detail.cover_image || '').trim();
+  const rawImages = asStringArray(detail.images);
+  const rawDetailImages = asStringArray(detail.detail_images);
+  const rawSpecImages = (detail.specs || []).map((spec) => String(spec.image || '').trim()).filter(Boolean);
+  const objectKeys = [rawCover, ...rawImages, ...rawDetailImages, ...rawSpecImages].filter((value) => value.startsWith('catalog/'));
+  const urlMap = objectKeys.length > 0 ? await resolveAdminFileUrls(objectKeys) : {};
+  const preview = (value: string) => urlMap[value] || value;
+  return {
+    ...detail,
+    raw_cover_image: rawCover,
+    cover_image: preview(rawCover),
+    raw_images: rawImages,
+    raw_detail_images: rawDetailImages,
+    images: rawImages.map(preview),
+    detail_images: rawDetailImages.map(preview),
+    specs: (detail.specs || []).map((spec) => {
+      const raw = String(spec.image || '').trim();
+      return { ...spec, raw_image: raw, image: preview(raw) };
+    })
+  };
+}
+
 function targetProductMediaReferences(values: string[] | undefined): TargetProductMediaReference[] {
   return (values || []).map((value) => {
     const reference = targetProductMediaReference(value);
@@ -1998,7 +2157,7 @@ export async function restockAdminProduct(id: number, stock: number): Promise<{ 
 }
 
 export async function uploadAdminImages(files: File[], folder: string) {
-  if (targetAdminCatalogModeEnabled() && (folder.startsWith("banners/") || folder.startsWith("products/") || folder.startsWith("categories/"))) {
+  if (targetAdminCatalogModeEnabled() && (folder.startsWith("banners/") || folder.startsWith("products/") || folder.startsWith("points-products/") || folder.startsWith("categories/"))) {
     return Promise.all(files.map((file) => targetAdminUploadImage(file, folder)));
   }
   const uploaded = await Promise.all(
@@ -2019,6 +2178,18 @@ export async function resolveAdminFileUrls(fileIDs: string[]) {
     return data.urls || {};
   }
   return getTempFileUrlMap(fileIDs);
+}
+
+export async function fetchStructuredProductVariants(id: number): Promise<StructuredProductVariantResult> {
+  if (!targetAdminCatalogModeEnabled()) throw new Error("结构化商品仅可在目标 API 模式下维护");
+  return targetAdminRequest<StructuredProductVariantResult>(`/api/v1/admin/products/${id}/variants`);
+}
+
+export async function replaceStructuredProductVariants(id: number, payload: StructuredProductVariantInput): Promise<StructuredProductVariantResult> {
+  if (!targetAdminCatalogModeEnabled()) throw new Error("结构化商品仅可在目标 API 模式下维护");
+  return targetAdminRequest<StructuredProductVariantResult>(`/api/v1/admin/products/${id}/variants`, {
+    method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(payload)
+  });
 }
 
 export async function fetchCouponRules(): Promise<CouponRuleRow[]> {

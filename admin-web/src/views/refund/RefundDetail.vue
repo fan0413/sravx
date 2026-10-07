@@ -24,7 +24,7 @@
         <el-descriptions-item label="用户名">{{ user?.username || "-" }}</el-descriptions-item>
         <el-descriptions-item label="手机号">{{ user?.phone || "-" }}</el-descriptions-item>
         <el-descriptions-item label="用户状态">{{ user?.status || "-" }}</el-descriptions-item>
-        <el-descriptions-item label="OpenID">{{ userOpenid }}</el-descriptions-item>
+        <el-descriptions-item v-if="!targetOperations" label="OpenID">{{ userOpenid }}</el-descriptions-item>
         <el-descriptions-item label="会员等级">{{ user?.member_level ?? "-" }}</el-descriptions-item>
       </el-descriptions>
     </el-card>
@@ -37,7 +37,7 @@
         <el-descriptions-item label="订单总额">{{ order?.total_amount || "-" }}</el-descriptions-item>
         <el-descriptions-item label="实付金额">{{ order?.pay_amount || "-" }}</el-descriptions-item>
         <el-descriptions-item label="支付方式">{{ order?.pay_type || "-" }}</el-descriptions-item>
-        <el-descriptions-item label="交易单号">{{ order?.pay_transaction_id || "-" }}</el-descriptions-item>
+        <el-descriptions-item v-if="!targetOperations" label="交易单号">{{ order?.pay_transaction_id || "-" }}</el-descriptions-item>
         <el-descriptions-item label="下单时间">{{ order?.created_at || "-" }}</el-descriptions-item>
         <el-descriptions-item label="更新时间">{{ order?.updated_at || "-" }}</el-descriptions-item>
       </el-descriptions>
@@ -72,12 +72,14 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { fetchAdminRefundDetail } from "../../api/admin";
+import { targetAdminOperationsModeEnabled } from "../../lib/target-admin-auth";
 
 type AnyRecord = Record<string, any>;
 
 const route = useRoute();
 const router = useRouter();
 const loading = ref(false);
+const targetOperations = targetAdminOperationsModeEnabled();
 
 const refund = ref<AnyRecord | null>(null);
 const order = ref<AnyRecord | null>(null);

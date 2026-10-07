@@ -13,7 +13,7 @@ function load(path) {
 const mysqlSettings = load('/home/deploy/.config/sravx/mysql.env');
 const paymentSettings = load('/home/deploy/.config/sravx/payment.env');
 if (paymentSettings.PAYMENT_CONSUMER_ENABLED !== 'true') throw new Error('PAYMENT_CONSUMER_ENABLED must be true.');
-if (paymentSettings.PAYMENT_INBOUND_REHEARSAL !== 'true') throw new Error('This controlled runner is limited to the approved rehearsal database.');
+if (paymentSettings.PAYMENT_INBOUND_USE_BUSINESS_DATABASE !== 'true' && paymentSettings.PAYMENT_INBOUND_REHEARSAL !== 'true') throw new Error('This controlled runner requires explicit approval to use the business database for payment inbound events.');
 const pool = mysql.createPool({ host: mysqlSettings.MYSQL_HOST, port: Number(mysqlSettings.MYSQL_PORT), user: mysqlSettings.MYSQL_APP_USER, password: mysqlSettings.MYSQL_APP_PASSWORD, database: mysqlSettings.MYSQL_DATABASE, connectionLimit: 2 });
 try {
   const consumer = createPaymentEventConsumer({ inboundRepository: createMysqlPaymentInboundRepository(pool), settlementRepository: createMysqlPaymentSettlementRepository(pool), apiV3Key: paymentSettings.WECHAT_PAY_API_V3_KEY, inboundEncryptionKey: paymentSettings.PAYMENT_INBOUND_ENCRYPTION_KEY });

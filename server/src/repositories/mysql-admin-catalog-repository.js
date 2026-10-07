@@ -179,6 +179,45 @@ export function createMysqlAdminCatalogRepository(pool) {
         await connection.commit(); return true;
       } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
     },
+    async getStructuredProductVariants(id) {
+      const productId = integer(id); if (!productId) return null;
+      const [products] = await pool.execute('SELECT id, series, tool_group, tool_subtype, display_size, steel_material FROM products WHERE id = ? AND deleted_at IS NULL LIMIT 1', [productId]);
+      if (products.length !== 1) return null;
+      const [[models], [colors], [skus]] = await Promise.all([
+        pool.execute('SELECT id, name, sort_order FROM product_models WHERE product_id = ? ORDER BY sort_order ASC, id ASC', [productId]),
+        pool.execute('SELECT id, name, swatch, sort_order FROM product_colors WHERE product_id = ? ORDER BY sort_order ASC, id ASC', [productId]),
+        pool.execute('SELECT ps.id, ps.model_id, pm.name AS model_name, ps.color_id, pc.name AS color_name, ps.sku_code, ps.price_fen, ps.stock_available, ps.stock_frozen, ps.is_on_sale, ps.shipping_type, ps.ship_deadline_days, ps.shipping_promise, ps.sort_order FROM product_skus ps JOIN product_models pm ON pm.id = ps.model_id JOIN product_colors pc ON pc.id = ps.color_id WHERE ps.product_id = ? ORDER BY ps.sort_order ASC, ps.id ASC', [productId])
+      ]);
+      return { ...products[0], models, colors, skus };
+    },
+    async replaceStructuredProductVariants(id, input) {
+      const productId = integer(id); if (!productId) return null;
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        const [products] = await connection.execute('SELECT id FROM products WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [productId]);
+        if (products.length !== 1) { await connection.rollback(); return null; }
+        await connection.execute('UPDATE products SET series = ?, tool_group = ?, tool_subtype = ?, display_size = ?, steel_material = ?, updated_at = UTC_TIMESTAMP() WHERE id = ?', [input.series, input.toolGroup, input.toolSubtype, input.displaySize, input.steelMaterial, productId]);
+        for (const model of input.models) await connection.execute('INSERT INTO product_models (product_id, name, sort_order) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order)', [productId, model.name, model.sortOrder]);
+        for (const color of input.colors) await connection.execute('INSERT INTO product_colors (product_id, name, swatch, sort_order) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE swatch = VALUES(swatch), sort_order = VALUES(sort_order)', [productId, color.name, color.swatch, color.sortOrder]);
+        const [models] = await connection.execute('SELECT id, name FROM product_models WHERE product_id = ?', [productId]);
+        const [colors] = await connection.execute('SELECT id, name FROM product_colors WHERE product_id = ?', [productId]);
+        const modelIds = new Map(models.map((item) => [item.name, Number(item.id)]));
+        const colorIds = new Map(colors.map((item) => [item.name, Number(item.id)]));
+        for (const sku of input.skus) await connection.execute(
+          `INSERT INTO product_skus (product_id, model_id, color_id, sku_code, price_fen, stock_available, stock_frozen, is_on_sale, shipping_type, ship_deadline_days, shipping_promise, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE model_id = VALUES(model_id), color_id = VALUES(color_id), price_fen = VALUES(price_fen), stock_available = VALUES(stock_available), is_on_sale = VALUES(is_on_sale), shipping_type = VALUES(shipping_type), ship_deadline_days = VALUES(ship_deadline_days), shipping_promise = VALUES(shipping_promise), sort_order = VALUES(sort_order)`,
+          [productId, modelIds.get(sku.modelName), colorIds.get(sku.colorName), sku.skuCode, sku.priceFen, sku.stockAvailable, sku.isOnSale, sku.shippingType, sku.shipDeadlineDays, sku.shippingPromise, sku.sortOrder]
+        );
+        const skuCodes = input.skus.map((sku) => sku.skuCode);
+        await connection.execute(`UPDATE product_skus SET is_on_sale = 0, updated_at = UTC_TIMESTAMP() WHERE product_id = ? AND sku_code NOT IN (${skuCodes.map(() => '?').join(',')})`, [productId, ...skuCodes]);
+        const [summary] = await connection.execute('SELECT COALESCE(MIN(price_fen), 0) AS minimum_price_fen, COALESCE(SUM(stock_available), 0) AS available_stock FROM product_skus WHERE product_id = ? AND is_on_sale = 1', [productId]);
+        await connection.execute('UPDATE products SET price = ?, stock = ?, has_spec = 1, updated_at = UTC_TIMESTAMP() WHERE id = ?', [Number(summary[0].minimum_price_fen) / 100, Number(summary[0].available_stock), productId]);
+        await connection.commit();
+        return this.getStructuredProductVariants(productId);
+      } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
+    },
     async deleteProduct(id) {
       const [result] = await pool.execute('UPDATE products SET deleted_at = UTC_TIMESTAMP(), is_on_sale = 0 WHERE id = ? AND deleted_at IS NULL', [id]);
       return result.affectedRows === 1;

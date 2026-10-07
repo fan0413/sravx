@@ -97,3 +97,39 @@ test('payment inbound repository uses database uniqueness for duplicate callback
   assert.match(query.sql, /ON DUPLICATE KEY UPDATE duplicate_count = duplicate_count \+ 1/);
   assert.equal(Buffer.compare(query.values[11], encryptedPayload), 0);
 });
+
+test('payment inbound repository reclaims only a stale processing event and keeps consumption state aligned', async () => {
+  const statements = [];
+  const connection = {
+    beginTransaction: async () => statements.push('begin'), commit: async () => statements.push('commit'), rollback: async () => statements.push('rollback'), release: () => statements.push('release'),
+    execute: async (sql, values) => {
+      statements.push({ sql, values });
+      if (/SELECT id, event_id/.test(sql)) return [[{ id: 9, event_id: 'event-9', event_type: 'TRANSACTION.SUCCESS', payload_nonce: Buffer.alloc(12), encrypted_payload: Buffer.alloc(32) }]];
+      return [{ affectedRows: 1 }];
+    }
+  };
+  const writes = [];
+  const repository = createMysqlPaymentInboundRepository({ getConnection: async () => connection, execute: async (sql, values) => { writes.push({ sql, values }); return [{ affectedRows: 1 }]; } });
+  const event = await repository.claimNext('worker-a', { staleAfterSeconds: 90 });
+  assert.equal(event.id, 9);
+  const select = statements.find((entry) => entry.sql?.includes('FROM payment_inbound_events'));
+  assert.match(select.sql, /processing_status = 'processing'/);
+  assert.match(select.sql, /INTERVAL 90 SECOND/);
+  const claim = statements.find((entry) => entry.sql?.includes('ON DUPLICATE KEY UPDATE status = \'processing\''));
+  assert.ok(claim);
+  await repository.complete(9, 'worker-a');
+  await repository.block(10, 'worker-a', 'INVALID_TRANSACTION');
+  assert.equal(writes.filter((entry) => entry.sql.includes('payment_event_consumptions')).length, 2);
+  assert.equal(writes.filter((entry) => entry.sql.includes('payment_inbound_events')).length, 2);
+});
+
+test('payment inbound health summary returns only aggregate status and oldest pending time', async () => {
+  const repository = createMysqlPaymentInboundRepository({ execute: async () => [[
+    { status: 'received', total: 2, oldest_pending_at: '2026-09-22T00:00:00.000Z' },
+    { status: 'blocked', total: 1, oldest_pending_at: null }
+  ]] });
+  assert.deepEqual(await repository.healthSummary(), {
+    byStatus: { received: 2, processing: 0, processed: 0, blocked: 1 },
+    oldestPendingAt: '2026-09-22T00:00:00.000Z'
+  });
+});

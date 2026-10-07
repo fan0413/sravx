@@ -1,8 +1,12 @@
 <template>
-  <el-card>
+  <el-card class="product-list-page">
     <template #header>
       <div class="header-row">
-        <span>商品列表</span>
+        <div>
+          <div class="list-eyebrow">PRODUCT CATALOG</div>
+          <h1>商品列表</h1>
+          <p>管理用户端展示的商品、库存与可选型号。</p>
+        </div>
         <el-button type="primary" @click="$router.push('/product/create')">新建商品</el-button>
       </div>
     </template>
@@ -120,10 +124,11 @@
         </template>
       </el-table-column>
       <el-table-column prop="updated_at" label="更新时间" min-width="170" />
-      <el-table-column label="操作" :width="targetMode ? 160 : 180" fixed="right" align="center" header-align="center">
+      <el-table-column label="操作" :width="targetMode ? 240 : 180" fixed="right" align="center" header-align="center">
         <template #default="{ row }">
           <template v-if="targetMode">
             <el-button link type="primary" @click="router.push(`/product/edit/${row.id}`)">编辑商品</el-button>
+            <el-button link type="primary" @click="router.push(`/product/variants/${row.id}`)">型号与 SKU</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除商品</el-button>
           </template>
           <template v-else>
@@ -321,8 +326,41 @@ watch(
   align-items: center;
 }
 
+.product-list-page :deep(.el-card__header) {
+  padding: 26px 28px 22px;
+}
+
+.product-list-page :deep(.el-card__body) {
+  padding: 24px 28px 28px;
+}
+
+.list-eyebrow {
+  margin-bottom: 7px;
+  color: #a16e3b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.header-row h1 {
+  margin: 0;
+  color: #1d1d1f;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.header-row p {
+  margin: 8px 0 0;
+  color: #6e6e73;
+  font-size: 14px;
+}
+
 .query-form {
-  margin-bottom: 16px;
+  margin-bottom: 22px;
+  padding: 18px 20px 2px;
+  border-radius: 16px;
+  background: #f2f2f7;
 }
 
 .name-cell {
@@ -334,7 +372,8 @@ watch(
 .cover {
   width: 96px;
   height: 96px;
-  border-radius: 4px;
+  border-radius: 14px;
+  background: #f2f2f7;
 }
 
 .sku-tag {
@@ -375,5 +414,21 @@ watch(
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+@media (max-width: 720px) {
+  .product-list-page :deep(.el-card__header),
+  .product-list-page :deep(.el-card__body) {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .header-row {
+    align-items: flex-end;
+  }
+
+  .header-row p {
+    display: none;
+  }
 }
 </style>

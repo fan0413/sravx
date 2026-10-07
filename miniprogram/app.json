@@ -25,6 +25,7 @@
     "pages/splash/splash",
     "pages/register/register"
   ],
+  "subPackages": [],
   "window": {
     "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTitleText": "Sravx",

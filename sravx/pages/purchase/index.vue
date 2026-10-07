@@ -1,0 +1,63 @@
+<template>
+  <view class="purchase-page">
+    <SravxH5GlobalNav />
+    <view class="purchase-content">
+      <button class="purchase-back" @click="back">‹ 返回产品目录</button>
+      <text class="purchase-eyebrow">SRAVX PROFESSIONAL TOOLS</text>
+      <text class="purchase-title">选购 {{ seriesLabel }} {{ toolLabel }}</text>
+      <text class="purchase-intro">选择商品，继续查看型号、颜色与产品参数。</text>
+      <view v-if="loading" class="purchase-state">正在加载商品</view>
+      <view v-else-if="error" class="purchase-state"><text>{{ error }}</text><button @click="load">重新加载</button></view>
+      <view v-else-if="!products.length" class="purchase-state">该系列剪型暂无可选商品。</view>
+      <view v-else class="purchase-products">
+        <view v-for="product in products" :key="product.id" class="purchase-product">
+          <image :src="apiImage(product)" mode="aspectFit" />
+          <view class="purchase-copy"><text>{{ product.short_name || product.name }}</text><text>{{ product.desc || product.description || '查看商品详情与可选规格' }}</text><button @click="detail(product.id)">选择型号与颜色 ›</button></view>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+<script>
+import api from '../../common/api.js'
+import SravxH5GlobalNav from '../../components/SravxH5GlobalNav.vue'
+const seriesNames = { all: 'SRAVX', basic: 'SRAVX Basic', pro: 'SRAVX Pro', master: 'SRAVX Master', accessories: 'SRAVX 配件' }
+const toolNames = { straight: '直剪', curved: '弯剪', thinning: '牙剪', fishbone: '鱼骨剪', texturizing: '造型剪' }
+function productTool(name) {
+  if (/直剪/.test(name)) return 'straight'
+  if (/弯剪/.test(name)) return 'curved'
+  if (/牙剪/.test(name)) return 'thinning'
+  if (/鱼骨剪/.test(name)) return 'fishbone'
+  if (/柳叶剪|莲蓬剪|魔术剪|造型剪/.test(name)) return 'texturizing'
+  return ''
+}
+export default {
+  components: { SravxH5GlobalNav },
+  data() { return { series: 'all', tool: '', products: [], loading: true, error: '' } },
+  computed: { seriesLabel() { return seriesNames[this.series] || 'SRAVX' }, toolLabel() { return toolNames[this.tool] || '' } },
+  onLoad(query) { this.series = query.series || 'all'; this.tool = query.tool || ''; this.load() },
+  methods: {
+    apiImage(product) { return api.productImage(product) || '/static/navigation/sravx-mark.png' },
+    async load() {
+      this.loading = true; this.error = ''
+      try {
+        const categories = api.asList(await api.getCategoryList())
+        const lists = await Promise.all(categories.map(async category => api.asList(await api.getProductList({ categoryId: category.id, pageSize: 100 })).map(product => ({ ...product, categoryName: category.name }))))
+        const seen = new Set()
+        this.products = lists.flat().filter(product => {
+          const seriesText = [product.name, product.short_name, product.desc, product.description, product.series, product.series_name].filter(Boolean).join(' ').toLowerCase()
+          const toolText = [product.categoryName, product.short_name, product.name].filter(Boolean).join(' ')
+          if (seen.has(String(product.id)) || (this.series !== 'all' && !seriesText.includes(this.series)) || (this.tool && productTool(toolText) !== this.tool)) return false
+          seen.add(String(product.id)); return true
+        })
+      } catch (error) { this.error = error.message || '商品加载失败，请重试。' }
+      finally { this.loading = false }
+    },
+    back() { if (typeof window !== 'undefined') { window.location.hash = '#/pages/shop/index' + (this.series === 'all' ? '' : '?series=' + encodeURIComponent(this.series)); return } uni.navigateBack() },
+    detail(id) { uni.navigateTo({ url: '/pages/product-detail/index?id=' + encodeURIComponent(id) }) }
+  }
+}
+</script>
+<style scoped>
+.purchase-page{min-height:100vh;background:#f4f6f8;color:#1d1d1f;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}.purchase-content{max-width:1120px;margin:0 auto;padding:40px 24px 100px}.purchase-back{display:block;width:max-content;margin:0 0 40px;padding:0;background:transparent;border:0;color:#6e6e73;font-size:14px}.purchase-back::after{display:none}.purchase-eyebrow{display:block;color:#0071e3;font-size:12px;font-weight:700;letter-spacing:.1em}.purchase-title{display:block;margin-top:14px;font-size:clamp(32px,4vw,54px);font-weight:700;line-height:1.15}.purchase-intro{display:block;margin-top:18px;color:#6e6e73;font-size:16px;line-height:1.5}.purchase-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;margin-top:40px}.purchase-product{overflow:hidden;border-radius:24px;background:#fff}.purchase-product>image{display:block;width:100%;height:300px}.purchase-copy{display:flex;flex-direction:column;gap:12px;padding:28px}.purchase-copy>text:first-child{font-size:24px;font-weight:650}.purchase-copy>text:nth-child(2){color:#6e6e73;font-size:15px;line-height:1.5}.purchase-copy button{width:max-content;margin:12px 0 0;padding:12px 22px;border-radius:999px;background:#0071e3;color:#fff;font-size:14px;line-height:20px}.purchase-copy button::after{display:none}.purchase-state{display:flex;flex-direction:column;align-items:center;gap:20px;padding:100px 24px;color:#6e6e73;text-align:center}@media(max-width:760px){.purchase-products{grid-template-columns:1fr}.purchase-content{padding:28px 20px 70px}}
+</style>

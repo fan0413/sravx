@@ -1,7 +1,7 @@
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-router";
 import AdminLayout from "../layout/AdminLayout.vue";
 import { adminLoggedIn } from "../lib/admin-auth";
-import { targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
+import { targetAdminCatalogModeEnabled, targetAdminLoggedIn, targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
 
 const routes: RouteRecordRaw[] = [
   {
@@ -38,6 +38,12 @@ const routes: RouteRecordRaw[] = [
         name: "ProductEdit",
         component: () => import("../views/product/ProductCreate.vue"),
         meta: { title: "编辑商品" }
+      },
+      {
+        path: "product/variants/:id",
+        name: "ProductVariants",
+        component: () => import("../views/product/ProductVariants.vue"),
+        meta: { title: "型号与 SKU" }
       },
       {
         path: "points-product/list",
@@ -170,11 +176,11 @@ router.beforeEach(async (to) => {
   if (to.meta.public) return true;
   if (targetAdminModeEnabled()) {
     const path = to.path;
-    const catalogRoute = path === "/dashboard" || path.startsWith("/product/") || path.startsWith("/category/") || path.startsWith("/banner/");
-    const operationsRoute = targetAdminOperationsModeEnabled() && (path.startsWith("/user/") || path.startsWith("/inquiry/"));
-    if (!catalogRoute && !operationsRoute) return { path: "/dashboard" };
+    const catalogRoute = targetAdminCatalogModeEnabled() && (path === "/dashboard" || path.startsWith("/product/") || path.startsWith("/points-product/") || path.startsWith("/category/") || path.startsWith("/banner/") || (path.startsWith("/scissors/") && !path.startsWith("/scissors/after-sale")));
+    const operationsRoute = targetAdminOperationsModeEnabled() && (path.startsWith("/user/") || path.startsWith("/inquiry/") || path.startsWith("/order/") || path.startsWith("/points-order/") || path.startsWith("/refund/") || path.startsWith("/scissors/after-sale"));
+    if (!catalogRoute && !operationsRoute) return { path: targetAdminCatalogModeEnabled() ? "/dashboard" : "/user/list" };
   }
-  const loggedIn = await adminLoggedIn();
+  const loggedIn = targetAdminModeEnabled() ? await targetAdminLoggedIn() : await adminLoggedIn();
   if (loggedIn) return true;
   return {
     path: "/login",

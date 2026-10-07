@@ -1,0 +1,38 @@
+{
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{ "path": "pages/welcome/index", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/index/index", "style": { "navigationStyle": "custom", "enablePullDownRefresh": true } },
+		{ "path": "pages/shop/index", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/purchase/index", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/cart/index", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/search/index", "style": { "navigationBarTitleText": "搜索" } },
+		{ "path": "pages/coupon-manage/index", "style": { "navigationBarTitleText": "优惠券" } },
+		{ "path": "pages/product-detail/index", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/confirm-order/index", "style": { "navigationBarTitleText": "确认订单" } },
+		{ "path": "pages/order-list/index", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/order-detail/index", "style": { "navigationBarTitleText": "订单详情" } },
+		{ "path": "pages/order-logistics/index", "style": { "navigationBarTitleText": "物流信息" } },
+		{ "path": "pages/order-after-sale/index", "style": { "navigationBarTitleText": "售后服务" } },
+		{ "path": "pages/points-mall/index", "style": { "navigationBarTitleText": "积分商城" } },
+		{ "path": "pages/points-product-detail/index", "style": { "navigationBarTitleText": "积分商品" } },
+		{ "path": "pages/points-order-detail/index", "style": { "navigationBarTitleText": "积分订单" } },
+		{ "path": "pages/user-center/index", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/profile-edit/index", "style": { "navigationBarTitleText": "个人资料" } },
+		{ "path": "pages/gift-card-redeem/index", "style": { "navigationBarTitleText": "礼品卡兑换" } },
+		{ "path": "pages/membership/index", "style": { "navigationBarTitleText": "会员中心" } },
+		{ "path": "pages/address-manage/index", "style": { "navigationBarTitleText": "地址管理" } },
+		{ "path": "pages/my-scissors/index", "style": { "navigationBarTitleText": "我的剪刀" } },
+		{ "path": "pages/scissors-after-sale/index", "style": { "navigationBarTitleText": "剪刀售后" } },
+		{ "path": "pages/cooperation/index", "style": { "navigationBarTitleText": "合作咨询" } },
+		{ "path": "pages/splash/index", "style": { "navigationStyle": "custom" } },
+		{ "path": "pages/register/index", "style": { "navigationBarTitleText": "登录与注册" } }
+	],
+	"subPackages": [],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "Sravx",
+		"navigationBarBackgroundColor": "#FFFFFF",
+		"backgroundColor": "#F2F2F7"
+	},
+	"uniIdRouter": {}
+}

@@ -26,3 +26,16 @@ test('payment order repository binds user and order IDs and converts amount exac
   assert.deepEqual(await repository.loadPayableOrder(7, 9), { orderNo: 'order-1', amountFen: 1009, status: 'pending_payment', openid: 'openid' });
   assert.deepEqual(values, [9, 7]);
 });
+
+test('mixed points payment uses its own server-owned loader and rejects points-only orders', async () => {
+  let input;
+  const service = createPaymentOrderService({
+    loadPayableOrder: async () => assert.fail('must not load a goods order'),
+    loadPayablePointsOrder: async (userId, orderId) => { assert.equal(userId, 8); assert.equal(orderId, 16); return { orderNo: 'SP-16', amountFen: 99, status: 'pending_payment', openid: 'openid-8' }; },
+    createTransaction: { createTransaction: async (value) => { input = value; return { package: 'prepay_id=points' }; } }, notifyUrl: 'https://api.sravxpet.com/api/v1/payments/wechat/notifications'
+  });
+  assert.deepEqual(await service.create(8, 16, 'points'), { package: 'prepay_id=points' });
+  assert.equal(input.amountFen, 99);
+  const pointsOnly = createPaymentOrderService({ loadPayableOrder: async () => null, loadPayablePointsOrder: async () => null, createTransaction: { createTransaction: async () => assert.fail('must not call WeChat') }, notifyUrl: 'https://api.sravxpet.com/callback' });
+  await assert.rejects(pointsOnly.create(8, 17, 'points'), /ORDER_NOT_FOUND/);
+});

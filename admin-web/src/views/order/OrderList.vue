@@ -3,7 +3,7 @@
     <template #header>
       <div class="header-row">
         <span>订单列表</span>
-        <el-button type="primary" @click="openShipDialog">一键发货</el-button>
+        <el-button v-if="!targetMode" type="primary" @click="openShipDialog">一键发货</el-button>
       </div>
     </template>
     <el-form :inline="true" :model="query" class="query-form">
@@ -19,7 +19,7 @@
           <el-option label="已取消" value="cancelled" />
         </el-select>
       </el-form-item>
-      <el-form-item label="发货类型">
+      <el-form-item v-if="!targetMode" label="发货类型">
         <el-select v-model="query.shippingType" placeholder="全部" clearable style="width: 150px">
           <el-option label="普通现货" value="normal" />
           <el-option label="预售" value="presale" />
@@ -76,7 +76,7 @@
           <span v-else>-</span>
         </template>
       </el-table-column>
-      <el-table-column label="微信同步" width="150">
+      <el-table-column v-if="!targetMode" label="微信同步" width="150">
         <template #default="{ row }">
           <template v-if="row.status === 'shipped'">
             <el-tag :type="wechatShippingTagType(row.wechat_shipping_upload_status)" size="small">
@@ -111,7 +111,7 @@
       <el-table-column label="操作" width="140">
         <template #default="{ row }">
           <el-button link type="primary" @click="$router.push(`/order/detail/${row.id}`)">详情</el-button>
-          <el-button v-if="canDelay(row)" link type="warning" @click="openDelayDialog(row)">延期</el-button>
+          <el-button v-if="!targetMode && canDelay(row)" link type="warning" @click="openDelayDialog(row)">延期</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -405,6 +405,9 @@ import {
   type PendingShipRow
 } from "../../api/admin";
 import type { OrderRow } from "../../api/types";
+import { targetAdminOperationsModeEnabled } from "../../lib/target-admin-auth";
+
+const targetMode = targetAdminOperationsModeEnabled();
 
 const SF_PRINT_TEMPLATES = [
   { label: "丰密150标准模板 100×150", code: "fm_150_standard_ZJGSDLMFI66J" },

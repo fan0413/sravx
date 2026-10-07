@@ -65,7 +65,13 @@
     </el-table>
 
     <div class="pagination">
-      <el-pagination layout="total, prev, pager, next" :total="total" />
+      <el-pagination
+        layout="total, prev, pager, next"
+        :total="total"
+        :current-page="query.page"
+        :page-size="query.pageSize"
+        @current-change="handlePageChange"
+      />
     </div>
   </el-card>
 </template>
@@ -78,7 +84,9 @@ import { fetchAdminRefunds, reviewAdminRefund, type RefundRow } from "../../api/
 
 const query = reactive({
   orderNo: "",
-  status: ""
+  status: "",
+  page: 1,
+  pageSize: 20
 });
 
 const rows = ref<RefundRow[]>([]);
@@ -128,12 +136,19 @@ const loadRows = async () => {
 };
 
 const handleQuery = async () => {
+  query.page = 1;
   await loadRows();
 };
 
 const handleReset = async () => {
   query.orderNo = "";
   query.status = "";
+  query.page = 1;
+  await loadRows();
+};
+
+const handlePageChange = async (page: number) => {
+  query.page = page;
   await loadRows();
 };
 
@@ -182,6 +197,7 @@ const handleReject = async (row: RefundRow) => {
 
 onMounted(async () => {
   query.status = String(route.query.status || "").trim();
+  query.page = 1;
   await loadRows();
 });
 
@@ -189,6 +205,7 @@ watch(
   () => route.query.status,
   async (status) => {
     query.status = String(status || "").trim();
+    query.page = 1;
     await loadRows();
   }
 );

@@ -26,6 +26,7 @@ const targetMediaPrefix = 'target-media://';
 function mediaTypeForFolder(folder: string) {
   if (folder.startsWith('banners/')) return 'banner';
   if (folder.startsWith('products/')) return 'product';
+  if (folder.startsWith('points-products/')) return 'pointsProduct';
   if (folder.startsWith('categories/')) return 'category';
   return null;
 }

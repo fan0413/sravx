@@ -1,0 +1,25 @@
+{
+  "name": "sravx-uniapp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sravx uni-app Vue 3 client",
+  "scripts": {
+    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin && node scripts/verify-wechat-build.mjs",
+    "build:mp-weixin:target-safe": "cross-env UNI_INPUT_DIR=. VITE_SRAVX_API_MIGRATION=true VITE_SRAVX_API_PROFILE=true VITE_SRAVX_API_USER_READ=true VITE_SRAVX_API_ADDRESSES=true VITE_SRAVX_API_INQUIRIES=true VITE_SRAVX_API_TOOLS_READ=true uni build -p mp-weixin && node scripts/verify-wechat-build.mjs",
+    "build:mp-weixin:target-services": "cross-env UNI_INPUT_DIR=. VITE_SRAVX_API_MIGRATION=true VITE_SRAVX_API_PROFILE=true VITE_SRAVX_API_USER_READ=true VITE_SRAVX_API_ADDRESSES=true VITE_SRAVX_API_INQUIRIES=true VITE_SRAVX_API_TOOLS_READ=true VITE_SRAVX_API_TOOLS_WRITE=true VITE_SRAVX_API_AFTER_SALES=true VITE_SRAVX_API_COUPONS=true VITE_SRAVX_API_GIFT_CARDS=true uni build -p mp-weixin && node scripts/verify-wechat-build.mjs",
+    "build:mp-weixin:target-orders-rehearsal": "cross-env UNI_INPUT_DIR=. VITE_SRAVX_API_MIGRATION=true VITE_SRAVX_API_PROFILE=true VITE_SRAVX_API_USER_READ=true VITE_SRAVX_API_ADDRESSES=true VITE_SRAVX_API_INQUIRIES=true VITE_SRAVX_API_TOOLS_READ=true VITE_SRAVX_API_TOOLS_WRITE=true VITE_SRAVX_API_AFTER_SALES=true VITE_SRAVX_API_COUPONS=true VITE_SRAVX_API_GIFT_CARDS=true VITE_SRAVX_API_ORDERS=true VITE_SRAVX_API_PAYMENTS=true uni build -p mp-weixin && node scripts/verify-wechat-build.mjs",
+    "build:mp-weixin:structured-checkout-rehearsal": "cross-env UNI_INPUT_DIR=. VITE_SRAVX_API_MIGRATION=true VITE_SRAVX_API_PROFILE=true VITE_SRAVX_API_USER_READ=true VITE_SRAVX_API_ADDRESSES=true VITE_SRAVX_API_ORDERS=true VITE_SRAVX_API_PAYMENTS=true VITE_SRAVX_API_STRUCTURED_CHECKOUT=true uni build -p mp-weixin && node scripts/verify-wechat-build.mjs"
+  },
+  "dependencies": {
+    "@dcloudio/uni-app": "3.0.0-alpha-5020520260821001",
+    "@dcloudio/uni-components": "3.0.0-alpha-5020520260821001",
+    "@dcloudio/uni-mp-weixin": "3.0.0-alpha-5020520260821001",
+    "vue": "3.4.21"
+  },
+  "devDependencies": {
+    "@dcloudio/vite-plugin-uni": "3.0.0-alpha-5020520260821001",
+    "@resvg/resvg-js": "^2.6.2",
+    "cross-env": "^7.0.3",
+    "vite": "5.2.8"
+  }
+}

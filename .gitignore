@@ -39,6 +39,8 @@ CONFIG-GUIDE.md
 mcp.json
 project.private.config.json
 tmp_mcp_*.txt
+config.json
+cloudbaserc.json
 
 # Generated/deployment scratch data and local backups
 .migration-private/
@@ -52,3 +54,14 @@ cloudrun/payment-api/WECHAT-MP-API-ENV.txt
 
 temp_images
 scripts/mcp_deploy.js
+
+# Primary E-drive workspace: private backups and generated output
+.local-backup/
+dist/
+build/
+unpackage/
+*.tar.gz
+*.tgz
+*.tsbuildinfo
+.env.*
+!.env.example
