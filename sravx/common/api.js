@@ -1,4 +1,10 @@
+import { catalogBase, readCatalog } from './catalog-transport.mjs'
 const API_BASE_URL = 'https://api.sravxpet.com'
+let webCatalog = false
+// #ifdef H5
+webCatalog = true
+// #endif
+const CATALOG_BASE_URL = catalogBase({ web: webCatalog, dev: import.meta.env.DEV, configuredBase: import.meta.env.VITE_SRAVX_CATALOG_BASE_URL || '', defaultBase: API_BASE_URL })
 
 // 每项业务独立放行；未放行功能继续走 CloudBase，避免提前切换写入。
 const enabled = String(import.meta.env.VITE_SRAVX_API_MIGRATION || '').toLowerCase() === 'true'
@@ -26,7 +32,8 @@ const query = params => Object.entries(params).filter(([, value]) => value !== u
 const paged = (path, params) => query(params) ? `${path}?${query(params)}` : path
 
 function cloudCall(name, data = {}) { return new Promise((resolve, reject) => { if (!wx.cloud) return reject(new Error('云能力未初始化')); wx.cloud.callFunction({ name, data, success(res) { res.result && res.result.success ? resolve(res.result.data) : reject(new Error((res.result && res.result.error) || '服务暂不可用')) }, fail(err) { reject(new Error(err.errMsg || '网络连接失败')) } }) }) }
-function http(path, method = 'GET', data, token = targetToken()) { return new Promise((resolve, reject) => uni.request({ url: `${API_BASE_URL}${path}`, method, data, header: { Accept: 'application/json', ...(data === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, success(res) { const body = res.data; res.statusCode >= 200 && res.statusCode < 300 && body && body.success ? resolve(body.data) : reject(Object.assign(new Error((body && body.error && body.error.message) || '服务暂不可用'), { statusCode: res.statusCode })) }, fail() { reject(new Error('网络连接失败')) } })) }
+function http(path, method = 'GET', data, token = targetToken(), base = API_BASE_URL) { return new Promise((resolve, reject) => uni.request({ url: `${base}${path}`, method, data, header: { Accept: 'application/json', ...(data === undefined ? {} : { 'Content-Type': 'application/json' }), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, success(res) { const body = res.data; res.statusCode >= 200 && res.statusCode < 300 && body && body.success ? resolve(body.data) : reject(Object.assign(new Error((body && body.error && body.error.message) || '服务暂不可用'), { statusCode: res.statusCode })) }, fail() { reject(new Error('网络连接失败，请检查商品接口连接或跨域配置')) } })) }
+const catalog = (path, name, data) => readCatalog(webCatalog, () => http(path, 'GET', undefined, '', CATALOG_BASE_URL), () => cloudCall(name, data))
 const asList = value => Array.isArray(value) ? value : (value && (value.products || value.list || value.data)) || []
 const productName = item => item && (item.short_name || item.name) || '未命名商品'
 function productImage(item = {}) { if (item.image || item.cover_image) return item.image || item.cover_image; if (Array.isArray(item.images)) return item.images[0] || ''; if (typeof item.images === 'string') { try { return JSON.parse(item.images)[0] || '' } catch { return item.images } } return '' }
@@ -46,12 +53,12 @@ const pointsOrderView = result => { const payableCash = Number(result && (result
 const api = {
   asList, productName, productImage, cloudCall, request: path => http(path), targetToken, clearTargetSession,
   login(data = {}) { return API_MIGRATION.enabled ? targetLogin(data) : cloudCall('login', data) },
-  getHomeProducts() { return http('/api/v1/catalog/home').catch(() => cloudCall('product', { action: 'home' })) },
-  getProductList(params = {}) { return http(paged('/api/v1/catalog/products', params)).catch(() => cloudCall('product', { action: 'list', ...params })) },
-  getProductDetail(id) { return http(`/api/v1/catalog/products/${encodeURIComponent(id)}`).catch(() => cloudCall('product', { action: 'detail', id })) },
-  getPointsProducts(categoryId = 0) { return http(`/api/v1/catalog/points-products?categoryId=${encodeURIComponent(categoryId)}`).catch(() => cloudCall('product', { action: 'pointsList', categoryId })) },
-  getPointsProductDetail(id) { return http(`/api/v1/catalog/points-products/${encodeURIComponent(id)}`).catch(() => cloudCall('product', { action: 'pointsDetail', id })) },
-  getCategoryList() { return http('/api/v1/catalog/categories').catch(() => cloudCall('category', { action: 'list' })) }, getCategoryTree() { return cloudCall('category', { action: 'tree' }) }, getBanners(position = 'home') { return http(`/api/v1/catalog/banners?position=${encodeURIComponent(position)}`).catch(() => cloudCall('banner', { position })) },
+  getHomeProducts() { return catalog('/api/v1/catalog/home', 'product', { action: 'home' }) },
+  getProductList(params = {}) { return catalog(paged('/api/v1/catalog/products', params), 'product', { action: 'list', ...params }) },
+  getProductDetail(id) { return catalog(`/api/v1/catalog/products/${encodeURIComponent(id)}`, 'product', { action: 'detail', id }) },
+  getPointsProducts(categoryId = 0) { return catalog(`/api/v1/catalog/points-products?categoryId=${encodeURIComponent(categoryId)}`, 'product', { action: 'pointsList', categoryId }) },
+  getPointsProductDetail(id) { return catalog(`/api/v1/catalog/points-products/${encodeURIComponent(id)}`, 'product', { action: 'pointsDetail', id }) },
+  getCategoryList() { return catalog('/api/v1/catalog/categories', 'category', { action: 'list' }) }, getCategoryTree() { return cloudCall('category', { action: 'tree' }) }, getBanners(position = 'home') { return catalog(`/api/v1/catalog/banners?position=${encodeURIComponent(position)}`, 'banner', { position }) },
   getUserInfo() { return requestOrCloud('profile', '/api/v1/me', 'GET', undefined, 'user', { action: 'getInfo' }) }, updateUserInfo(data) { return requestOrCloud('profile', '/api/v1/me', 'PUT', data, 'user', { action: 'updateInfo', ...data }) }, getUserPoints() { return requestOrCloud('userRead', '/api/v1/me/points', 'GET', undefined, 'user', { action: 'getPoints' }) }, getPointsLogs(page = 1, pageSize = 20) { return requestOrCloud('userRead', paged('/api/v1/me/points/logs', { page, pageSize }), 'GET', undefined, 'user', { action: 'getPointsLogs', page, pageSize }) }, getMemberLevel() { return requestOrCloud('userRead', '/api/v1/me/membership', 'GET', undefined, 'user', { action: 'getMemberLevel' }) },
   getAddressList() { return requestOrCloud('addresses', '/api/v1/addresses', 'GET', undefined, 'address', { action: 'list' }) }, addAddress(data) { return requestOrCloud('addresses', '/api/v1/addresses', 'POST', data, 'address', { action: 'add', ...data }) }, updateAddress(data) { return requestOrCloud('addresses', `/api/v1/addresses/${data.id}`, 'PUT', data, 'address', { action: 'update', ...data }) }, deleteAddress(id) { return requestOrCloud('addresses', `/api/v1/addresses/${id}`, 'DELETE', undefined, 'address', { action: 'delete', id }) }, setDefaultAddress(id) { return requestOrCloud('addresses', `/api/v1/addresses/${id}/default`, 'PUT', undefined, 'address', { action: 'setDefault', id }) },
   getAvailableCoupons() { return requestOrCloud('coupons', '/api/v1/coupons', 'GET', undefined, 'coupon', { action: 'list', type: 'available' }) }, getMyCoupons(status = 'unused') { return requestOrCloud('coupons', `/api/v1/me/coupons?status=${encodeURIComponent(status)}`, 'GET', undefined, 'coupon', { action: 'my', status }) }, receiveCoupon(couponId) { return requestOrCloud('coupons', `/api/v1/coupons/${couponId}/claims`, 'POST', { idempotencyKey: key('coupon') }, 'coupon', { action: 'receive', couponId }) }, checkCoupon(couponId, orderAmount) { return requestOrCloud('coupons', `/api/v1/coupons/claims/${couponId}/check`, 'POST', { orderAmount }, 'coupon', { action: 'check', couponId, orderAmount }) },

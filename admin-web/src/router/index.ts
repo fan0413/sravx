@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-rou
 import AdminLayout from "../layout/AdminLayout.vue";
 import { adminLoggedIn } from "../lib/admin-auth";
 import { targetAdminCatalogModeEnabled, targetAdminLoggedIn, targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
+import { isWorkspacePath } from '../lib/admin-workspace';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -15,6 +16,12 @@ const routes: RouteRecordRaw[] = [
     component: AdminLayout,
     redirect: "/dashboard",
     children: [
+      {
+        path: 'channel/:channel(web|miniprogram)',
+        name: 'ChannelWorkspace',
+        component: () => import('../views/channel/ChannelWorkspace.vue'),
+        meta: { title: '渠道功能工作区' }
+      },
       {
         path: "dashboard",
         name: "Dashboard",
@@ -178,7 +185,7 @@ router.beforeEach(async (to) => {
     const path = to.path;
     const catalogRoute = targetAdminCatalogModeEnabled() && (path === "/dashboard" || path.startsWith("/product/") || path.startsWith("/points-product/") || path.startsWith("/category/") || path.startsWith("/banner/") || (path.startsWith("/scissors/") && !path.startsWith("/scissors/after-sale")));
     const operationsRoute = targetAdminOperationsModeEnabled() && (path.startsWith("/user/") || path.startsWith("/inquiry/") || path.startsWith("/order/") || path.startsWith("/points-order/") || path.startsWith("/refund/") || path.startsWith("/scissors/after-sale"));
-    if (!catalogRoute && !operationsRoute) return { path: targetAdminCatalogModeEnabled() ? "/dashboard" : "/user/list" };
+    if (!catalogRoute && !operationsRoute && !isWorkspacePath(path)) return { path: targetAdminCatalogModeEnabled() ? "/dashboard" : "/user/list" };
   }
   const loggedIn = targetAdminModeEnabled() ? await targetAdminLoggedIn() : await adminLoggedIn();
   if (loggedIn) return true;

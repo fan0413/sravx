@@ -41,3 +41,8 @@ npm run build
 ```bash
 VITE_API_BASE_URL=http://localhost:3000
 ```
+# 渠道工作区
+
+顶部可切换网页功能与小程序功能，入口分别为 `#/channel/web`、`#/channel/miniprogram`。共用业务仍使用原页面和原 API；在共用编辑页切换不会跳转或清空表单。渠道偏好仅保存于本机，不是权限或数据库切换。
+
+当前工作区只组织已有功能入口，欢迎页/官网导航独立编辑、商品渠道展示/排序尚未接入；轮播也不会按工作区自动隔离。验收详情见主工作区 `docs/admin-channel-workspace-validation-2026-10-08.md`。

@@ -3,6 +3,8 @@
     <el-aside width="220px" class="sidebar">
       <div class="logo"><span>SRAVX</span><small>OPERATION STUDIO</small></div>
       <el-menu :default-active="route.path" :default-openeds="['product','points-product','category','banner','order','refund','user','scissors','inquiry']" router class="menu">
+        <el-menu-item :index="workspacePath(channel)">{{ channelLabel(channel) }}入口</el-menu-item>
+        <li class="shared-label" role="presentation">共用管理 · 同一数据与接口</li>
         <el-menu-item index="/dashboard">经营看板</el-menu-item>
         <el-sub-menu v-if="!targetMode || catalogMode" index="product">
           <template #title>商品管理</template>
@@ -53,7 +55,11 @@
       <el-header class="topbar">
         <div class="title">{{ pageTitle }}</div>
         <div class="right-area">
-          <div class="meta">专业工具管理</div>
+          <el-radio-group :model-value="channel" aria-label="管理渠道切换" size="small" @change="switchChannel">
+            <el-radio-button value="web">网页功能</el-radio-button>
+            <el-radio-button value="miniprogram">小程序功能</el-radio-button>
+          </el-radio-group>
+          <el-tag v-if="!isWorkspacePath(route.path)" type="info" effect="plain">共用管理</el-tag>
           <el-button link type="primary" @click="handleLogout">退出登录</el-button>
         </div>
       </el-header>
@@ -65,17 +71,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter, RouterView } from "vue-router";
 import { adminLogout } from "../lib/admin-auth";
 import { targetAdminCatalogModeEnabled, targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
+import { useAdminWorkspace } from '../lib/use-admin-workspace';
+import { channelLabel, workspacePath, isWorkspacePath, parseAdminChannel, channelSwitchPath } from '../lib/admin-workspace';
 
 const route = useRoute();
 const router = useRouter();
 const targetMode = targetAdminModeEnabled();
 const catalogMode = targetAdminCatalogModeEnabled();
 const operationsMode = targetAdminOperationsModeEnabled();
+const { channel, setChannel } = useAdminWorkspace();
+watch(() => route.params.channel, value => {
+  const next = parseAdminChannel(value);
+  if (next && isWorkspacePath(route.path)) setChannel(next);
+}, { immediate: true });
+async function switchChannel(value: unknown) {
+  const next = parseAdminChannel(value);
+  if (!next) return;
+  const path = channelSwitchPath(route.path, next);
+  if (path) await router.push(path);
+  else setChannel(next);
+}
 
 const pageTitle = computed(() => String(route.meta.title || "电商管理平台"));
 
@@ -130,6 +150,7 @@ const handleLogout = async () => {
   border-right: none;
   background: transparent;
 }
+.shared-label { padding: 18px 14px 8px; color: var(--sravx-muted); font-size: 11px; line-height: 1.5; list-style: none; }
 
 .topbar {
   height: 72px;

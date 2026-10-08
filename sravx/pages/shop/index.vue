@@ -75,6 +75,9 @@
 <script>
 import api from '../../common/api.js'
 import SravxH5GlobalNav from '../../components/SravxH5GlobalNav.vue'
+// #ifdef H5
+import { catalogRoute } from '../../common/catalog-route.mjs'
+// #endif
 const SERIES=[{key:'all',label:'全部工具',material:'专业工具目录',caption:'按用途浏览'},{key:'basic',label:'Basic',material:'9Cr',caption:'入门专业款'},{key:'pro',label:'Pro',material:'440C',caption:'专业主力款'},{key:'master',label:'Master',material:'VG10',caption:'高阶专业款'},{key:'accessories',label:'配件',material:'收纳与养护',caption:'专业工作配套'}]
 const GROUPS=[{key:'all',label:'全部'},{key:'straight',label:'直剪'},{key:'curved',label:'弯剪'},{key:'thinning',label:'牙剪'},{key:'fishbone',label:'鱼骨剪'},{key:'texturizing',label:'造型剪'},{key:'accessories',label:'套装与配件'},{key:'other',label:'其他工具'}]
 const SERIES_GROUPS=['all','straight','curved','thinning','fishbone','texturizing']
@@ -83,6 +86,14 @@ function group(name=''){if(/直剪/.test(name))return'straight';if(/弯剪/.test
 function match(product,series){if(series==='all')return true;const text=[product.displayName||'',product.name||'',product.desc||'',product.description||'',product.series||'',product.series_name||''].join(' ').toLowerCase();return series==='accessories'?/(配件|套装|收纳|养护|保养|服务)/.test(text):text.includes(series)}
 function all(sections){const seen=new Set(),out=[];(sections||[]).forEach(section=>{(section.products||[]).forEach(item=>{if(seen.has(String(item.id)))return;seen.add(String(item.id));out.push({...item,categoryId:section.id,categoryName:section.name,displayName:item.short_name||item.name||'未命名商品',image:api.productImage(item)||'/static/navigation/sravx-mark.png'})})});return out}
 const catalogView = {
+  // #ifdef H5
+  mounted() {
+    this.catalogHashListener = () => this.applyCatalogRoute()
+    window.addEventListener('hashchange', this.catalogHashListener)
+    this.applyCatalogRoute()
+  },
+  onShow() { this.applyCatalogRoute() },
+  // #endif
   data() { return { categoryCanLeft: false, categoryCanRight: false, lineupCanLeft: false, lineupCanRight: false } },
   updated() {
     this.measureCategories()
@@ -98,11 +109,27 @@ const catalogView = {
       this.lineupResizeObserver.observe(lineup)
     }
   },
-  beforeUnmount() { if (this.categoryResizeObserver) this.categoryResizeObserver.disconnect(); if (this.lineupResizeObserver) this.lineupResizeObserver.disconnect() },
+  beforeUnmount() {
+    if (this.categoryResizeObserver) this.categoryResizeObserver.disconnect()
+    if (this.lineupResizeObserver) this.lineupResizeObserver.disconnect()
+    // #ifdef H5
+    window.removeEventListener('hashchange', this.catalogHashListener)
+    // #endif
+  },
   watch: {
     activeSeries() { this.$nextTick(() => { const viewport = this.categoryElement(); if (viewport) viewport.scrollLeft = 0; this.measureCategories() }) }
   },
   methods: {
+    // #ifdef H5
+    applyCatalogRoute() {
+      const route = catalogRoute(window.location.hash)
+      if (!route) return
+      this.viewMode = 'catalog'
+      this.activeSeries = route.series
+      this.activeToolGroup = route.tool
+      this.activeSubCategory = 'all'
+    },
+    // #endif
     buyCategory(tool) {
       const query = '?series=' + encodeURIComponent(this.activeSeries) + '&tool=' + encodeURIComponent(tool)
       if (typeof window !== 'undefined') window.location.hash = '#/pages/purchase/index' + query

@@ -3,26 +3,15 @@
     <SravxH5GlobalNav />
     <view class="purchase-content">
       <button class="purchase-back" @click="back">‹ 返回产品目录</button>
-      <text class="purchase-eyebrow">SRAVX PROFESSIONAL TOOLS</text>
-      <text class="purchase-title">选购 {{ seriesLabel }} {{ toolLabel }}</text>
-      <text class="purchase-intro">选择商品，继续查看型号、颜色与产品参数。</text>
-      <view v-if="loading" class="purchase-state">正在加载商品</view>
+      <view v-if="loading" class="purchase-state">正在进入商品选配…</view>
       <view v-else-if="error" class="purchase-state"><text>{{ error }}</text><button @click="load">重新加载</button></view>
       <view v-else-if="!products.length" class="purchase-state">该系列剪型暂无可选商品。</view>
-      <view v-else class="purchase-products">
-        <view v-for="product in products" :key="product.id" class="purchase-product">
-          <image :src="apiImage(product)" mode="aspectFit" />
-          <view class="purchase-copy"><text>{{ product.short_name || product.name }}</text><text>{{ product.desc || product.description || '查看商品详情与可选规格' }}</text><button @click="detail(product.id)">选择型号与颜色 ›</button></view>
-        </view>
-      </view>
     </view>
   </view>
 </template>
 <script>
 import api from '../../common/api.js'
 import SravxH5GlobalNav from '../../components/SravxH5GlobalNav.vue'
-const seriesNames = { all: 'SRAVX', basic: 'SRAVX Basic', pro: 'SRAVX Pro', master: 'SRAVX Master', accessories: 'SRAVX 配件' }
-const toolNames = { straight: '直剪', curved: '弯剪', thinning: '牙剪', fishbone: '鱼骨剪', texturizing: '造型剪' }
 function productTool(name) {
   if (/直剪/.test(name)) return 'straight'
   if (/弯剪/.test(name)) return 'curved'
@@ -33,11 +22,10 @@ function productTool(name) {
 }
 export default {
   components: { SravxH5GlobalNav },
-  data() { return { series: 'all', tool: '', products: [], loading: true, error: '' } },
-  computed: { seriesLabel() { return seriesNames[this.series] || 'SRAVX' }, toolLabel() { return toolNames[this.tool] || '' } },
+  data() { return { series: 'all', tool: '', products: [], loading: true, error: '', active: true } },
   onLoad(query) { this.series = query.series || 'all'; this.tool = query.tool || ''; this.load() },
+  onUnload() { this.active = false },
   methods: {
-    apiImage(product) { return api.productImage(product) || '/static/navigation/sravx-mark.png' },
     async load() {
       this.loading = true; this.error = ''
       try {
@@ -50,11 +38,14 @@ export default {
           if (seen.has(String(product.id)) || (this.series !== 'all' && !seriesText.includes(this.series)) || (this.tool && productTool(toolText) !== this.tool)) return false
           seen.add(String(product.id)); return true
         })
+        // Resolve the current category's default product without another selection screen.
+        // Replace this route so Back does not reopen the resolver and bounce forward.
+        if (this.active && this.products.length) await this.detail(this.products[0].id)
       } catch (error) { this.error = error.message || '商品加载失败，请重试。' }
       finally { this.loading = false }
     },
     back() { if (typeof window !== 'undefined') { window.location.hash = '#/pages/shop/index' + (this.series === 'all' ? '' : '?series=' + encodeURIComponent(this.series)); return } uni.navigateBack() },
-    detail(id) { uni.navigateTo({ url: '/pages/product-detail/index?id=' + encodeURIComponent(id) }) }
+    detail(id) { return new Promise((resolve, reject) => uni.redirectTo({ url: '/pages/product-detail/index?id=' + encodeURIComponent(id) + '&series=' + encodeURIComponent(this.series) + '&tool=' + encodeURIComponent(this.tool), success: resolve, fail: () => reject(new Error('进入商品选配失败，请重试。')) })) }
   }
 }
 </script>
