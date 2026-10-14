@@ -1,8 +1,8 @@
-# 接口函数说明
+# 接口调用备忘
 
-这份文档按前端会调用的函数整理。代码位置：用户端`sravx/common/api.js`，后台`admin-web/src/api/admin.ts`，后台登录/上传`admin-web/src/lib/target-admin-auth.ts`。
+把常用请求按模块记在这里，写页面时查函数名、参数和结果。用户端在`sravx/common/api.js`，后台在`admin-web/src/api/admin.ts`，后台登录和上传在`admin-web/src/lib/target-admin-auth.ts`。
 
-## 先了解这几件事
+## 通用约定
 
 - 用户端和后台请求函数大多返回Promise，需要用await；失败抛出Error，页面负责提示。
 - 后端JSON成功格式为`{ success: true, data: ... }`，失败为`{ success: false, error: { code, message } }`。封装函数已经取出data，不要再读一次result.data。
@@ -30,7 +30,7 @@
 | asList(value) | 接口列表结果 | 把数组、list或products等格式转为数组 |
 | productName(item)、productImage(item) | 商品对象 | 显示名称或封面；不发送请求 |
 
-读取示例（不会下单）：
+商品列表调用：
 
 ```js
 import api from '@/common/api.js'
@@ -44,7 +44,7 @@ try {
 }
 ```
 
-对应公开路径：GET `/api/v1/catalog/home`、`products`、`products/:id`、`categories`、`banners`、`points-products`、`points-products/:id`。官网当前同域只转发公开目录，不能据此认为网页用户登录或交易已经可用。
+对应公开路径：GET `/api/v1/catalog/home`、`products`、`products/:id`、`categories`、`banners`、`points-products`、`points-products/:id`。官网同域代理目前只处理公开目录，网页登录和交易需要另外接入、验收。
 
 ## 用户端：资料和地址
 
@@ -114,7 +114,7 @@ try {
 
 ## 管理端：函数按用途查
 
-管理函数返回类型和输入字段都定义在admin.ts中。列表通常有查询对象query，保存通常有payload；下表不把每个可选字段重复写一遍，新增字段请同时检查代码类型。
+管理函数的字段和返回类型在admin.ts里。列表通常传query，保存通常传payload；下面记主要用途。加字段时一起更新类型、请求内容和这份说明。
 
 | 用途及函数 | 主要参数 | 返回或注意事项 |
 |---|---|---|
@@ -132,7 +132,7 @@ try {
 | fetchOrders、fetchOrderById、fetchPointsOrders、fetchPointsOrderDetail | 查询或订单id | 普通/积分订单列表与详情 |
 | fetchPendingShipOrders、updateOrderShippingAddress、shipOrders、retryWechatShipping、delayOrderShipping | 查询、订单/地址payload、物流资料 | 待发货、地址更新、发货或延迟结果；可能影响真实订单 |
 | fetchAdminRefunds、fetchPendingRefundCount、fetchAdminRefundDetail、reviewAdminRefund、executeAdminRefund | 查询、requestId、审核payload | 列表/数量/详情/审核或执行状态；到账仍看最终状态 |
-| fetchUsers、fetchUsersWithTotal、fetchAdminUserDetail、updateAdminUser | 查询、用户id或修改payload | 用户列表/详情/更新；不要在演示中使用真实资料 |
+| fetchUsers、fetchUsersWithTotal、fetchAdminUserDetail、updateAdminUser | 查询、用户id或修改payload | 用户列表/详情/更新；日志和调试只使用脱敏或模拟资料 |
 | fetchScissorsAfterSales、fetchAfterSaleServiceAddresses、saveAfterSaleServiceAddress、updateScissorsAfterSale、replyScissorsAfterSale | 查询、售后payload、id和回复内容 | 售后工单、服务地址及处理结果 |
 | fetchGiftCards、fetchGiftRecords、fetchGiftCardOptions、checkGiftCardCode、createGiftCard、importGiftCards、updateGiftCard | 查询、兑换码或保存/导入payload | 礼品卡及兑换记录；不要打印真实兑换码 |
 | fetchAdminCoupons、previewCouponTargets、issueAdminCoupon、deleteAdminCoupon | 查询、预览条件或发券payload、id | 活动列表、预览、发券结果；发券是业务操作 |
@@ -140,7 +140,7 @@ try {
 | fetchAdminBanners、fetchAdminBannerDetail、saveAdminBanner、toggleAdminBanner、updateAdminBannerSort、deleteAdminBanner、fetchBanners | 查询、id、轮播payload、状态/排序 | 轮播列表、详情和保存结果 |
 | fetchInquiries、updateInquiryStatus | 查询、id和status | 咨询列表、状态更新 |
 | fetchCouponRules、setCouponRule、deleteCouponRule | 旧规则参数 | 旧云开发入口，当前适配器拒绝调用，不当作已接入功能 |
-| sfShip、sfBatchShip、sfConfirmShip、sfWaybillPrint、sfRoute、sfCancelWaybill、sfInterceptWaybill、sfHealth | 旧顺丰参数 | 当前服务器模式拒绝旧物流入口，不执行真实演示 |
+| sfShip、sfBatchShip、sfConfirmShip、sfWaybillPrint、sfRoute、sfCancelWaybill、sfInterceptWaybill、sfHealth | 旧顺丰参数 | 当前服务器模式拒绝旧物流入口，先不调用 |
 
 后台常用路径：`/api/v1/admin/products`、`categories`、`orders`、`refund-requests`、`media/upload-intents`。具体HTTP方法、字段和状态以函数及server.js为准，不是所有函数都等于一个独立HTTP接口。
 
@@ -155,4 +155,4 @@ try {
 
 先看页面是否登录、请求路径和方法是否正确，再看Error.message或HTTP状态。401先检查会话，403先检查权限或代理限制，404确认记录是否存在，503可能是对应服务未配置或暂时不可用；不要直接换到旧云函数。
 
-本说明按当前代码整理，不等于生产下单、退款、发货都已重新验收。写接口只在获准测试环境中调用。
+维护时记一下：函数能调用不代表整个业务流程已验收。修改下单、退款、发货相关内容后，先在测试环境检查，不直接用线上订单调试。
