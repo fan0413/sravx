@@ -128,7 +128,7 @@
         <template #default="{ row }">
           <template v-if="targetMode">
             <el-button link type="primary" @click="router.push(`/product/edit/${row.id}`)">编辑商品</el-button>
-            <el-button link type="primary" @click="router.push(`/product/variants/${row.id}`)">型号与 SKU</el-button>
+            <el-button link type="primary" @click="router.push(`/product/edit/${row.id}`)">商品规格</el-button>
             <el-button link type="danger" @click="handleDelete(row)">删除商品</el-button>
           </template>
           <template v-else>

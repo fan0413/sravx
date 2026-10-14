@@ -2,7 +2,8 @@ import { createRouter, createWebHashHistory, type RouteRecordRaw } from "vue-rou
 import AdminLayout from "../layout/AdminLayout.vue";
 import { adminLoggedIn } from "../lib/admin-auth";
 import { targetAdminCatalogModeEnabled, targetAdminLoggedIn, targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
-import { isWorkspacePath } from '../lib/admin-workspace';
+import { isWorkspacePath, isWorkspaceEditorPath } from '../lib/admin-workspace';
+import { ElMessageBox } from 'element-plus';
 
 const routes: RouteRecordRaw[] = [
   {
@@ -14,10 +15,10 @@ const routes: RouteRecordRaw[] = [
   {
     path: "/",
     component: AdminLayout,
-    redirect: "/dashboard",
+    redirect: "/channel/common",
     children: [
       {
-        path: 'channel/:channel(web|miniprogram)',
+        path: 'channel/:channel(common|web|miniprogram)',
         name: 'ChannelWorkspace',
         component: () => import('../views/channel/ChannelWorkspace.vue'),
         meta: { title: '渠道功能工作区' }
@@ -49,8 +50,8 @@ const routes: RouteRecordRaw[] = [
       {
         path: "product/variants/:id",
         name: "ProductVariants",
-        component: () => import("../views/product/ProductVariants.vue"),
-        meta: { title: "型号与 SKU" }
+        redirect: to => `/product/edit/${String(to.params.id)}`,
+        meta: { title: "商品规格" }
       },
       {
         path: "points-product/list",
@@ -170,7 +171,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: "/:pathMatch(.*)*",
-    redirect: "/dashboard"
+    redirect: "/channel/common"
   }
 ];
 
@@ -179,7 +180,7 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach(async (to) => {
+router.beforeEach(async (to, from) => {
   if (to.meta.public) return true;
   if (targetAdminModeEnabled()) {
     const path = to.path;
@@ -188,7 +189,17 @@ router.beforeEach(async (to) => {
     if (!catalogRoute && !operationsRoute && !isWorkspacePath(path)) return { path: targetAdminCatalogModeEnabled() ? "/dashboard" : "/user/list" };
   }
   const loggedIn = targetAdminModeEnabled() ? await targetAdminLoggedIn() : await adminLoggedIn();
-  if (loggedIn) return true;
+  if (loggedIn) {
+    if (isWorkspacePath(to.path) && isWorkspaceEditorPath(from.path)) {
+      try {
+        await ElMessageBox.confirm('切换管理界面将离开当前编辑页，未保存内容不会保留。是否继续？', '离开编辑页', { confirmButtonText: '继续切换', cancelButtonText: '留在编辑页', type: 'warning' });
+      } catch (action) {
+        if (action === 'cancel' || action === 'close') return false;
+        throw action;
+      }
+    }
+    return true;
+  }
   return {
     path: "/login",
     query: { redirect: to.fullPath }

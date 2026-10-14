@@ -1,9 +1,7 @@
 <script>
-// 旧订单等尚未切走的能力仍通过 CloudBase 兼容层读取。
-// 导航和页面 UI 均由 UniApp/Vue 实现；此初始化会在旧链路完成核验后统一移除。
+// Both clients use the server API; the expired cloud environment is not initialized.
 export default {
   onLaunch() {
-    if (wx.cloud) wx.cloud.init({ env: 'cloud1-3g5eswzf0c3a9e0e', traceUser: true })
   }
 }
 </script>

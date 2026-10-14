@@ -11,6 +11,7 @@
           <el-option label="已通过" value="approved" />
           <el-option label="处理中" value="processing" />
           <el-option label="已拒绝" value="rejected" />
+          <el-option label="已退款" value="refunded" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -42,24 +43,10 @@
       <el-table-column prop="reason" label="退款原因" min-width="180" />
       <el-table-column prop="admin_note" label="审核备注" min-width="180" />
       <el-table-column prop="created_at" label="申请时间" min-width="170" />
-      <el-table-column label="操作" width="180" fixed="right">
+      <el-table-column label="操作" width="290" fixed="right">
         <template #default="{ row }">
-          <el-button
-            link
-            type="success"
-            :disabled="row.status !== 'pending_review'"
-            @click="handleApprove(row)"
-          >
-            审核通过
-          </el-button>
-          <el-button
-            link
-            type="danger"
-            :disabled="row.status !== 'pending_review'"
-            @click="handleReject(row)"
-          >
-            拒绝
-          </el-button>
+          <el-button link type="primary" @click="handleOpenDetail(row)">详情</el-button>
+          <RefundActions :request-id="Number(row.id)" :status="row.status" :amount="row.requested_amount" @changed="loadRows" />
         </template>
       </el-table-column>
     </el-table>
@@ -78,9 +65,10 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from "vue";
-import { ElMessage, ElMessageBox } from "element-plus";
+import { ElMessage } from "element-plus";
 import { useRoute, useRouter } from "vue-router";
-import { fetchAdminRefunds, reviewAdminRefund, type RefundRow } from "../../api/admin";
+import { fetchAdminRefunds, type RefundRow } from "../../api/admin";
+import RefundActions from '../../components/RefundActions.vue';
 
 const query = reactive({
   orderNo: "",
@@ -99,7 +87,8 @@ const REFUND_STATUS_MAP: Record<string, string> = {
   pending_review: "待审核",
   approved: "已通过",
   processing: "处理中",
-  rejected: "已拒绝"
+  rejected: "已拒绝",
+  refunded: "已退款"
 };
 
 const ORDER_STATUS_MAP: Record<string, string> = {
@@ -156,55 +145,18 @@ const handleOpenDetail = (row: RefundRow) => {
   router.push(`/refund/detail/${row.id}`);
 };
 
-const handleApprove = async (row: RefundRow) => {
-  try {
-    await ElMessageBox.confirm(`确认通过退款申请 #${row.id} 吗？`, "审核通过", {
-      confirmButtonText: "确认",
-      cancelButtonText: "取消",
-      type: "warning"
-    });
-    await reviewAdminRefund({
-      requestId: Number(row.id),
-      decision: "approve"
-    });
-    ElMessage.success("已审核通过");
-    await loadRows();
-  } catch (error) {
-    if (error === "cancel" || error === "close") return;
-    ElMessage.error(error instanceof Error ? error.message : "审核失败");
-  }
-};
-
-const handleReject = async (row: RefundRow) => {
-  try {
-    const { value } = await ElMessageBox.prompt(`请填写拒绝原因（申请 #${row.id}）`, "拒绝退款", {
-      confirmButtonText: "确认拒绝",
-      cancelButtonText: "取消",
-      inputPlaceholder: "可选，最多255字"
-    });
-    await reviewAdminRefund({
-      requestId: Number(row.id),
-      decision: "reject",
-      adminNote: String(value || "").trim()
-    });
-    ElMessage.success("已拒绝该申请");
-    await loadRows();
-  } catch (error) {
-    if (error === "cancel" || error === "close") return;
-    ElMessage.error(error instanceof Error ? error.message : "操作失败");
-  }
-};
-
 onMounted(async () => {
+  query.orderNo = String(route.query.orderNo || "").trim();
   query.status = String(route.query.status || "").trim();
   query.page = 1;
   await loadRows();
 });
 
 watch(
-  () => route.query.status,
-  async (status) => {
-    query.status = String(status || "").trim();
+  () => [route.query.status, route.query.orderNo],
+  async () => {
+    query.status = String(route.query.status || "").trim();
+    query.orderNo = String(route.query.orderNo || "").trim();
     query.page = 1;
     await loadRows();
   }

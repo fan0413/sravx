@@ -66,3 +66,5 @@ await Promise.all(userMenuAssets.map(async (fileName) => {
 
 
 console.log(`微信小程序构建配置有效：${appConfig.pages.length} 个页面，subPackages=${appConfig.subPackages.length}；请从 dist/build/mp-weixin 导入。`);
+await import('./verify-payment-test-build.mjs');
+await import('./verify-navigation-build.mjs');

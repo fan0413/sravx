@@ -39,7 +39,7 @@ export function createMysqlAdminOperationsRepository(pool) {
       if (users.length !== 1) return null;
       const [addresses] = await pool.execute(
         `SELECT a.id, a.contact, a.name, a.phone, a.province, a.city, a.district, a.detail, a.is_default, a.tag, a.created_at, a.updated_at
-           FROM addresses a INNER JOIN users u ON u.openid = a.openid
+           FROM addresses a INNER JOIN users u ON u.openid COLLATE utf8mb4_bin = a.openid COLLATE utf8mb4_bin
           WHERE u.id = ? ORDER BY a.is_default DESC, a.id DESC`,
         [userId]
       );

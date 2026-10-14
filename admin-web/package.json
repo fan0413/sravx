@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@cloudbase/js-sdk": "^2.27.5",
     "element-plus": "^2.13.7",
     "vue": "^3.5.32",
     "vue-router": "^4.6.4"

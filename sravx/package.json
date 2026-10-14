@@ -4,15 +4,20 @@
   "private": true,
   "description": "Sravx uni-app Vue 3 client",
   "scripts": {
+    "dev:h5": "cross-env UNI_INPUT_DIR=. uni -p h5",
+    "build:h5": "cross-env UNI_INPUT_DIR=. uni build -p h5 && node scripts/prepare-h5-static.mjs",
+    "preview:h5": "cross-env UNI_INPUT_DIR=. vite preview --outDir dist/build/h5",
+    "build:mp-weixin:payment-test": "npm run build:mp-weixin",
     "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin && node scripts/verify-wechat-build.mjs",
-    "build:mp-weixin:target-safe": "cross-env UNI_INPUT_DIR=. VITE_SRAVX_API_MIGRATION=true VITE_SRAVX_API_PROFILE=true VITE_SRAVX_API_USER_READ=true VITE_SRAVX_API_ADDRESSES=true VITE_SRAVX_API_INQUIRIES=true VITE_SRAVX_API_TOOLS_READ=true uni build -p mp-weixin && node scripts/verify-wechat-build.mjs",
-    "build:mp-weixin:target-services": "cross-env UNI_INPUT_DIR=. VITE_SRAVX_API_MIGRATION=true VITE_SRAVX_API_PROFILE=true VITE_SRAVX_API_USER_READ=true VITE_SRAVX_API_ADDRESSES=true VITE_SRAVX_API_INQUIRIES=true VITE_SRAVX_API_TOOLS_READ=true VITE_SRAVX_API_TOOLS_WRITE=true VITE_SRAVX_API_AFTER_SALES=true VITE_SRAVX_API_COUPONS=true VITE_SRAVX_API_GIFT_CARDS=true uni build -p mp-weixin && node scripts/verify-wechat-build.mjs",
-    "build:mp-weixin:target-orders-rehearsal": "cross-env UNI_INPUT_DIR=. VITE_SRAVX_API_MIGRATION=true VITE_SRAVX_API_PROFILE=true VITE_SRAVX_API_USER_READ=true VITE_SRAVX_API_ADDRESSES=true VITE_SRAVX_API_INQUIRIES=true VITE_SRAVX_API_TOOLS_READ=true VITE_SRAVX_API_TOOLS_WRITE=true VITE_SRAVX_API_AFTER_SALES=true VITE_SRAVX_API_COUPONS=true VITE_SRAVX_API_GIFT_CARDS=true VITE_SRAVX_API_ORDERS=true VITE_SRAVX_API_PAYMENTS=true uni build -p mp-weixin && node scripts/verify-wechat-build.mjs",
-    "build:mp-weixin:structured-checkout-rehearsal": "cross-env UNI_INPUT_DIR=. VITE_SRAVX_API_MIGRATION=true VITE_SRAVX_API_PROFILE=true VITE_SRAVX_API_USER_READ=true VITE_SRAVX_API_ADDRESSES=true VITE_SRAVX_API_ORDERS=true VITE_SRAVX_API_PAYMENTS=true VITE_SRAVX_API_STRUCTURED_CHECKOUT=true uni build -p mp-weixin && node scripts/verify-wechat-build.mjs"
+    "build:mp-weixin:target-safe": "npm run build:mp-weixin",
+    "build:mp-weixin:target-services": "npm run build:mp-weixin",
+    "build:mp-weixin:target-orders-rehearsal": "npm run build:mp-weixin",
+    "build:mp-weixin:structured-checkout-rehearsal": "npm run build:mp-weixin"
   },
   "dependencies": {
     "@dcloudio/uni-app": "3.0.0-alpha-5020520260821001",
     "@dcloudio/uni-components": "3.0.0-alpha-5020520260821001",
+    "@dcloudio/uni-h5": "3.0.0-alpha-5020520260821001",
     "@dcloudio/uni-mp-weixin": "3.0.0-alpha-5020520260821001",
     "vue": "3.4.21"
   },

@@ -1,4 +1,6 @@
 <template>
+  <sravx-page-back root-only />
+
   <view class="page">
     <view v-if="!showEditor" class="address-list">
       <view v-for="(address, index) in addresses" :key="address.id || index" class="address-card" :class="{ selectable: selectMode, selected: Number(selectedId) === Number(address.id) }" @tap="selectAddress(address)">
@@ -21,11 +23,14 @@
 </template>
 
 <script>
+import SravxPageBack from '../../components/sravx-page-back/sravx-page-back.vue'
+
 import api from '../../common/api.js'
 
 const emptyForm = () => ({ name: '', phone: '', province: '', city: '', district: '', detail: '', tag: '', is_default: 0 })
-export default {
-  data() { return { addresses: [], loading: true, showEditor: false, form: emptyForm(), editingId: null, from: '', selectMode: false, selectedId: null } },
+const addressError = (error, fallback) => error?.statusCode === 401 ? '登录已失效，请重新登录后管理地址' : fallback
+export default {components:{SravxPageBack},
+  data() { return { addresses: [], loading: true, loaded: false, saving: false, showEditor: false, form: emptyForm(), editingId: null, from: '', selectMode: false, selectedId: null } },
   computed: {
     region() { return [this.form.province, this.form.city, this.form.district] },
     regionText() { return this.region.filter(Boolean).join(' ') }
@@ -34,7 +39,7 @@ export default {
   onShow() { if (this.loaded) this.loadAddresses() },
   methods: {
     addressText(address) { return `${address.province || ''}${address.city || ''}${address.district || ''}${address.detail || address.address || ''}` || '地址信息不完整' },
-    async loadAddresses() { this.loading = true; try { const result = await api.getAddressList(); this.addresses = api.asList(result) } catch (error) { this.addresses = []; uni.showToast({ title: error.message || '地址加载失败', icon: 'none' }) } finally { this.loading = false; this.loaded = true } },
+    async loadAddresses() { this.loading = true; try { const result = await api.getAddressList(); this.addresses = api.asList(result) } catch (error) { this.addresses = []; uni.showToast({ title: addressError(error, '地址加载失败，请稍后重试'), icon: 'none' }) } finally { this.loading = false; this.loaded = true } },
     newAddress() { this.editingId = null; this.form = emptyForm(); this.showEditor = true },
     editAddress(index) { const address = this.addresses[index]; if (!address) return; this.editingId = address.id; this.form = { ...emptyForm(), ...address, name: address.name || address.contact || '' }; this.showEditor = true },
     changeRegion(event) { const [province, city, district] = event.detail.value; this.form.province = province; this.form.city = city; this.form.district = district },
@@ -46,17 +51,20 @@ export default {
       uni.navigateBack()
     },
     async saveAddress() {
+      if (this.saving) return
       const item = this.form
       if (!item.name || !item.phone || !item.province || !item.detail) return uni.showToast({ title: '请填写完整信息', icon: 'none' })
+      if (!/^1\d{10}$/.test(item.phone)) return uni.showToast({ title: '请输入11位手机号', icon: 'none' })
+      this.saving = true
       uni.showLoading({ title: '保存中...', mask: true })
       try {
         const payload = { ...item, id: this.editingId || undefined }
         const saved = this.editingId ? await api.updateAddress(payload) : await api.addAddress(payload)
         const selected = { ...item, id: this.editingId || (saved && saved.id), contact: item.name }
         uni.hideLoading(); uni.showToast({ title: '保存成功', icon: 'success' })
-        if (this.from === 'giftCard' && selected.id) { uni.setStorageSync('sravx_gift_card_address', selected); uni.navigateBack(); return }
+        if (this.selectMode && selected.id) { this.selectAddress(selected); return }
         this.showEditor = false; await this.loadAddresses()
-      } catch (error) { uni.hideLoading(); uni.showToast({ title: error.message || '保存失败', icon: 'none' }) }
+      } catch (error) { uni.hideLoading(); uni.showToast({ title: addressError(error, '地址保存失败，请稍后重试'), icon: 'none' }) } finally { this.saving = false }
     },
     removeAddress(address) { uni.showModal({ content: '确定删除该地址？', confirmColor: '#0B0D10', success: async ({ confirm }) => { if (!confirm) return; try { await api.deleteAddress(address.id); uni.showToast({ title: '删除成功', icon: 'success' }); this.loadAddresses() } catch (error) { uni.showToast({ title: error.message || '删除失败', icon: 'none' }) } } }) }
   }

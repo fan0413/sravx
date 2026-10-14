@@ -1,6 +1,7 @@
 <template>
   <view class="page-shell">
     <view class="top-nav" :style="{ height: `${navHeight}px`, paddingTop: `${navTop}px` }">
+      <sravx-page-back mode="nav" />
       <text class="nav-title">我的</text>
     </view>
     <scroll-view scroll-y class="page" :style="{ paddingTop: `${navHeight}px` }">
@@ -17,6 +18,8 @@
 </template>
 
 <script>
+import SravxPageBack from '../../components/sravx-page-back/sravx-page-back.vue'
+
 import api from '../../common/api.js'
 import auth from '../../common/auth.js'
 import SravxTabBar from '../../components/SravxTabBar.vue'
@@ -24,7 +27,7 @@ const levels = ['', 'LV1', 'LV2', 'LV3', 'LV4', 'LV5', 'LV6']
 const styles = ['', 'normal', 'silver', 'gold', 'diamond', 'black-diamond', 'supreme']
 const scoreLevel = points => points >= 40000 ? 6 : points >= 20000 ? 5 : points >= 8000 ? 4 : points >= 3000 ? 3 : points >= 1200 ? 2 : 1
 export default {
-  components: { SravxTabBar },
+  components: { SravxPageBack,  SravxTabBar },
   data() { return {
     serviceIcon: '/static/user-menu/headphones-neutral.png', navTop: 8, navHeight: 56,
     user: { username: 'Sravx 用户', avatar: '/static/navigation/sravx-mark.png', phone: '' }, memberLevel: 'LV1', levelClass: 'normal', points: 0, couponCount: 0, scissorsList: [],

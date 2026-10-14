@@ -47,6 +47,9 @@
     <el-card shadow="never">
       <el-table :data="rows" border v-loading="loading" row-key="id">
         <el-table-column prop="id" label="ID" width="90" />
+        <el-table-column label="所属系列" width="140">
+          <template #default="{ row }">{{ row.parent_id ? hierarchyRows.find(item => item.id === row.parent_id)?.name || '父级缺失' : '顶级系列' }}</template>
+        </el-table-column>
         <el-table-column label="分类名称" min-width="180">
           <template #default="{ row }">
             <div class="name-cell">
@@ -86,6 +89,11 @@
 
     <el-dialog v-model="dialogVisible" :title="editingId ? '编辑分类' : '新增分类'" width="560px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="96px">
+        <el-form-item label="所属系列">
+          <el-select v-model="form.parent_id" placeholder="顶级系列" clearable>
+            <el-option v-for="row in parentOptions" :key="row.id" :label="row.name" :value="row.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="分类名称" prop="name">
           <el-input v-model="form.name" maxlength="40" show-word-limit placeholder="请输入分类名称" />
         </el-form-item>
@@ -150,8 +158,10 @@ import {
 } from "../../api/admin";
 import type { CategoryRow } from "../../api/types";
 import { targetAdminCatalogModeEnabled } from "../../lib/target-admin-auth";
+import { seriesKey } from "../../../../sravx/common/product-classification.mjs";
 
 const rows = ref<CategoryRow[]>([]);
+const hierarchyRows = ref<CategoryRow[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 const total = ref(0);
@@ -160,6 +170,7 @@ const editingId = ref<number | null>(null);
 const formRef = ref<FormInstance>();
 const targetMode = targetAdminCatalogModeEnabled();
 const sortedRows = computed(() => [...rows.value].sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0)));
+const parentOptions = computed(() => hierarchyRows.value.filter(row => !row.parent_id && row.id !== editingId.value && Boolean(seriesKey(row.name))));
 
 const query = reactive<CategoryQuery>({
   keyword: "",
@@ -204,6 +215,7 @@ async function loadCategories() {
   try {
     const result = await fetchAdminCategories(query);
     rows.value = result.list;
+    hierarchyRows.value = query.keyword || query.is_show !== "" ? (await fetchAdminCategories()).list : result.list;
     total.value = result.total;
   } finally {
     loading.value = false;
@@ -263,10 +275,16 @@ function handleImageChange(file: UploadFile) {
 
 async function handleSubmit() {
   await formRef.value?.validate();
+  const parent = parentOptions.value.find(row => row.id === form.parent_id);
+  if (form.parent_id && !parent) { ElMessage.warning("请选择有效的顶级系列，不能关联自身或子分类"); return; }
+  if (form.parent_id && seriesKey(form.name)) { ElMessage.warning("系列应为顶级分类，不能放在另一个系列下"); return; }
+  if (!form.parent_id && !seriesKey(form.name)) { ElMessage.warning("顶级分类请选择 Basic、Pro、Master 或配件；工具分类请先选择所属系列"); return; }
   saving.value = true;
   try {
     const payload: CategoryInput = {
       ...form,
+      parent_id: parent?.id ?? null,
+      level: parent ? 2 : 1,
       name: form.name.trim(),
       description: form.description?.trim(),
       icon: form.icon?.trim(),
@@ -294,6 +312,7 @@ async function handleToggle(row: CategoryRow) {
 }
 
 async function handleDelete(row: CategoryRow) {
+  if (hierarchyRows.value.some(item => item.parent_id === row.id)) { ElMessage.warning("该系列仍有细分类，不能删除"); return; }
   if (row.product_count) {
     ElMessage.warning("该分类下仍有商品，不能删除");
     return;

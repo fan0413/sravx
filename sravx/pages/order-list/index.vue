@@ -59,6 +59,8 @@
 </template>
 
 <script>
+import { goBackOrParent } from '../../common/navigation.mjs'
+
 import api from '../../common/api.js'
 import auth from '../../common/auth.js'
 import SravxTabBar from '../../components/SravxTabBar.vue'
@@ -136,15 +138,15 @@ export default {
     refresh() { this.refreshing = true; this.fetchOrders() },
     changeTab(tab) { if (tab !== this.activeTab) { this.activeTab = tab; this.activeOrderType = 'goods'; this.fetchOrders() } },
     changeOrderType(type) { this.activeOrderType = type; this.syncDisplay() },
-    goBack() { uni.navigateBack() },
+    goBack() { goBackOrParent('/pages/index/index') },
     goShop() { uni.reLaunch({ url: '/pages/index/index' }) },
-    openOrder(order) { uni.navigateTo({ url: `${order.orderType === 'points' ? '/pages/points-order-detail/index?id=' : '/pages/order-detail/index?id='}${order.id}${order.orderType === 'points' ? '' : `&backend=${encodeURIComponent(order.__sravxOrderBackend || 'cloud')}`}` }) },
+    openOrder(order) { uni.navigateTo({ url: `${order.orderType === 'points' ? '/pages/points-order-detail/index?id=' : '/pages/order-detail/index?id='}${order.id}${order.orderType === 'points' ? '' : `&backend=${encodeURIComponent(order.__sravxOrderBackend || 'target')}`}` }) },
     cancelOrder(order) { uni.showModal({ title: '确认取消', content: '确定要取消该订单吗？', confirmColor: '#0B0D10', success: async ({ confirm }) => { if (!confirm) return; try { await (order.orderType === 'points' ? api.cancelPointsOrder(order.id) : api.cancelOrder(order.id, order.__sravxOrderBackend)); uni.showToast({ title: '订单已取消', icon: 'success' }); this.fetchOrders() } catch (error) { uni.showToast({ title: error.message || '取消失败', icon: 'none' }) } } }) },
     confirmReceive(order) { uni.showModal({ title: '确认收货', content: '确认已收到商品？', confirmColor: '#0B0D10', success: async ({ confirm }) => { if (!confirm) return; try { await api.confirmReceive(order.id, order.__sravxOrderBackend); uni.showToast({ title: '已确认收货', icon: 'success' }); this.fetchOrders() } catch (error) { uni.showToast({ title: error.message || '操作失败', icon: 'none' }) } } }) },
     refundGoods(order) { uni.navigateTo({ url: `/pages/order-after-sale/index?orderId=${order.id}&type=refund&backend=${encodeURIComponent(order.__sravxOrderBackend || 'cloud')}` }) },
     afterSale(order) { uni.navigateTo({ url: `/pages/order-after-sale/index?orderId=${order.id}&type=aftersale&backend=${encodeURIComponent(order.__sravxOrderBackend || 'cloud')}` }) },
     canRefundPoints(order) { return ['paid', 'pending_send', 'cancelled', 'shipped', 'completed'].includes(order.status) },
-    refundPoints(order) { uni.showModal({ title: '申请退款', content: '确认提交积分订单退款申请？未发货或已取消的订单会自动退款，其余状态由后台审批。', confirmColor: '#0B0D10', success: async ({ confirm }) => { if (!confirm) return; try { const result = await api.applyPointsRefundRequest({ orderId: Number(order.id), refundReason: '用户发起退款申请' }); uni.showToast({ title: result && result.autoRefund ? '已自动退款' : '已提交审批', icon: 'success' }); this.fetchOrders() } catch (error) { uni.showToast({ title: error.message || '申请失败', icon: 'none' }) } } }) },
+    refundPoints(order) { uni.showModal({ title: '申请退款', content: '确认提交积分订单退款申请？积分退款功能尚未接入，请联系客服处理。', confirmColor: '#0B0D10', success: async ({ confirm }) => { if (!confirm) return; try { const result = await api.applyPointsRefundRequest({ orderId: Number(order.id), refundReason: '用户发起退款申请' }); uni.showToast({ title: result && result.autoRefund ? '已自动退款' : '已提交审批', icon: 'success' }); this.fetchOrders() } catch (error) { uni.showToast({ title: error.message || '申请失败', icon: 'none' }) } } }) },
     async payPointsOrder(order) {
       try { uni.showLoading({ title: '调起支付...', mask: true }); const payment = await api.createPaymentOrder({ orderId: Number(order.id), orderType: 'points', description: order.displayName || 'Sravx 积分订单' }); if (!payment || !payment.timeStamp || !payment.nonceStr || !payment.package || !payment.paySign) throw new Error('支付参数不完整，请稍后重试'); uni.hideLoading(); await uni.requestPayment({ timeStamp: payment.timeStamp, nonceStr: payment.nonceStr, package: payment.package, signType: payment.signType || 'RSA', paySign: payment.paySign }); uni.showToast({ title: '支付成功', icon: 'success' }); this.fetchOrders() }
       catch (error) { uni.hideLoading(); const message = error.errMsg || error.message || '支付失败'; uni.showToast({ title: message.includes('requestPayment:fail cancel') ? '已取消支付' : message, icon: 'none' }) }

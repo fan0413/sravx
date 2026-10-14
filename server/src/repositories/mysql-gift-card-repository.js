@@ -12,7 +12,7 @@ export function createMysqlGiftCardRepository(pool) {
   async function transaction(work) { const connection = await pool.getConnection(); try { await connection.beginTransaction(); const result = await work(connection); await connection.commit(); return result; } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); } }
   async function user(connection, id) { const [[row]] = await connection.execute('SELECT id, openid, points, total_points FROM users WHERE id = ? LIMIT 1 FOR UPDATE', [id]); if (!row) throw error('USER_NOT_FOUND'); return row; }
   async function address(connection, userId, addressId) {
-    const [[row]] = await connection.execute(`SELECT a.name, a.contact, a.phone, a.province, a.city, a.district, a.detail FROM addresses a INNER JOIN users u ON u.openid = a.openid WHERE a.id = ? AND u.id = ? LIMIT 1 FOR UPDATE`, [addressId, userId]);
+    const [[row]] = await connection.execute(`SELECT a.name, a.contact, a.phone, a.province, a.city, a.district, a.detail FROM addresses a INNER JOIN users u ON u.openid COLLATE utf8mb4_bin = a.openid COLLATE utf8mb4_bin WHERE a.id = ? AND u.id = ? LIMIT 1 FOR UPDATE`, [addressId, userId]);
     if (!row || !row.phone || !row.detail) throw error('ADDRESS_NOT_FOUND'); return row;
   }
   async function createGiftOrder(connection, userRow, payload, addressRow) {
@@ -28,7 +28,7 @@ export function createMysqlGiftCardRepository(pool) {
     const total = (price * quantity).toFixed(2); const no = orderNo();
     const [created] = await connection.execute(`INSERT INTO orders (order_no, user_id, _openid, total_amount, freight, discount_amount, coupon_amount, points_amount, pay_amount, status, pay_type, pay_time, buyer_message, shipping_type, ship_deadline_days, shipping_promise, delay_shipping_reason, delay_shipping_note, created_at, updated_at) VALUES (?, ?, ?, ?, 0.00, ?, 0.00, 0.00, 0.00, 'paid', 'other', NOW(), '礼品卡兑换', 'normal', 2, '', '', '', NOW(), NOW())`, [no, userRow.id, userRow.openid, total, total]);
     const id = created.insertId;
-    await connection.execute('INSERT INTO order_items (order_id, _openid, product_id, sku, product_name, product_image, spec_desc, price, quantity, selected_color, discount_price, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, ?, ?, ?, NOW())', [id, userRow.openid, productId, sku, product.name, product.cover_image || null, specName || null, quantity, specName || null, total]);
+    await connection.execute('INSERT INTO order_items (order_id, _openid, product_id, sku, product_name, product_image, spec_desc, price, quantity, selected_color, discount_price, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, ?, ?, ?, NOW())', [id, userRow.openid, productId, sku, product.name, product.cover_image || null, specName || null, quantity, null, total]);
     await connection.execute('INSERT INTO order_addresses (order_id, _openid, name, phone, province, city, district, detail, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())', [id, userRow.openid, addressRow.name || addressRow.contact, addressRow.phone, addressRow.province || '', addressRow.city || '', addressRow.district || '', addressRow.detail]);
     return { id, no, productId, productName: product.name, quantity, selectedSpecName: specName, productImage: product.cover_image || '' };
   }

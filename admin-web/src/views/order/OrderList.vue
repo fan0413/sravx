@@ -17,6 +17,8 @@
           <el-option label="已发货" value="shipped" />
           <el-option label="已完成" value="completed" />
           <el-option label="已取消" value="cancelled" />
+          <el-option label="退款中" value="refunding" />
+          <el-option label="已退款" value="refunded" />
         </el-select>
       </el-form-item>
       <el-form-item v-if="!targetMode" label="发货类型">
@@ -111,6 +113,7 @@
       <el-table-column label="操作" width="140">
         <template #default="{ row }">
           <el-button link type="primary" @click="$router.push(`/order/detail/${row.id}`)">详情</el-button>
+          <el-button v-if="['refunding', 'refunded'].includes(row.status)" link type="primary" @click="$router.push({ path: '/refund/list', query: { orderNo: row.order_no } })">退款处理</el-button>
           <el-button v-if="!targetMode && canDelay(row)" link type="warning" @click="openDelayDialog(row)">延期</el-button>
         </template>
       </el-table-column>

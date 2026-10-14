@@ -1,33 +1,38 @@
 <template>
   <section class="channel-workspace">
     <header class="workspace-heading">
-      <p>SRAVX · CHANNEL WORKSPACE</p>
+      <p>SRAVX · OPERATION WORKSPACE</p>
       <h1>{{ channelLabel(channel) }}</h1>
-      <span>按渠道组织功能入口，共用业务仍使用同一页面、同一接口和同一份数据。</span>
+      <span>{{ channel === 'common' ? '统一管理两端共用的业务资料与流程，同一功能只维护一处。' : '这里只保留对应渠道的专属入口，共用业务请进入通用管理。' }}</span>
     </header>
-    <el-alert title="渠道切换不是数据切换" type="info" :closable="false" show-icon>
-      商品、分类、库存、订单、用户和售后不按此开关拆库。共用页面中的修改可能影响两端；本开关不会发布页面或改变价格、库存。
+    <el-alert title="功能归属不改变数据和权限" type="info" :closable="false" show-icon>
+      商品、分类、库存、普通订单、用户和售后统一在通用管理维护，修改可能影响两端。专属入口沿用原页面、接口和放行规则，不拆库，也不会因切换界面而发布内容。
     </el-alert>
     <div class="workspace-tools">
-      <article v-for="entry in entries" :key="entry.path">
-        <el-tag size="small" type="info" effect="plain">共用页面 / 共用函数</el-tag>
+      <article v-for="entry in entries" :key="entry.key">
+        <el-tag size="small" type="info" effect="plain">{{ channel === 'common' ? '通用功能 / 共用接口' : '小程序功能 / 原有接口' }}</el-tag>
         <h2>{{ entry.title }}</h2>
         <p>{{ entry.description }}</p>
-        <el-button @click="router.push(entry.path)">进入管理</el-button>
+        <el-button @click="router.push(entry.items[0]!.path)">进入管理</el-button>
       </article>
     </div>
-    <el-empty v-if="!entries.length" description="当前后台模式未开放这些功能，请勿绕过既有放行开关。" />
+    <el-empty v-if="!entries.length && channel !== 'web'" description="当前后台模式未开放这些功能，请勿绕过既有放行开关。" />
     <el-card class="workspace-scope" shadow="never">
-      <template #header>{{ channel === 'web' ? '网页页面功能' : '小程序页面功能' }}</template>
-      <dl v-if="channel === 'web'">
+      <template #header>{{ channel === 'common' ? '通用管理范围' : channel === 'web' ? '网页专属功能' : '小程序专属功能' }}</template>
+      <dl v-if="channel === 'common'">
+        <dt>商品、分类与内容</dt><dd>系列、剪型、图片与商品资料只维护一份。轮播目前没有渠道字段，因此在通用管理统一维护。</dd>
+        <dt>普通订单、用户与售后</dt><dd>复用已有处理页面与函数，不复制库存、用户或售后流程；功能可用性仍取决于现有后台放行规则。</dd>
+      </dl>
+      <dl v-else-if="channel === 'web'">
         <dt>欢迎页、官网首页、顶部导航</dt><dd>目前由前端源码维护，尚无独立的后台编辑接口。</dd>
-        <dt>产品目录、购买选配</dt><dd>读取共用商品、分类和型号数据；通过上方入口管理，不另建商品库。</dd>
+        <dt>产品目录、购买选配</dt><dd>网页展示由前端维护；商品、分类和型号资料在通用管理维护，不另建商品库。</dd>
       </dl>
       <dl v-else>
-        <dt>积分商城、工具绑定</dt><dd>通过已有积分商品与剪刀 SN 管理入口维护，沿用原函数和放行规则。</dd>
-        <dt>首页内容与轮播</dt><dd>沿用已有轮播管理。当前记录没有独立渠道字段，不代表切换后自动隔离投放。</dd>
+        <dt>积分商城、积分订单、工具绑定</dt><dd>通过现有专属入口维护，沿用原函数、数据与放行规则。</dd>
+        <dt>商品、轮播与售后</dt><dd>这些功能已归入通用管理；工具 SN 管理在本界面，剪刀售后统一在通用管理。</dd>
       </dl>
-      <p class="workspace-note">独立页面编辑、渠道展示开关与独立排序尚未实现。本页不把入口切换当作已有的渠道内容隔离。</p>
+      <p class="workspace-note">独立页面编辑、渠道展示开关与独立排序尚未实现。管理界面分区不代表业务数据已按渠道隔离。</p>
+      <el-button v-if="channel !== 'common'" @click="router.push(workspacePath('common'))">前往通用管理</el-button>
     </el-card>
   </section>
 </template>
@@ -35,24 +40,12 @@
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAdminWorkspace } from '../../lib/use-admin-workspace';
-import { channelLabel } from '../../lib/admin-workspace';
-import { targetAdminModeEnabled, targetAdminCatalogModeEnabled } from '../../lib/target-admin-auth';
+import { channelLabel, workspacePath, workspaceMenuGroups } from '../../lib/admin-workspace';
+import { targetAdminModeEnabled, targetAdminCatalogModeEnabled, targetAdminOperationsModeEnabled } from '../../lib/target-admin-auth';
 const router = useRouter();
 const { channel } = useAdminWorkspace();
-const canCatalog = !targetAdminModeEnabled() || targetAdminCatalogModeEnabled();
-const entries = computed(() => {
-  if (!canCatalog) return [];
-  const common = [
-    { title: '商品与购买选配', path: '/product/list', description: '管理两端使用的商品、图片、型号与价格资料。' },
-    { title: '产品分类', path: '/category/list', description: '维护系列与剪型分类，沿用共用分类管理。' },
-    { title: '轮播内容', path: '/banner/list', description: '沿用现有轮播函数；尚未按网页和小程序隔离记录。' }
-  ];
-  if (channel.value === 'web') return common;
-  return [...common,
-    { title: '积分商城', path: '/points-product/list', description: '维护现有积分商品，不复制积分或库存函数。' },
-    { title: '工具绑定与 SN', path: '/scissors/list', description: '使用现有剪刀工具档案和 SN 码管理。' }
-  ];
-});
+const features = { targetMode: targetAdminModeEnabled(), catalogMode: targetAdminCatalogModeEnabled(), operationsMode: targetAdminOperationsModeEnabled() };
+const entries = computed(() => workspaceMenuGroups(channel.value, features));
 </script>
 <style scoped>
 .workspace-heading { margin: 6px 0 28px; max-width: 820px; }

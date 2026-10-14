@@ -946,7 +946,9 @@ test('address repository joins users by the server-side user id', async () => {
     return [[]];
   } });
   assert.deepEqual(await repository.list(5), []);
-  assert.match(query.sql, /INNER JOIN users u ON u\.openid = a\.openid/);
+  // Both identity columns use an explicit case-sensitive collation even when
+  // the legacy/imported table defaults differ on MySQL 8.
+  assert.match(query.sql, /INNER JOIN users u ON u\.openid COLLATE utf8mb4_bin = a\.openid COLLATE utf8mb4_bin/);
   assert.deepEqual(query.values, [5]);
   assert.match(query.sql.trim(), /^SELECT\b/i);
 });

@@ -46,7 +46,7 @@ const handleLogin = async () => {
   try {
     await adminLogin(form.username.trim(), form.password);
     ElMessage.success("登录成功");
-    const redirect = typeof route.query.redirect === "string" ? route.query.redirect : "/dashboard";
+    const redirect = typeof route.query.redirect === "string" ? route.query.redirect : "/channel/common";
     await router.replace(redirect);
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : "登录失败");

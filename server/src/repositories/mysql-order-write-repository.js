@@ -37,7 +37,7 @@ export function createMysqlOrderWriteRepository(pool) {
       const productId = positiveInteger(input?.productId);
       const addressId = positiveInteger(input?.addressId);
       const quantity = positiveInteger(input?.quantity ?? 1, 99);
-      const specName = normalizedText(input?.selectedColor ?? input?.selectedSpecName ?? '', 50);
+      const specName = normalizedText(input?.selectedSpecName ?? input?.selectedModel ?? '', 50);
       const remark = normalizedText(input?.remark ?? '', 255);
       const idempotencyKey = typeof input?.idempotencyKey === 'string' && /^[A-Za-z0-9_-]{12,80}$/.test(input.idempotencyKey) ? input.idempotencyKey : null;
       const couponCampaignId = input?.couponId === undefined || input?.couponId === null || input?.couponId === '' ? null : positiveInteger(input.couponId);
@@ -52,27 +52,28 @@ export function createMysqlOrderWriteRepository(pool) {
 
         const [[address]] = await connection.execute(
           `SELECT a.name, a.contact, a.phone, a.province, a.city, a.district, a.detail
-             FROM addresses a INNER JOIN users u ON u.openid = a.openid
+             FROM addresses a INNER JOIN users u ON u.openid COLLATE utf8mb4_bin = a.openid COLLATE utf8mb4_bin
             WHERE a.id = ? AND u.id = ? LIMIT 1 FOR UPDATE`, [addressId, customerId]
         );
         if (!address || !address.phone || !address.detail) throw problem('ADDRESS_NOT_FOUND');
 
         const [[product]] = await connection.execute(
-          `SELECT id, name, price, cover_image, stock, allow_coupon, is_on_sale, deleted_at,
+          `SELECT id, name, price, has_spec, cover_image, stock, allow_coupon, is_on_sale, deleted_at,
                   shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note
              FROM products WHERE id = ? LIMIT 1 FOR UPDATE`, [productId]
         );
         if (!product || Number(product.is_on_sale) !== 1 || product.deleted_at) throw problem('PRODUCT_NOT_AVAILABLE');
         let price = Number(product.price);
         let spec = null;
-        if (specName) {
+        if (Number(product.has_spec) === 1 && !specName) throw problem('PRODUCT_SPEC_NOT_FOUND');
+        if (Number(product.has_spec) === 1 && specName) {
           const [[candidate]] = await connection.execute(
             `SELECT name, sku, price, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note
                FROM product_specs WHERE product_id = ? AND name = ? LIMIT 1 FOR UPDATE`, [productId, specName]
           );
           if (!candidate) throw problem('PRODUCT_SPEC_NOT_FOUND');
           spec = candidate;
-          if (candidate.price !== null && candidate.price !== undefined) price = Number(candidate.price);
+          price = Number(candidate.price);
         }
         if (!Number.isFinite(price) || price <= 0) throw problem('PRODUCT_PRICE_INVALID');
         const totalAmount = (price * quantity).toFixed(2);
@@ -120,7 +121,7 @@ export function createMysqlOrderWriteRepository(pool) {
         await connection.execute(
           `INSERT INTO order_items (order_id, _openid, product_id, sku, product_name, product_image, spec_desc, price, quantity, selected_color, created_at)
            SELECT ?, u.openid, ?, ?, ?, ?, ?, ?, ?, ?, NOW() FROM users u WHERE u.id = ?`,
-          [createdOrderId, productId, spec?.sku || null, product.name, product.cover_image || null, specName || null, price.toFixed(2), quantity, specName || null, customerId]
+          [createdOrderId, productId, spec?.sku || null, product.name, product.cover_image || null, spec?.name || null, price.toFixed(2), quantity, null, customerId]
         );
         await connection.execute(
           `INSERT INTO order_addresses (order_id, _openid, name, phone, province, city, district, detail, created_at)

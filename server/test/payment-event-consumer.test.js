@@ -57,7 +57,7 @@ test('payment event consumer keeps an infrastructure failure for safe stale-clai
 });
 
 test('payment event consumer settles a verified refund callback idempotently', async () => {
-  const raw = Buffer.from(JSON.stringify({ resource: resource({ status: 'SUCCESS', out_refund_no: 'RF-1', refund_id: 'refund-1' }) }));
+  const raw = Buffer.from(JSON.stringify({ resource: resource({ refund_status: 'SUCCESS', out_refund_no: 'RF-1', refund_id: 'refund-1' }) }));
   const encrypted = encryptInboundPayload(raw, inboundEncryptionKey); let input;
   const consumer = createPaymentEventConsumer({ inboundRepository: { claimNext: async () => ({ id: 9, event_type: 'REFUND.SUCCESS', payload_nonce: encrypted.nonce, encrypted_payload: encrypted.ciphertext }), complete: async () => {}, block: async () => assert.fail('must not block') }, settlementRepository: { settleTransaction: async () => assert.fail('must not settle transaction'), settleRefund: async (value) => { input = value; return { settled: true, duplicate: false }; } }, apiV3Key, inboundEncryptionKey });
   assert.deepEqual(await consumer.consumeOne(), { consumed: true, settled: true, duplicate: false });

@@ -1,6 +1,6 @@
 <template>
   <!-- #ifdef H5 -->
-  <SravxOfficialH5 :start-landing="true" />
+  <ScissorOrbitH5 @catalog="enterSite" />
   <!-- #endif -->
   <!-- #ifndef H5 -->
   <view class="welcome-redirect">正在进入首页</view>
@@ -8,10 +8,17 @@
 </template>
 
 <script>
-import SravxOfficialH5 from '../../components/SravxOfficialH5.vue'
+// #ifdef H5
+import ScissorOrbitH5 from '../../components/ScissorOrbitH5.vue'
+// #endif
 
 export default {
-  components: { SravxOfficialH5 },
+  // #ifdef H5
+  components: { ScissorOrbitH5 },
+  // #endif
+  methods: {
+    enterSite() { uni.reLaunch({ url: '/pages/index/index' }) }
+  },
   onLoad() {
     // 小程序不使用官网欢迎页，保持原有首页作为启动页。
     // #ifndef H5

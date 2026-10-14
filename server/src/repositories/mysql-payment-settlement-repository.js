@@ -74,13 +74,31 @@ export function createMysqlPaymentSettlementRepository(pool, { structuredCheckou
       const connection = await pool.getConnection();
       try {
         await connection.beginTransaction();
-        const [rows] = await connection.execute(`SELECT r.id, r.order_id, r.status, r.processed_refund_no, o.status AS order_status
+        const [rows] = await connection.execute(`SELECT r.id, r.order_id, r.status, r.processed_refund_no, r.order_status_snapshot, o.status AS order_status, o.ship_time, o.logistics_no, o.logistics_company
           FROM order_refund_requests r INNER JOIN orders o ON o.id = r.order_id
           WHERE r.processed_refund_no = ? LIMIT 1 FOR UPDATE`, [outRefundNo]);
         if (rows.length !== 1) throw new Error('REFUND_NOT_FOUND');
         const refund = rows[0];
         if (refund.status === 'refunded' && refund.processed_refund_no === outRefundNo && refund.order_status === 'refunded') { await connection.commit(); return Object.freeze({ settled: false, duplicate: true }); }
         if (!['approved', 'processing'].includes(refund.status) || refund.order_status !== 'refunding') throw new Error('REFUND_SETTLEMENT_CONFLICT');
+        // Only an unshipped full refund returns saleable stock. Shipped goods
+        // require a separate return/inspection workflow; never restock them here.
+        if (refund.order_status_snapshot === 'paid' && !refund.ship_time && !refund.logistics_no && !refund.logistics_company) {
+          const [items] = await connection.execute(structuredCheckout
+            ? 'SELECT product_id, sku_id, quantity FROM order_items WHERE order_id = ? FOR UPDATE'
+            : 'SELECT product_id, quantity FROM order_items WHERE order_id = ? FOR UPDATE', [refund.order_id]);
+          for (const item of items) {
+            const quantity = Number(item.quantity);
+            if (!Number.isSafeInteger(quantity) || quantity < 1) throw new Error('ORDER_INVENTORY_NOT_FOUND');
+            const sku = structuredCheckout && Number(item.sku_id) > 0;
+            if (sku) {
+              const [restored] = await connection.execute('UPDATE product_skus SET stock_available = stock_available + ? WHERE id = ?', [quantity, item.sku_id]);
+              if (restored.affectedRows !== 1) throw new Error('ORDER_INVENTORY_NOT_FOUND');
+            }
+            const [restored] = await connection.execute('UPDATE products SET stock = stock + ?, sales_count = GREATEST(IFNULL(sales_count, 0) - ?, 0) WHERE id = ?', [sku ? 0 : quantity, quantity, item.product_id]);
+            if (restored.affectedRows !== 1) throw new Error('ORDER_INVENTORY_NOT_FOUND');
+          }
+        }
         await connection.execute("UPDATE order_refund_requests SET status = 'refunded', approved_at = IFNULL(approved_at, NOW()), updated_at = NOW() WHERE id = ?", [refund.id]);
         const [order] = await connection.execute("UPDATE orders SET status = 'refunded', refund_transaction_id = ?, updated_at = NOW() WHERE id = ? AND status = 'refunding'", [refundId, refund.order_id]);
         if (order.affectedRows !== 1) throw new Error('REFUND_SETTLEMENT_CONFLICT');

@@ -1,3 +1,5 @@
+import { classificationInput, classificationSql, classificationFilters, saveClassification } from '../catalog/classification.js';
+
 function integer(value, fallback = null) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : fallback;
@@ -17,8 +19,25 @@ function normalizeProduct(row) {
   return { ...row, images: parseJson(row.images), params: parseJson(row.params), detail_images: parseJson(row.detail_images) };
 }
 
-export function createMysqlAdminCatalogRepository(pool) {
+function normalizeOptionalWriteFields(input) {
+  const fulfillment = value => ({ ...value, shippingDelayReason: value.shippingDelayReason ?? '', shippingNote: value.shippingNote ?? '' });
+  return { ...fulfillment(input), specs: input.specs.map(spec => ({ ...fulfillment(spec), image: spec.image ?? null, cardImage: spec.cardImage ?? '' })) };
+}
+
+export function createMysqlAdminCatalogRepository(pool, { normalizedCatalog = false } = {}) {
   if (!pool || typeof pool.execute !== 'function') throw new Error('A MySQL pool is required.');
+  const classification = classificationSql(normalizedCatalog);
+  classification.join = classification.join.replace('INNER JOIN', 'LEFT JOIN');
+  async function validateCategoryParent(input, id = null) {
+    if (!input.parentId) return;
+    if (Number(input.parentId) === Number(id)) throw new Error('Category cannot parent itself.');
+    const [parents] = await pool.execute('SELECT id, parent_id FROM categories WHERE id = ? AND deleted_at IS NULL LIMIT 1', [input.parentId]);
+    if (parents.length !== 1 || parents[0].parent_id) throw new Error('Category parent must be an existing root.');
+    if (id) {
+      const [children] = await pool.execute('SELECT id FROM categories WHERE parent_id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+      if (children.length) throw new Error('Category with children cannot become a child.');
+    }
+  }
   return Object.freeze({
     async overview() {
       const [[users], [products], [banners], [scissors]] = await Promise.all([
@@ -65,10 +84,11 @@ export function createMysqlAdminCatalogRepository(pool) {
       const [totals] = await pool.execute(`SELECT COUNT(*) AS total FROM banners WHERE ${where}`, values);
       return { list: rows.map((row) => ({ ...row, link_param: parseJson(row.link_param) })), total: Number(totals[0]?.total || 0) };
     },
-    async listProducts({ keyword, categoryId, status, lowStock, sku, shippingType, page, pageSize } = {}) {
+    async listProducts({ keyword, categoryId, status, lowStock, sku, shippingType, series, toolGroup, page, pageSize } = {}) {
       const { limit, offset } = pageWindow({ page, pageSize });
       const filters = ['p.deleted_at IS NULL'];
       const values = [];
+      filters.push(...classificationFilters(classification, { series, toolGroup }, values));
       if (typeof keyword === 'string' && keyword.trim()) { filters.push('(p.name LIKE ? OR p.short_name LIKE ? OR p.`desc` LIKE ?)'); const term = `%${keyword.trim().slice(0, 80)}%`; values.push(term, term, term); }
       const category = integer(categoryId); if (category) { filters.push('p.category_id = ?'); values.push(category); }
       if (status === 0 || status === 1) { filters.push('p.is_on_sale = ?'); values.push(status); }
@@ -77,13 +97,13 @@ export function createMysqlAdminCatalogRepository(pool) {
       if (typeof shippingType === 'string' && shippingType.trim()) { filters.push('p.shipping_type = ?'); values.push(shippingType.trim().slice(0, 32)); }
       const where = filters.join(' AND ');
       const columns = 'p.id, p.name, p.short_name, p.`desc`, p.price, p.category_id, p.cover_image, p.images, p.detail_images, p.params, p.scissors_card_image, p.stock, p.reserved_stock, p.sales_count, p.is_on_sale, p.is_recommend, p.allow_coupon, p.warranty_months, p.shipping_type, p.ship_deadline_days, p.shipping_promise, p.shipping_delay_reason, p.shipping_note, p.sort_order, p.created_at, p.updated_at';
-      const [rows] = await pool.execute(`SELECT ${columns} FROM products p WHERE ${where} ORDER BY p.sort_order ASC, p.id DESC LIMIT ? OFFSET ?`, [...values, limit, offset]);
-      const [totals] = await pool.execute(`SELECT COUNT(*) AS total FROM products p WHERE ${where}`, values);
+      const [rows] = await pool.execute(`SELECT ${columns}${classification.select} FROM products p${classification.join} WHERE ${where} ORDER BY p.sort_order ASC, p.id DESC LIMIT ? OFFSET ?`, [...values, limit, offset]);
+      const [totals] = await pool.execute(`SELECT COUNT(*) AS total FROM products p${classification.join} WHERE ${where}`, values);
       return { list: rows.map(normalizeProduct), total: Number(totals[0]?.total || 0) };
     },
     async getProduct(id) {
       const productId = integer(id); if (!productId) return null;
-      const [products] = await pool.execute('SELECT * FROM products WHERE id = ? AND deleted_at IS NULL LIMIT 1', [productId]);
+      const [products] = await pool.execute(`SELECT p.*${classification.select} FROM products p${classification.join} WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1`, [productId]);
       if (products.length !== 1) return null;
       const [specs] = await pool.execute('SELECT id, name, sku, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, image, card_image, price, sort_order FROM product_specs WHERE product_id = ? ORDER BY sort_order ASC, id ASC', [productId]);
       return { ...normalizeProduct(products[0]), specs };
@@ -97,6 +117,7 @@ export function createMysqlAdminCatalogRepository(pool) {
       return { id: productId, stock: quantity };
     },
     async createCategory(input) {
+      await validateCategoryParent(input);
       const [result] = await pool.execute(
         `INSERT INTO categories (parent_id, name, icon, image, description, level, sort_order, is_show, is_nav, product_count)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
@@ -110,6 +131,7 @@ export function createMysqlAdminCatalogRepository(pool) {
       return rows[0] || null;
     },
     async updateCategory(id, input) {
+      await validateCategoryParent(input, id);
       const [result] = await pool.execute(
         `UPDATE categories SET parent_id = ?, name = ?, icon = CASE WHEN ? THEN ? ELSE icon END, image = CASE WHEN ? THEN ? ELSE image END, description = ?, level = ?, sort_order = ?, is_show = ?, is_nav = ?
          WHERE id = ? AND deleted_at IS NULL`,
@@ -123,6 +145,8 @@ export function createMysqlAdminCatalogRepository(pool) {
         await connection.beginTransaction();
         const [products] = await connection.execute('SELECT 1 FROM products WHERE category_id = ? AND deleted_at IS NULL LIMIT 1', [id]);
         if (products.length) { await connection.rollback(); return 'in_use'; }
+        const [children] = await connection.execute('SELECT 1 FROM categories WHERE parent_id = ? AND deleted_at IS NULL LIMIT 1', [id]);
+        if (children.length) { await connection.rollback(); return 'has_children'; }
         const [result] = await connection.execute('UPDATE categories SET deleted_at = UTC_TIMESTAMP() WHERE id = ? AND deleted_at IS NULL', [id]);
         await connection.commit(); return result.affectedRows === 1 ? 'deleted' : 'missing';
       } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
@@ -148,6 +172,8 @@ export function createMysqlAdminCatalogRepository(pool) {
       return result.affectedRows === 1;
     },
     async createProduct(input) {
+      if (normalizedCatalog) classificationInput(input, { required: true });
+      input = normalizeOptionalWriteFields(input);
       const connection = await pool.getConnection();
       try {
         await connection.beginTransaction();
@@ -157,6 +183,7 @@ export function createMysqlAdminCatalogRepository(pool) {
           [input.name, input.shortName, input.description, input.price, input.categoryId, input.coverImage, JSON.stringify(input.images), JSON.stringify(input.detailImages), JSON.stringify(input.params), input.scissorsCardImage, input.stock, input.warrantyMonths, input.hasSpec, input.isOnSale, input.isRecommend, input.allowCoupon, input.shippingType, input.shipDeadlineDays, input.shippingPromise, input.shippingDelayReason, input.shippingNote, input.sortOrder]
         );
         const id = Number(result.insertId);
+        if (normalizedCatalog) await saveClassification(connection, id, input);
         for (const spec of input.specs) await connection.execute(
           `INSERT INTO product_specs (product_id, name, sku, image, shipping_type, ship_deadline_days, shipping_promise, shipping_delay_reason, shipping_note, card_image, price, sort_order)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -166,6 +193,8 @@ export function createMysqlAdminCatalogRepository(pool) {
       } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); }
     },
     async updateProduct(id, input) {
+      if (normalizedCatalog) classificationInput(input, { required: true });
+      input = normalizeOptionalWriteFields(input);
       const connection = await pool.getConnection();
       try {
         await connection.beginTransaction();
@@ -174,6 +203,7 @@ export function createMysqlAdminCatalogRepository(pool) {
           [input.name, input.shortName, input.description, input.price, input.categoryId, input.coverImage, JSON.stringify(input.images), JSON.stringify(input.detailImages), JSON.stringify(input.params), input.scissorsCardImage, input.stock, input.warrantyMonths, input.hasSpec, input.isOnSale, input.isRecommend, input.allowCoupon, input.shippingType, input.shipDeadlineDays, input.shippingPromise, input.shippingDelayReason, input.shippingNote, input.sortOrder, id]
         );
         if (result.affectedRows !== 1) { await connection.rollback(); return false; }
+        if (normalizedCatalog) await saveClassification(connection, id, input);
         await connection.execute('DELETE FROM product_specs WHERE product_id = ?', [id]);
         for (const spec of input.specs) await connection.execute(`INSERT INTO product_specs (product_id,name,sku,image,shipping_type,ship_deadline_days,shipping_promise,shipping_delay_reason,shipping_note,card_image,price,sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`, [id,spec.name,spec.sku,spec.image,spec.shippingType,spec.shipDeadlineDays,spec.shippingPromise,spec.shippingDelayReason,spec.shippingNote,spec.cardImage,spec.price,spec.sortOrder]);
         await connection.commit(); return true;
@@ -181,7 +211,9 @@ export function createMysqlAdminCatalogRepository(pool) {
     },
     async getStructuredProductVariants(id) {
       const productId = integer(id); if (!productId) return null;
-      const [products] = await pool.execute('SELECT id, series, tool_group, tool_subtype, display_size, steel_material FROM products WHERE id = ? AND deleted_at IS NULL LIMIT 1', [productId]);
+      const [products] = await pool.execute(normalizedCatalog
+        ? `SELECT p.id, p.tool_subtype, p.display_size, p.steel_material${classification.select} FROM products p${classification.join} WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1`
+        : 'SELECT id, series, tool_group, tool_subtype, display_size, steel_material FROM products WHERE id = ? AND deleted_at IS NULL LIMIT 1', [productId]);
       if (products.length !== 1) return null;
       const [[models], [colors], [skus]] = await Promise.all([
         pool.execute('SELECT id, name, sort_order FROM product_models WHERE product_id = ? ORDER BY sort_order ASC, id ASC', [productId]),
@@ -191,12 +223,14 @@ export function createMysqlAdminCatalogRepository(pool) {
       return { ...products[0], models, colors, skus };
     },
     async replaceStructuredProductVariants(id, input) {
+      if (normalizedCatalog) classificationInput(input, { required: true });
       const productId = integer(id); if (!productId) return null;
       const connection = await pool.getConnection();
       try {
         await connection.beginTransaction();
         const [products] = await connection.execute('SELECT id FROM products WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [productId]);
         if (products.length !== 1) { await connection.rollback(); return null; }
+        if (normalizedCatalog) await saveClassification(connection, productId, input);
         await connection.execute('UPDATE products SET series = ?, tool_group = ?, tool_subtype = ?, display_size = ?, steel_material = ?, updated_at = UTC_TIMESTAMP() WHERE id = ?', [input.series, input.toolGroup, input.toolSubtype, input.displaySize, input.steelMaterial, productId]);
         for (const model of input.models) await connection.execute('INSERT INTO product_models (product_id, name, sort_order) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order)', [productId, model.name, model.sortOrder]);
         for (const color of input.colors) await connection.execute('INSERT INTO product_colors (product_id, name, swatch, sort_order) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE swatch = VALUES(swatch), sort_order = VALUES(sort_order)', [productId, color.name, color.swatch, color.sortOrder]);

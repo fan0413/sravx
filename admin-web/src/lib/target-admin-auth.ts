@@ -1,5 +1,5 @@
-const catalogMode = import.meta.env.VITE_ADMIN_CATALOG_MODE;
-const operationsMode = import.meta.env.VITE_ADMIN_OPERATIONS_MODE;
+// Production Nginx and local Vite both forward /api to the server.
+// Default to the page's origin: the API host deliberately does not allow browser CORS.
 const apiBase = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const tokenKey = 'sravx.target.admin.session';
 
@@ -12,8 +12,9 @@ async function request(path: string, init: RequestInit = {}) {
   if (!response.ok || !body?.success) throw new Error(body?.error?.message || '后台服务暂不可用');
   return body.data;
 }
-export function targetAdminCatalogModeEnabled() { return catalogMode === 'target'; }
-export function targetAdminOperationsModeEnabled() { return operationsMode === 'target'; }
+// The expired environment is never a fallback in an unconfigured build.
+export function targetAdminCatalogModeEnabled() { return true; }
+export function targetAdminOperationsModeEnabled() { return true; }
 export function targetAdminModeEnabled() { return targetAdminCatalogModeEnabled() || targetAdminOperationsModeEnabled(); }
 export async function targetAdminLogin(username: string, password: string) { const data = await request('/api/v1/admin/auth/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ username, password }) }) as { token: string }; if (!data?.token) throw new Error('登录未返回会话'); sessionStorage.setItem(tokenKey, data.token); return data; }
 export async function targetAdminLoggedIn() { if (!sessionStorage.getItem(tokenKey)) return false; try { await request('/api/v1/admin/auth/session'); return true; } catch { sessionStorage.removeItem(tokenKey); return false; } }

@@ -1,5 +1,5 @@
 {
-  "miniprogramRoot": "miniprogram/",
+  "miniprogramRoot": "sravx/dist/build/mp-weixin/",
   "compileType": "miniprogram",
   "setting": {
     "urlCheck": false,

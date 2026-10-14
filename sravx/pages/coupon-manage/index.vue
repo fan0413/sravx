@@ -1,4 +1,6 @@
 <template>
+  <sravx-page-back root-only />
+
   <view class="page">
     <view v-if="loading" class="loading">优惠券加载中...</view>
     <view v-else>
@@ -12,10 +14,12 @@
 </template>
 
 <script>
+import SravxPageBack from '../../components/sravx-page-back/sravx-page-back.vue'
+
 import api from '../../common/api.js'
 const format = value => value ? String(value).replace('T', ' ').slice(0, 10).replace(/-/g, '.') : '--'
 const view = item => ({ id: item.id, claimId: item.user_coupon_id || item.claim_id || item.id, name: item.name || '优惠券', value: Number(item.value || 0).toFixed(0), min: Number(item.min_amount || 0).toFixed(0), desc: item.usage_note || item.desc || '全场可用', time: `${format(item.start_time)} - ${format(item.expire_time)}` })
-export default {
+export default {components:{SravxPageBack},
   data() { return { coupons: [], campaigns: [], loading: false, claiming: null } },
   onShow() { this.load() },
   methods: {

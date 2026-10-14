@@ -8,7 +8,7 @@ export function createMysqlRefundRepository(pool) {
   if (!pool || typeof pool.getConnection !== 'function' || typeof pool.execute !== 'function') throw new Error('A transactional MySQL pool is required.');
   async function transaction(work) { const connection = await pool.getConnection(); try { await connection.beginTransaction(); const result = await work(connection); await connection.commit(); return result; } catch (cause) { await connection.rollback(); throw cause; } finally { connection.release(); } }
   return Object.freeze({
-    async request(userId, input) {
+    async request(userId, input, { autoApproveUnshipped = false } = {}) {
       const customerId = positive(userId); const orderId = positive(input?.orderId); const reason = limitedText(input?.reason, 255); const type = limitedText(input?.refundType || 'refund_only', 32);
       const idempotencyKey = typeof input?.idempotencyKey === 'string' && /^[A-Za-z0-9_-]{12,80}$/.test(input.idempotencyKey) ? input.idempotencyKey : null;
       if (!customerId || !orderId || reason === null || !type || !idempotencyKey || !['refund_only', 'return_and_refund'].includes(type)) throw failure('INVALID_REQUEST');
@@ -19,18 +19,21 @@ export function createMysqlRefundRepository(pool) {
             WHERE k.user_id = ? AND k.idempotency_key = ? LIMIT 1 FOR UPDATE`, [customerId, idempotencyKey]
         );
         if (previous) return { requestId: Number(previous.id), orderId: Number(previous.order_id), orderNo: previous.order_no, status: previous.status, requestedAmount: String(previous.requested_amount), idempotent: true };
-        const [[order]] = await connection.execute('SELECT id, order_no, user_id, _openid, status, pay_amount FROM orders WHERE id = ? AND user_id = ? LIMIT 1 FOR UPDATE', [orderId, customerId]);
+        const [[order]] = await connection.execute('SELECT id, order_no, user_id, _openid, status, pay_amount, pay_transaction_id, ship_time, logistics_no, logistics_company FROM orders WHERE id = ? AND user_id = ? LIMIT 1 FOR UPDATE', [orderId, customerId]);
         if (!order) throw failure('ORDER_NOT_FOUND');
         if (!['paid', 'shipped'].includes(order.status)) throw failure('ORDER_NOT_REFUNDABLE');
         const [[open]] = await connection.execute(`SELECT id FROM order_refund_requests WHERE order_id = ? AND status IN ('pending_review', 'approved', 'processing') LIMIT 1 FOR UPDATE`, [orderId]);
         if (open) throw failure('REFUND_ALREADY_OPEN');
+        const automatic = autoApproveUnshipped && type === 'refund_only' && order.status === 'paid' && !order.ship_time && !order.logistics_no && !order.logistics_company && Boolean(order.pay_transaction_id) && Boolean(fen(order.pay_amount));
+        const status = automatic ? 'approved' : 'pending_review';
         const [created] = await connection.execute(
           `INSERT INTO order_refund_requests (order_id, order_no, user_id, _openid, request_type, reason, requested_amount, order_status_snapshot, status, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending_review', NOW(), NOW())`, [order.id, order.order_no, customerId, order._openid, type, reason, order.pay_amount, order.status]
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`, [order.id, order.order_no, customerId, order._openid, type, reason, order.pay_amount, order.status, status]
         );
+        if (automatic) await connection.execute("UPDATE order_refund_requests SET approved_at = NOW(), admin_note = '未发货自动全额原路退款' WHERE id = ?", [created.insertId]);
         await connection.execute("UPDATE orders SET status = 'refunding', updated_at = NOW() WHERE id = ? AND status IN ('paid', 'shipped')", [orderId]);
         await connection.execute('INSERT INTO order_refund_request_keys (user_id, idempotency_key, refund_request_id) VALUES (?, ?, ?)', [customerId, idempotencyKey, created.insertId]);
-        return { requestId: Number(created.insertId), orderId: Number(order.id), orderNo: order.order_no, status: 'pending_review', requestedAmount: String(order.pay_amount), idempotent: false };
+        return { requestId: Number(created.insertId), orderId: Number(order.id), orderNo: order.order_no, status, requestedAmount: String(order.pay_amount), idempotent: false };
       });
     },
     async list(userId, orderId = null) {
@@ -50,8 +53,8 @@ export function createMysqlRefundRepository(pool) {
       if (orderKeyword === null) throw failure('INVALID_REQUEST');
       if (orderKeyword) { where += ' AND r.order_no LIKE ?'; values.push(`%${orderKeyword}%`); }
       const [rows] = await pool.execute(
-        `SELECT r.id, r.order_id, r.order_no, r.request_type, r.reason, r.requested_amount, r.status, r.admin_note, r.created_at, r.updated_at
-           FROM order_refund_requests r WHERE ${where} ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`, [...values, limit, offset]
+        `SELECT r.id, r.order_id, r.order_no, r.request_type, r.reason, r.requested_amount, r.status, r.admin_note, r.created_at, r.updated_at, o.status AS order_status
+           FROM order_refund_requests r INNER JOIN orders o ON o.id = r.order_id WHERE ${where} ORDER BY r.created_at DESC, r.id DESC LIMIT ? OFFSET ?`, [...values, limit, offset]
       );
       const [totals] = await pool.execute(`SELECT COUNT(*) AS total FROM order_refund_requests r WHERE ${where}`, values);
       return { list: rows, total: Number(totals[0]?.total || 0) };
@@ -104,10 +107,11 @@ export function createMysqlRefundRepository(pool) {
       const id = positive(requestId); if (!id) throw failure('INVALID_REQUEST');
       return transaction(async (connection) => {
         const [[row]] = await connection.execute(`SELECT r.id, r.status, r.processed_refund_no, r.reason, r.requested_amount,
-          o.pay_amount, o.pay_transaction_id FROM order_refund_requests r INNER JOIN orders o ON o.id = r.order_id
+          o.pay_amount, o.pay_transaction_id, o.status AS order_status FROM order_refund_requests r INNER JOIN orders o ON o.id = r.order_id
           WHERE r.id = ? LIMIT 1 FOR UPDATE`, [id]);
         if (!row) throw failure('REFUND_NOT_FOUND');
         if (!['approved', 'processing'].includes(row.status)) throw failure('REFUND_NOT_EXECUTABLE');
+        if (row.order_status !== 'refunding') throw failure('ORDER_REFUND_STATE_CONFLICT');
         const totalAmountFen = fen(row.pay_amount); const refundAmountFen = fen(row.requested_amount);
         if (!totalAmountFen || !refundAmountFen || refundAmountFen > totalAmountFen || !row.pay_transaction_id) throw failure('REFUND_PAYMENT_NOT_READY');
         const outRefundNo = row.processed_refund_no || refundNo(id);

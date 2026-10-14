@@ -2,7 +2,9 @@
   <!-- #ifdef H5 -->
   <scroll-view scroll-y class="h5-shop">
     <SravxH5GlobalNav />
+    <sravx-page-back />
     <view v-if="loading" class="h5-state">正在准备产品目录</view>
+    <view v-else-if="catalogError" class="h5-state"><text>{{ catalogError }}</text><button @click="load">重新加载</button></view>
     <template v-else>
       <view class="h5-shop-head"><text class="h5-eyebrow">SRAVX PROFESSIONAL TOOLS</text><text>{{ h5CatalogTitle }}</text><text>按系列、用途与工作节奏，找到适合你的工具。</text></view>
       <view class="h5-category-band"><view class="h5-category-shell">
@@ -44,7 +46,7 @@
         </view>
         <template v-if="visibleProducts.length">
           <view class="h5-catalog-title"><text>{{ displayTitle }}</text><text>{{ visibleProducts.length }} 件产品</text></view>
-          <scroll-view scroll-x class="h5-product-scroll"><view class="h5-product-track"><view v-for="item in visibleProducts" :key="item.id" class="h5-product-card" @click="detail(item.id)"><view class="h5-product-image"><image :src="item.image" mode="aspectFit" /></view><view class="h5-product-copy"><text>{{ item.categoryName }}</text><text>{{ item.displayName }}</text><text>查看详情 <text>›</text></text></view></view></view></scroll-view>
+          <scroll-view scroll-x class="h5-product-scroll"><view class="h5-product-track"><view v-for="item in visibleProducts" :key="item.id" class="h5-product-card" @click="detail(item.id)"><view class="h5-product-image"><image :src="item.image" mode="aspectFit" /></view><view class="h5-product-copy"><text>{{ item.categoryName }}</text><text>{{ item.displayName }}</text><text>{{ item.display_price_text }}</text><text>查看详情 <text>›</text></text></view></view></view></scroll-view>
         </template>
         <view v-else-if="!catalogCards.length" class="h5-state">该分类暂未上架商品</view>
       </view>
@@ -55,6 +57,7 @@
 
   <!-- #ifndef H5 -->
   <scroll-view scroll-y class="page">
+    <sravx-page-back mode="safe" />
     <view v-if="loading" class="state">正在准备产品目录</view>
     <template v-else-if="viewMode==='series'">
       <view class="intro"><text>选购 Sravx</text><text class="ui-small">从适合您的专业系列开始</text></view>
@@ -62,8 +65,15 @@
       <view class="explore"><text>深入探索</text><view class="explore-card" @click="exploreAll"><view class="grid-icon"/><view><text>按用途浏览全部工具</text><text class="ui-small">直剪、弯剪、造型剪与配件</text></view><view class="arrow"/></view></view>
     </template>
     <template v-else>
-      <view class="back" @click="viewMode='series'">‹ 全部系列</view><view class="intro catalog"><text>{{seriesTitle}}</text><text class="ui-small">{{seriesMaterial}}</text></view>
-      <view v-if="toolGroups.length" class="tools"><text>按用途选</text><scroll-view scroll-x class="horizontal"><view class="chips"><view v-for="item in toolGroups" :key="item.key" class="chip" :class="{active:activeToolGroup===item.key}" @click="selectGroup(item.key)">{{item.label}}</view></view></scroll-view><scroll-view v-if="subCategories.length" scroll-x class="horizontal"><view class="chips sub"><view v-for="item in subCategories" :key="item.id" class="chip sub-chip" :class="{activeSub:activeSubCategory===item.id}" @click="activeSubCategory=item.id">{{item.name}}</view></view></scroll-view></view>
+      <view class="intro catalog"><text>{{seriesTitle}}</text><text class="ui-small">{{seriesMaterial}}</text></view>
+      <view v-if="toolGroups.length" class="tools">
+        <text>按用途选</text>
+        <scroll-view scroll-x :show-scrollbar="false" scroll-with-animation :scroll-into-view="'tool-' + activeToolGroup" class="horizontal tool-scroll">
+          <view class="chips tool-chips">
+            <view v-for="item in toolGroups" :id="'tool-' + item.key" :key="item.key" class="chip tool-chip" :class="{active:activeToolGroup===item.key}" @click="selectGroup(item.key)">{{item.label}}</view>
+          </view>
+        </scroll-view>
+      </view>
       <view class="catalog-head"><text>{{displayTitle}}</text><text class="ui-small">{{visibleProducts.length}} 件</text></view>
       <view v-if="!visibleProducts.length" class="state">该分类暂未上架商品</view><view v-else class="grid"><view v-for="item in visibleProducts" :key="item.id" class="product" @click="detail(item.id)"><image :src="item.image" mode="aspectFill"/><view><text class="ui-small">{{item.categoryName}}</text><text>{{item.displayName}}</text></view></view></view>
     </template>
@@ -73,18 +83,21 @@
 </template>
 
 <script>
+import SravxPageBack from '../../components/sravx-page-back/sravx-page-back.vue'
+
 import api from '../../common/api.js'
 import SravxH5GlobalNav from '../../components/SravxH5GlobalNav.vue'
 // #ifdef H5
 import { catalogRoute } from '../../common/catalog-route.mjs'
 // #endif
+import { productClassification } from '../../common/product-classification.mjs'
 const SERIES=[{key:'all',label:'全部工具',material:'专业工具目录',caption:'按用途浏览'},{key:'basic',label:'Basic',material:'9Cr',caption:'入门专业款'},{key:'pro',label:'Pro',material:'440C',caption:'专业主力款'},{key:'master',label:'Master',material:'VG10',caption:'高阶专业款'},{key:'accessories',label:'配件',material:'收纳与养护',caption:'专业工作配套'}]
 const GROUPS=[{key:'all',label:'全部'},{key:'straight',label:'直剪'},{key:'curved',label:'弯剪'},{key:'thinning',label:'牙剪'},{key:'fishbone',label:'鱼骨剪'},{key:'texturizing',label:'造型剪'},{key:'accessories',label:'套装与配件'},{key:'other',label:'其他工具'}]
 const SERIES_GROUPS=['all','straight','curved','thinning','fishbone','texturizing']
 const SERIES_TOOL_TYPES=[{key:'straight',label:'直剪'},{key:'curved',label:'弯剪'},{key:'thinning',label:'牙剪'},{key:'fishbone',label:'鱼骨剪'},{key:'texturizing',label:'造型剪'}]
-function group(name=''){if(/直剪/.test(name))return'straight';if(/弯剪/.test(name))return'curved';if(/牙剪/.test(name))return'thinning';if(/鱼骨剪/.test(name))return'fishbone';if(/(柳叶剪|莲蓬剪|魔术剪|造型剪)/.test(name))return'texturizing';if(/(套装|配件|收纳|养护|保养|服务)/.test(name))return'accessories';return'other'}
-function match(product,series){if(series==='all')return true;const text=[product.displayName||'',product.name||'',product.desc||'',product.description||'',product.series||'',product.series_name||''].join(' ').toLowerCase();return series==='accessories'?/(配件|套装|收纳|养护|保养|服务)/.test(text):text.includes(series)}
-function all(sections){const seen=new Set(),out=[];(sections||[]).forEach(section=>{(section.products||[]).forEach(item=>{if(seen.has(String(item.id)))return;seen.add(String(item.id));out.push({...item,categoryId:section.id,categoryName:section.name,displayName:item.short_name||item.name||'未命名商品',image:api.productImage(item)||'/static/navigation/sravx-mark.png'})})});return out}
+function group(value=''){return productClassification(typeof value==='string'?{name:value}:value).tool}
+function match(product,series){return series==='all'||productClassification(product).series===series}
+function all(sections,categories){const seen=new Set(),out=[];(sections||[]).forEach(section=>{(section.products||[]).forEach(item=>{if(seen.has(String(item.id)))return;seen.add(String(item.id));out.push({...item,series:productClassification(item,categories).series,categoryId:section.id,categoryName:section.name,displayName:item.short_name||item.name||'未命名商品',image:api.productImage(item)||'/static/navigation/sravx-mark.png'})})});return out}
 const catalogView = {
   // #ifdef H5
   mounted() {
@@ -162,13 +175,13 @@ const catalogView = {
       if (this.activeSeries === 'accessories') return []
       const descriptions = { straight: '用于平整修剪与基础轮廓整理。', curved: '用于弧形轮廓与圆润线条修剪。', thinning: '用于毛量调整与自然过渡。', fishbone: '探索鱼骨剪型与对应工具。', texturizing: '探索细节处理与造型工具。' }
       return SERIES_TOOL_TYPES.filter(tool => this.activeToolGroup === 'all' || tool.key === this.activeToolGroup).map(tool => {
-        const product = this.allProducts.find(item => match(item, this.activeSeries) && group([item.categoryName, item.displayName, item.name].join(' ')) === tool.key)
+        const product = this.allProducts.find(item => match(item, this.activeSeries) && group(item) === tool.key)
         return { ...tool, image: product ? product.image : '/static/navigation/sravx-mark.png', description: descriptions[tool.key] }
       })
     }
   }
 }
-export default{mixins:[catalogView],components:{SravxH5GlobalNav},data(){return{categories:[],sections:[],viewMode:'series',activeToolGroup:'all',activeSubCategory:'all',activeSeries:'all',loading:true}},computed:{allProducts(){return all(this.sections)},toolGroups(){if(['basic','pro','master'].includes(this.activeSeries))return GROUPS.filter(item=>SERIES_GROUPS.includes(item.key));if(this.activeSeries==='accessories')return[];const keys=new Set(this.allProducts.map(product=>group([product.categoryName,product.displayName,product.name].join(' '))));return GROUPS.filter(item=>item.key==='all'||keys.has(item.key))},subCategories(){if(this.activeToolGroup==='all')return[];const names=this.sections.filter(section=>group(section.name)===this.activeToolGroup).map(section=>({id:section.id,name:section.name}));return[{id:'all',name:'全部'+((this.toolGroups.find(item=>item.key===this.activeToolGroup)||{}).label||'')},...names]},seriesCards(){return SERIES.filter(item=>item.key!=='all').map(item=>{const found=this.allProducts.filter(product=>match(product,item.key));return{...item,toolTypes:['basic','pro','master'].includes(item.key)?SERIES_TOOL_TYPES:null,coverImage:(found[0]&&found[0].image)||'/static/navigation/sravx-mark.png',productCount:found.length}})},h5SeriesFilters(){return SERIES},h5CatalogTitle(){const series=(SERIES.find(item=>item.key===this.activeSeries)||{}).label||'';return this.activeSeries==='all'?'SRAVX':'SRAVX '+series},visibleProducts(){return this.allProducts.filter(item=>match(item,this.activeSeries)&&(this.activeToolGroup==='all'||group([item.categoryName,item.displayName,item.name].join(' '))===this.activeToolGroup)&&(this.activeSubCategory==='all'||String(item.categoryId)===String(this.activeSubCategory)))},displayTitle(){const series=(SERIES.find(item=>item.key===this.activeSeries)||{}).label||'',groupLabel=(this.toolGroups.find(item=>item.key===this.activeToolGroup)||{}).label||'全部';return this.activeSeries==='all'?groupLabel+'专业工具':series+' · '+groupLabel},seriesTitle(){return this.activeSeries==='all'?'全部专业工具':((SERIES.find(item=>item.key===this.activeSeries)||{}).label+' 系列')},seriesMaterial(){const item=SERIES.find(series=>series.key===this.activeSeries);return item?item.material+' · '+item.caption:'按用途选择专业工具'}},onLoad(query){if(query.series&&SERIES.some(item=>item.key===query.series)){this.viewMode='catalog';this.activeSeries=query.series}this.load()},methods:{async load(){this.loading=true;try{const categories=api.asList(await api.getCategoryList());this.categories=categories;this.sections=await Promise.all(categories.map(async category=>({id:category.id,name:category.name,products:api.asList(await api.getProductList({categoryId:category.id,pageSize:20}).catch(()=>[]))})))}catch(error){uni.showToast({title:error.message||'加载失败',icon:'none'})}finally{this.loading=false}},selectSeries(key){this.viewMode='catalog';this.activeSeries=key;this.activeToolGroup='all';this.activeSubCategory='all'},selectH5Series(key){this.activeSeries=key;this.activeToolGroup='all';this.activeSubCategory='all';this.syncH5Route()},selectH5SeriesTool(series,tool){this.activeSeries=series;this.activeToolGroup=tool;this.activeSubCategory='all';this.syncH5Route()},exploreAll(){this.selectSeries('all')},selectGroup(key){this.activeToolGroup=key;this.activeSubCategory='all'},syncH5Route(){if(typeof window==='undefined')return;const suffix=this.activeSeries==='all'?'':'?series='+encodeURIComponent(this.activeSeries);window.history.replaceState(null,'','#/pages/shop/index'+suffix)},detail(id){if(typeof window!=='undefined'){window.location.hash='#/pages/product-detail/index?id='+encodeURIComponent(id);return}uni.navigateTo({url:'/pages/product-detail/index?id='+encodeURIComponent(id)})}}}
+export default{mixins:[catalogView],components:{ SravxPageBack, SravxH5GlobalNav},data(){return{categories:[],sections:[],viewMode:'series',activeToolGroup:'all',activeSubCategory:'all',activeSeries:'all',loading:true,catalogError:''}},computed:{allProducts(){return all(this.sections,this.categories)},toolGroups(){if(['basic','pro','master'].includes(this.activeSeries))return GROUPS.filter(item=>SERIES_GROUPS.includes(item.key));if(this.activeSeries==='accessories')return[];const keys=new Set(this.allProducts.map(product=>group(product)));return GROUPS.filter(item=>item.key==='all'||keys.has(item.key))},subCategories(){if(this.activeToolGroup==='all')return[];const names=this.sections.filter(section=>group(section.name)===this.activeToolGroup).map(section=>({id:section.id,name:section.name}));return[{id:'all',name:'全部'+((this.toolGroups.find(item=>item.key===this.activeToolGroup)||{}).label||'')},...names]},seriesCards(){return SERIES.filter(item=>item.key!=='all').map(item=>{const found=this.allProducts.filter(product=>match(product,item.key));return{...item,toolTypes:['basic','pro','master'].includes(item.key)?SERIES_TOOL_TYPES:null,coverImage:(found[0]&&found[0].image)||'/static/navigation/sravx-mark.png',productCount:found.length}})},h5SeriesFilters(){return SERIES},h5CatalogTitle(){const series=(SERIES.find(item=>item.key===this.activeSeries)||{}).label||'';return this.activeSeries==='all'?'SRAVX':'SRAVX '+series},visibleProducts(){return this.allProducts.filter(item=>match(item,this.activeSeries)&&(this.activeToolGroup==='all'||group(item)===this.activeToolGroup)&&(this.activeSubCategory==='all'||String(item.categoryId)===String(this.activeSubCategory)))},displayTitle(){const series=(SERIES.find(item=>item.key===this.activeSeries)||{}).label||'',groupLabel=(this.toolGroups.find(item=>item.key===this.activeToolGroup)||{}).label||'全部';return this.activeSeries==='all'?groupLabel+'专业工具':series+' · '+groupLabel},seriesTitle(){return this.activeSeries==='all'?'全部专业工具':((SERIES.find(item=>item.key===this.activeSeries)||{}).label+' 系列')},seriesMaterial(){const item=SERIES.find(series=>series.key===this.activeSeries);return item?item.material+' · '+item.caption:'按用途选择专业工具'}},onLoad(query){if(query.series&&SERIES.some(item=>item.key===query.series)){this.viewMode='catalog';this.activeSeries=query.series}this.load()},methods:{async load(){this.loading=true;this.catalogError='';try{const categories=api.asList(await api.getCategoryList());this.categories=categories;this.sections=await Promise.all(categories.map(async category=>({id:category.id,name:category.name,products:api.asList(await api.getAllProducts({categoryId:category.id}))})))}catch(error){this.catalogError=error.message||'商品目录加载失败，请重试';uni.showToast({title:this.catalogError,icon:'none'})}finally{this.loading=false}},selectSeries(key){this.viewMode='catalog';this.activeSeries=key;this.activeToolGroup='all';this.activeSubCategory='all'},selectH5Series(key){this.activeSeries=key;this.activeToolGroup='all';this.activeSubCategory='all';this.syncH5Route()},selectH5SeriesTool(series,tool){this.activeSeries=series;this.activeToolGroup=tool;this.activeSubCategory='all';this.syncH5Route()},exploreAll(){this.selectSeries('all')},selectGroup(key){this.activeToolGroup=key;this.activeSubCategory='all'},syncH5Route(){if(typeof window==='undefined')return;const suffix=this.activeSeries==='all'?'':'?series='+encodeURIComponent(this.activeSeries);window.history.replaceState(null,'','#/pages/shop/index'+suffix)},detail(id){if(typeof window!=='undefined'){window.location.hash='#/pages/product-detail/index?id='+encodeURIComponent(id);return}uni.navigateTo({url:'/pages/product-detail/index?id='+encodeURIComponent(id)})}}}
 </script>
 
 <style>
@@ -181,4 +194,7 @@ export default{mixins:[catalogView],components:{SravxH5GlobalNav},data(){return{
 .h5-lineup-scroll{overflow-x:auto;margin-left:calc(24px - max(24px, (100vw - 1120px)/2));margin-right:calc(24px - max(24px, (100vw - 1120px)/2));scrollbar-width:none;scroll-snap-type:x proximity}.h5-lineup-scroll::-webkit-scrollbar{display:none}.h5-lineup-track{gap:22px}.h5-lineup-card{width:clamp(260px,18vw,360px);scroll-snap-align:start}.h5-lineup-image{height:clamp(230px,15vw,290px)}.h5-lineup-controls{display:flex;justify-content:flex-end;gap:12px;margin-top:18px}.h5-lineup-controls button{display:flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;margin:0;padding:0;border:0;border-radius:50%;background:#e8e8ed;color:#6e6e73;font-size:30px;line-height:1;cursor:pointer}.h5-lineup-controls button::after{display:none}.h5-lineup-controls button:disabled{opacity:.35;cursor:default}.h5-lineup-controls button:not(:disabled):hover{background:#dcdce1;color:#1d1d1f}@media(max-width:760px){.h5-lineup-scroll{margin-left:0;margin-right:-20px}.h5-lineup-card{width:260px}.h5-lineup-track{gap:18px;padding-right:20px}}
 .h5-lineup-controls{margin-top:32px}.h5-page-chevron{width:9px;height:9px;border-top:3px solid currentColor;border-right:3px solid currentColor;transform:translateX(-2px) rotate(45deg)}.h5-page-chevron-left{transform:translateX(2px) rotate(-135deg)}
 .h5-lineup-controls{justify-content:center}
+.tool-scroll{width:100%;white-space:nowrap}
+.tool-chips{display:inline-flex;min-width:100%;box-sizing:border-box}
+.tool-chip{flex:none;white-space:nowrap}
 </style>

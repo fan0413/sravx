@@ -1,6 +1,8 @@
 <template>
   <el-card>
-    <template #header>订单详情</template>
+    <template #header>订单详情
+      <el-button v-if="data && ['refunding', 'refunded'].includes(data.order.status)" link type="primary" @click="$router.push({ path: '/refund/list', query: { orderNo: data.order.order_no } })">退款处理</el-button>
+    </template>
 
     <el-descriptions v-if="data" :column="2" border>
       <el-descriptions-item label="订单ID">{{ data.order.id }}</el-descriptions-item>

@@ -59,7 +59,7 @@ export function createMysqlAfterSaleRepository(pool) {
         const binding = bindings[0];
         const [addresses] = await connection.execute(
           `SELECT a.name, a.contact, a.phone, a.province, a.city, a.district, a.detail
-             FROM addresses a INNER JOIN users u ON u.openid = a.openid
+             FROM addresses a INNER JOIN users u ON u.openid COLLATE utf8mb4_bin = a.openid COLLATE utf8mb4_bin
             WHERE a.id = ? AND u.id = ? LIMIT 1 FOR UPDATE`,
           [recipientAddressId, userId]
         );

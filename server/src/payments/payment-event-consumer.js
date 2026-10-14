@@ -21,7 +21,7 @@ export function createPaymentEventConsumer({ inboundRepository, settlementReposi
             ? await settlementRepository.settlePointsTransaction({ outTradeNo: resource.out_trade_no, transactionId: resource.transaction_id })
             : await settlementRepository.settleTransaction({ outTradeNo: resource.out_trade_no, transactionId: resource.transaction_id });
         } else if (event.event_type === 'REFUND.SUCCESS') {
-          if (resource.status !== 'SUCCESS' || typeof resource.out_refund_no !== 'string' || typeof resource.refund_id !== 'string') throw new Error('INVALID_REFUND');
+          if (resource.refund_status !== 'SUCCESS' || typeof resource.out_refund_no !== 'string' || typeof resource.refund_id !== 'string') throw new Error('INVALID_REFUND');
           if (typeof settlementRepository.settleRefund !== 'function') throw new Error('REFUND_SETTLEMENT_NOT_READY');
           result = await settlementRepository.settleRefund({ outRefundNo: resource.out_refund_no, refundId: resource.refund_id });
         } else throw new Error('UNSUPPORTED_EVENT');

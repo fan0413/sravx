@@ -1,3 +1,5 @@
+import { classificationInput } from '../catalog/classification.js';
+
 function text(value, maximum, name, { required = false } = {}) {
   if (value === undefined || value === null || value === '') {
     if (required) throw new Error(`${name} is required.`);
@@ -81,14 +83,37 @@ function intentIds(value, name, maximum = 20) {
 function productParams(value) {
   if (value === undefined || value === null) return {};
   if (typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length > 30) throw new Error('Invalid params.');
+  if (value['目录系列'] !== undefined) {
+    const series = value['目录系列'];
+    const tool = value['目录分类'];
+    if (!['basic', 'pro', 'master', 'accessories'].includes(series) ||
+      !(series === 'accessories' ? tool === 'accessories' : ['straight', 'curved', 'thinning', 'fishbone', 'texturizing'].includes(tool))) throw new Error('Invalid catalog classification.');
+  }
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [text(key, 50, 'params.key', { required: true }), text(item, 200, 'params.value', { required: true })]));
 }
-function fulfillment(payload) { const shipDeadlineDays = integer(payload.shipDeadlineDays, null, 0, 365); if (shipDeadlineDays === null) throw new Error('shipDeadlineDays is required.'); return { shippingType: text(payload.shippingType, 32, 'shippingType', { required: true }), shipDeadlineDays, shippingPromise: text(payload.shippingPromise, 120, 'shippingPromise', { required: true }), shippingDelayReason: text(payload.shippingDelayReason, 80, 'shippingDelayReason', { required: true }), shippingNote: text(payload.shippingNote, 500, 'shippingNote', { required: true }) }; }
+function fulfillment(payload) {
+  const shipDeadlineDays = integer(payload.shipDeadlineDays, null, 0, 365);
+  if (shipDeadlineDays === null) throw new Error('shipDeadlineDays is required.');
+  const shippingType = text(payload.shippingType, 32, 'shippingType', { required: true });
+  if (!['normal', 'presale', 'custom', 'delayed'].includes(shippingType)) throw new Error('Invalid shippingType.');
+  return { shippingType, shipDeadlineDays,
+    shippingPromise: text(payload.shippingPromise, 120, 'shippingPromise', { required: true }),
+    shippingDelayReason: text(payload.shippingDelayReason, 80, 'shippingDelayReason', { required: shippingType === 'delayed' }),
+    shippingNote: text(payload.shippingNote, 500, 'shippingNote') };
+}
 export function productInput(payload, { existing = false } = {}) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) throw new Error('Invalid product payload.');
-  const hasSpec = flag(payload.hasSpec, 0); const specs = Array.isArray(payload.specs) ? payload.specs : [];
+  const classification = classificationInput(payload);
+  if (classification) payload = { ...payload, params: { ...payload.params, '目录系列': classification.series, '目录分类': classification.toolGroup } };
+  const specs = Array.isArray(payload.specs) ? payload.specs : []; const hasSpec = specs.length ? 1 : flag(payload.hasSpec, 0);
   if (hasSpec && specs.length === 0) throw new Error('At least one specification is required.');
   if (specs.length > 50) throw new Error('Too many specifications.');
+  const sellingPrice = (value, name) => {
+    if ((typeof value !== 'number' && typeof value !== 'string') || !/^\d+(?:\.\d{1,2})?$/.test(String(value).trim()) || Number(value) <= 0 || Number(value) > 99999999.99) throw new Error(`Invalid required ${name}.`);
+    return Number(value);
+  };
+  // The top-level price is a derived starting price, never a second competing sale price.
+  payload = { ...payload, price: specs.length ? Math.min(...specs.map(spec => sellingPrice(spec?.price, 'spec.price'))) : sellingPrice(payload.price, 'price') };
   return { name: text(payload.name, 200, 'name', { required: true }), shortName: text(payload.shortName, 50, 'shortName'), description: text(payload.description, 500, 'description'), price: decimal(payload.price, 'price', { required: true }), categoryId: integer(payload.categoryId, null, 1), coverImageIntentId: intentId(payload.coverImageIntentId, 'coverImageIntentId', !existing), imageIntentIds: intentIds(payload.imageIntentIds, 'imageIntentIds', 7), detailImageIntentIds: intentIds(payload.detailImageIntentIds, 'detailImageIntentIds', 30), scissorsCardImageIntentId: intentId(payload.scissorsCardImageIntentId, 'scissorsCardImageIntentId'), params: productParams(payload.params), stock: integer(payload.stock, 0), warrantyMonths: integer(payload.warrantyMonths, null, 0, 1200), hasSpec, isOnSale: flag(payload.isOnSale, 1), isRecommend: flag(payload.isRecommend, 0), allowCoupon: flag(payload.allowCoupon, 1), sortOrder: integer(payload.sortOrder, 0), ...fulfillment(payload), specs: specs.map((spec) => ({ name: text(spec?.name, 50, 'spec.name', { required: true }), sku: text(spec?.sku, 64, 'spec.sku'), imageIntentId: intentId(spec?.imageIntentId, 'spec.imageIntentId'), cardImageIntentId: intentId(spec?.cardImageIntentId, 'spec.cardImageIntentId'), price: decimal(spec?.price, 'spec.price', { required: true }), sortOrder: integer(spec?.sortOrder, 0), ...fulfillment(spec || {}) })) };
 }
 
@@ -180,7 +205,7 @@ export function structuredProductVariantsInput(payload) {
     return {
       id: integer(item?.id, null, 1), modelName, colorName,
       skuCode: text(item?.skuCode, 64, 'sku.skuCode', { required: true }),
-      priceFen: integer(item?.priceFen, null, 0, 999999999),
+      priceFen: integer(item?.priceFen, null, 1, 999999999),
       stockAvailable: integer(item?.stockAvailable, null, 0, 10000000),
       isOnSale: flag(item?.isOnSale, 1),
       shippingType: text(item?.shippingType, 32, 'sku.shippingType', { required: true }),

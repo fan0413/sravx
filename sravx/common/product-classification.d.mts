@@ -1,0 +1,10 @@
+export type ClassificationOption = { key: string; label: string };
+export type ClassificationCategory = { id: number; parent_id?: number | null; name: string; is_show?: number };
+export const SERIES_OPTIONS: ClassificationOption[];
+export const TOOL_OPTIONS: ClassificationOption[];
+export function readParams(value: unknown): Record<string, unknown>;
+export function seriesKey(value: unknown): string;
+export function toolKey(value: unknown): string;
+export function categorySeries(category: ClassificationCategory | undefined, categories: ClassificationCategory[]): string;
+export function categoriesForSeries(categories: ClassificationCategory[], series: string, tool?: string): ClassificationCategory[];
+export function productClassification(product: Record<string, unknown>, categories?: ClassificationCategory[]): { series: string; tool: string };

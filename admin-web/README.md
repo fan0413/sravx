@@ -1,6 +1,6 @@
-# 电商管理平台前端骨架（Vue3）
+# SRAVX 电商管理端（Vue 3）
 
-基于 `Vue3 + Vite + TypeScript + Pinia + Vue Router + Element Plus` 的管理后台前端骨架，包含：
+基于 `Vue3 + Vite + TypeScript + Vue Router + Element Plus` 的管理后台，包含：
 
 - 商品管理：商品列表、新建商品
 - 订单管理：订单列表、订单详情
@@ -23,11 +23,11 @@ npm run build
 
 构建后产物目录为 `dist/`。
 
-## 当前阶段说明（本地优先）
+## 当前接口与交付边界
 
-- 当前阶段先使用本地 `localhost` 联调
-- 暂不做接口封装与托管上线流程
-- 页面完善后再统一接入 API 封装并上传腾讯云静态托管
+- 当前管理端使用服务器API，默认同域请求；开发/预览通过Vite代理。身份会话与权限由服务器校验，不使用旧CloudBase适配器。
+- 管理端与官网、小程序分别构建和发布，源码更新不自动改变线上版本。
+- 本地可运行`node --test scripts/*.test.mjs`；`npm run build`包含类型检查。真实后台登录、写商品或审批退款不得作为无授权面试演示。
 
 ## 路由与刷新策略
 
@@ -36,11 +36,8 @@ npm run build
 
 ## 环境变量
 
-本地与生产环境目前都先指向本地服务（后续上线再替换）：
+默认不需要覆盖接口域名。确有独立环境时参考当前`src/lib/target-admin-auth.ts`的配置契约，不把生产会话或密钥写入环境示例。
 
-```bash
-VITE_API_BASE_URL=http://localhost:3000
-```
 # 渠道工作区
 
 顶部可切换网页功能与小程序功能，入口分别为 `#/channel/web`、`#/channel/miniprogram`。共用业务仍使用原页面和原 API；在共用编辑页切换不会跳转或清空表单。渠道偏好仅保存于本机，不是权限或数据库切换。

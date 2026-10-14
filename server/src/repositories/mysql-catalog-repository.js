@@ -1,15 +1,25 @@
+import { classificationSql, classificationFilters } from '../catalog/classification.js';
+
 function positiveInteger(value, fallback = null) {
   const number = Number(value);
   return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
-export function createMysqlCatalogRepository(pool, { structuredCatalog = false } = {}) {
+export function createMysqlCatalogRepository(pool, { structuredCatalog = false, normalizedCatalog = false } = {}) {
   if (!pool || typeof pool.execute !== 'function') throw new Error('A MySQL pool is required.');
+  const classification = classificationSql(normalizedCatalog);
+  const legacyPrice = `CASE WHEN EXISTS (SELECT 1 FROM product_specs ps WHERE ps.product_id = p.id)
+    THEN (SELECT MIN(ps.price) FROM product_specs ps WHERE ps.product_id = p.id AND ps.price >= 0)
+    ELSE p.price END`;
+  const startingPrice = structuredCatalog ? `CASE WHEN EXISTS (SELECT 1 FROM product_skus sku WHERE sku.product_id = p.id)
+    THEN (SELECT MIN(sku.price_fen) / 100 FROM product_skus sku WHERE sku.product_id = p.id AND sku.is_on_sale = 1 AND sku.price_fen >= 0)
+    ELSE ${legacyPrice} END` : legacyPrice;
+  const presentPrice = product => Object.hasOwn(product, 'display_price') ? { ...product, base_price: product.price, price: product.display_price } : product;
 
   return Object.freeze({
     async home() {
       const [products] = await pool.execute(
-        `SELECT p.* FROM products p
+        `SELECT p.*${classification.select}, ${startingPrice} AS display_price FROM products p${classification.join}
          INNER JOIN categories c ON c.id = p.category_id
          WHERE p.is_on_sale = 1 AND p.is_recommend = 1
            AND p.deleted_at IS NULL AND c.deleted_at IS NULL AND c.is_show = 1
@@ -20,19 +30,19 @@ export function createMysqlCatalogRepository(pool, { structuredCatalog = false }
          FROM categories WHERE deleted_at IS NULL AND is_show = 1
          ORDER BY sort_order ASC, id ASC`
       );
-      if (!structuredCatalog) return { products, categories };
+      if (!structuredCatalog) return { products: products.map(presentPrice), categories };
       const [serviceContents] = await pool.execute(
         `SELECT code, title, summary, effective_at, sort_order
            FROM service_contents
           WHERE status = 'active' AND (effective_at IS NULL OR effective_at <= NOW())
           ORDER BY sort_order ASC, id ASC`
       );
-      return { products, categories, serviceContents };
+      return { products: products.map(presentPrice), categories, serviceContents };
     },
     async listProducts({ categoryId, keyword, page, pageSize, series, toolGroup, toolSubtype, size }) {
       const limit = Math.min(100, positiveInteger(pageSize, 20));
       const offset = (positiveInteger(page, 1) - 1) * limit;
-      let sql = `SELECT p.* FROM products p
+      let sql = `SELECT p.*${classification.select}, ${startingPrice} AS display_price FROM products p${classification.join}
         INNER JOIN categories c ON c.id = p.category_id
         WHERE p.is_on_sale = 1 AND p.deleted_at IS NULL
           AND c.deleted_at IS NULL AND c.is_show = 1`;
@@ -47,9 +57,11 @@ export function createMysqlCatalogRepository(pool, { structuredCatalog = false }
         const term = `%${keyword.trim().slice(0, 80)}%`;
         values.push(term, term, term);
       }
+      const classificationWhere = classificationFilters(classification, { series, toolGroup }, values);
+      if (classificationWhere.length) sql += ` AND ${classificationWhere.join(' AND ')}`;
       if (structuredCatalog) {
         const filters = [
-          ['series', series, 32], ['tool_group', toolGroup, 64], ['tool_subtype', toolSubtype, 64], ['display_size', size, 32]
+          ['tool_subtype', toolSubtype, 64], ['display_size', size, 32]
         ];
         for (const [column, raw, maximum] of filters) {
           if (typeof raw !== 'string' || !raw.trim()) continue;
@@ -60,20 +72,20 @@ export function createMysqlCatalogRepository(pool, { structuredCatalog = false }
       sql += ' ORDER BY p.sort_order ASC, p.id DESC LIMIT ? OFFSET ?';
       values.push(limit, offset);
       const [products] = await pool.execute(sql, values);
-      return products;
+      return products.map(presentPrice);
     },
     async getProduct(productId) {
       const id = positiveInteger(productId);
       if (!id) return null;
       const [products] = await pool.execute(
-        `SELECT p.* FROM products p
+        `SELECT p.*${classification.select}, ${startingPrice} AS display_price FROM products p${classification.join}
          INNER JOIN categories c ON c.id = p.category_id
          WHERE p.id = ? AND p.is_on_sale = 1 AND p.deleted_at IS NULL
            AND c.deleted_at IS NULL AND c.is_show = 1 LIMIT 1`,
         [id]
       );
       if (products.length !== 1) return null;
-      const product = products[0];
+      const product = presentPrice(products[0]);
       const [specs] = await pool.execute(
         `SELECT name, image, card_image, price, sort_order, sku,
                 shipping_type, ship_deadline_days, shipping_promise,

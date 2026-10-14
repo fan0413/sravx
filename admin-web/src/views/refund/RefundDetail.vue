@@ -15,6 +15,7 @@
         <el-descriptions-item label="退款原因">{{ refund?.reason || "-" }}</el-descriptions-item>
         <el-descriptions-item label="审核备注">{{ refund?.admin_note || "-" }}</el-descriptions-item>
       </el-descriptions>
+      <RefundActions v-if="refund" :request-id="Number(refund.id)" :status="String(refund.status || '')" :amount="String(refund.requested_amount || '')" @changed="loadDetail" />
     </el-card>
 
     <el-card class="mt12">
@@ -59,7 +60,7 @@
         <el-table-column prop="id" label="明细ID" width="90" />
         <el-table-column prop="product_id" label="商品ID" width="90" />
         <el-table-column prop="product_name" label="商品名称" min-width="220" />
-        <el-table-column prop="selected_color" label="规格/颜色" min-width="120" />
+        <el-table-column prop="spec_desc" label="规格" min-width="120" />
         <el-table-column prop="price" label="单价" width="110" />
         <el-table-column prop="quantity" label="数量" width="90" />
       </el-table>
@@ -73,8 +74,9 @@ import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { fetchAdminRefundDetail } from "../../api/admin";
 import { targetAdminOperationsModeEnabled } from "../../lib/target-admin-auth";
+import RefundActions from '../../components/RefundActions.vue';
 
-type AnyRecord = Record<string, any>;
+type AnyRecord = Record<string, unknown>;
 
 const route = useRoute();
 const router = useRouter();
@@ -91,7 +93,8 @@ const REFUND_STATUS_MAP: Record<string, string> = {
   pending_review: "待审核",
   approved: "已通过",
   processing: "处理中",
-  rejected: "已拒绝"
+  rejected: "已拒绝",
+  refunded: "已退款"
 };
 
 const ORDER_STATUS_MAP: Record<string, string> = {
@@ -104,12 +107,12 @@ const ORDER_STATUS_MAP: Record<string, string> = {
   refunded: "已退款"
 };
 
-const getRefundStatusLabel = (status?: string) => {
+const getRefundStatusLabel = (status?: unknown) => {
   const key = String(status || "").trim();
   return REFUND_STATUS_MAP[key] || key || "-";
 };
 
-const getOrderStatusLabel = (status?: string) => {
+const getOrderStatusLabel = (status?: unknown) => {
   const key = String(status || "").trim();
   return ORDER_STATUS_MAP[key] || key || "-";
 };

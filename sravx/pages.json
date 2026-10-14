@@ -8,7 +8,7 @@
 		{ "path": "pages/search/index", "style": { "navigationBarTitleText": "搜索" } },
 		{ "path": "pages/coupon-manage/index", "style": { "navigationBarTitleText": "优惠券" } },
 		{ "path": "pages/product-detail/index", "style": { "navigationStyle": "custom" } },
-		{ "path": "pages/confirm-order/index", "style": { "navigationBarTitleText": "确认订单" } },
+		{ "path": "pages/confirm-order/index", "style": { "navigationStyle": "custom", "navigationBarTitleText": "确认订单" } },
 		{ "path": "pages/order-list/index", "style": { "navigationStyle": "custom" } },
 		{ "path": "pages/order-detail/index", "style": { "navigationBarTitleText": "订单详情" } },
 		{ "path": "pages/order-logistics/index", "style": { "navigationBarTitleText": "物流信息" } },

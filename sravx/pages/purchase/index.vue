@@ -10,16 +10,11 @@
   </view>
 </template>
 <script>
+import { goBackOrParent } from '../../common/navigation.mjs'
+
 import api from '../../common/api.js'
+import { productClassification } from '../../common/product-classification.mjs'
 import SravxH5GlobalNav from '../../components/SravxH5GlobalNav.vue'
-function productTool(name) {
-  if (/直剪/.test(name)) return 'straight'
-  if (/弯剪/.test(name)) return 'curved'
-  if (/牙剪/.test(name)) return 'thinning'
-  if (/鱼骨剪/.test(name)) return 'fishbone'
-  if (/柳叶剪|莲蓬剪|魔术剪|造型剪/.test(name)) return 'texturizing'
-  return ''
-}
 export default {
   components: { SravxH5GlobalNav },
   data() { return { series: 'all', tool: '', products: [], loading: true, error: '', active: true } },
@@ -30,12 +25,11 @@ export default {
       this.loading = true; this.error = ''
       try {
         const categories = api.asList(await api.getCategoryList())
-        const lists = await Promise.all(categories.map(async category => api.asList(await api.getProductList({ categoryId: category.id, pageSize: 100 })).map(product => ({ ...product, categoryName: category.name }))))
+        const lists = await Promise.all(categories.map(async category => (await api.getAllProducts({ categoryId: category.id })).map(product => ({ ...product, categoryName: category.name }))))
         const seen = new Set()
         this.products = lists.flat().filter(product => {
-          const seriesText = [product.name, product.short_name, product.desc, product.description, product.series, product.series_name].filter(Boolean).join(' ').toLowerCase()
-          const toolText = [product.categoryName, product.short_name, product.name].filter(Boolean).join(' ')
-          if (seen.has(String(product.id)) || (this.series !== 'all' && !seriesText.includes(this.series)) || (this.tool && productTool(toolText) !== this.tool)) return false
+          const classification = productClassification(product, categories)
+          if (seen.has(String(product.id)) || (this.series !== 'all' && classification.series !== this.series) || (this.tool && classification.tool !== this.tool)) return false
           seen.add(String(product.id)); return true
         })
         // Resolve the current category's default product without another selection screen.
@@ -44,7 +38,7 @@ export default {
       } catch (error) { this.error = error.message || '商品加载失败，请重试。' }
       finally { this.loading = false }
     },
-    back() { if (typeof window !== 'undefined') { window.location.hash = '#/pages/shop/index' + (this.series === 'all' ? '' : '?series=' + encodeURIComponent(this.series)); return } uni.navigateBack() },
+    back() { if (typeof window !== 'undefined') { window.location.hash = '#/pages/shop/index' + (this.series === 'all' ? '' : '?series=' + encodeURIComponent(this.series)); return } goBackOrParent() },
     detail(id) { return new Promise((resolve, reject) => uni.redirectTo({ url: '/pages/product-detail/index?id=' + encodeURIComponent(id) + '&series=' + encodeURIComponent(this.series) + '&tool=' + encodeURIComponent(this.tool), success: resolve, fail: () => reject(new Error('进入商品选配失败，请重试。')) })) }
   }
 }

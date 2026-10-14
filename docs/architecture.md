@@ -2,6 +2,8 @@
 
 更新日期：2026-09-22。本文描述当前部署和代码结构；旧 CloudBase 架构仅作为兼容与历史参考，不能作为新功能的实现依据。
 
+> 2026-10-14整理说明：下方运行/数据库/迁移状态是9月22日历史快照，不代表当前开关或上线范围。当前以project-status-and-next-tasks.md及各发布日期证据为准。主源码均在E:/sravxapp；当前前端已统一服务器适配，CloudBase只保留历史源码，不应恢复过期环境。官网https://sravxpet.com已通过独立Nginx站点正式上线（/var/www/sravx-web），公开目录同域只读转发；本次没有数据库迁移或API发布，完整网页交易仍待验收。
+
 ## 系统边界
 
 ```mermaid
@@ -49,7 +51,7 @@ flowchart LR
 
 ## API 代码导航
 
-当前后端源码：`D:/saven/server`。
+当前后端源码：`E:/sravxapp/server`（D盘仅为历史备份）。
 
 | 位置 | 说明 |
 |---|---|

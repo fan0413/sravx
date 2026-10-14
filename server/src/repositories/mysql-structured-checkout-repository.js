@@ -179,7 +179,7 @@ export function createMysqlStructuredCheckoutRepository(pool, { now = () => new 
         if (existing) return orderOutput(existing, true);
         const [[address]] = await connection.execute(
           `SELECT a.name, a.contact, a.phone, a.province, a.city, a.district, a.detail
-             FROM addresses a INNER JOIN users u ON u.openid = a.openid
+             FROM addresses a INNER JOIN users u ON u.openid COLLATE utf8mb4_bin = a.openid COLLATE utf8mb4_bin
             WHERE a.id = ? AND u.id = ? LIMIT 1 FOR UPDATE`,
           [request.addressId, customerId]
         );
@@ -226,7 +226,7 @@ export function createMysqlStructuredCheckoutRepository(pool, { now = () => new 
         await connection.execute(
           `INSERT INTO order_items (order_id, _openid, product_id, sku_id, sku, product_name, product_image, spec_desc, price, quantity, selected_color, model_snapshot, color_snapshot, sku_snapshot, created_at)
            SELECT ?, u.openid, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW() FROM users u WHERE u.id = ?`,
-          [orderId, sku.product_id, sku.id, sku.sku_code, snapshot.name, snapshot.coverImage || null, snapshot.model?.name || '', money(Number(item.product_amount_fen) / Number(item.quantity)), Number(item.quantity), snapshot.color?.name || '', snapshot.model?.name || '', snapshot.color?.name || '', sku.sku_code, customerId]
+          [orderId, sku.product_id, sku.id, sku.sku_code, snapshot.name, snapshot.coverImage || null, snapshot.model?.name || '', money(Number(item.product_amount_fen) / Number(item.quantity)), Number(item.quantity), null, snapshot.model?.name || '', null, sku.sku_code, customerId]
         );
         await connection.execute(
           `INSERT INTO order_addresses (order_id, _openid, name, phone, province, city, district, detail, created_at)

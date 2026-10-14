@@ -5,23 +5,22 @@
     <view v-if="loading" class="buy-state" role="status">正在加载商品与可选规格…</view>
     <view v-else-if="error || !product" class="buy-state" role="alert"><text class="buy-state-title">暂时无法查看这件商品</text><text>{{ error || '请从产品目录选择商品。' }}</text><BuyButton v-if="productId" class="buy-primary" @click="load">重新加载</BuyButton><BuyButton class="buy-text-link" @click="back">返回产品目录</BuyButton></view>
     <template v-else>
-      <view class="buy-width buy-heading"><view><text class="buy-eyebrow">SRAVX PROFESSIONAL TOOLS</text><text class="buy-title">购买 {{ product.name }}</text><text v-if="product.desc || product.description" class="buy-description">{{ product.desc || product.description }}</text></view><view class="buy-heading-price"><text>{{ unitPriceText }}</text><text>选择适合你的型号与外观。</text></view></view>
+      <view class="buy-width buy-heading"><view><text class="buy-eyebrow">SRAVX PROFESSIONAL TOOLS</text><text class="buy-title">购买 {{ product.name }}</text><text v-if="product.desc || product.description" class="buy-description">{{ product.desc || product.description }}</text></view><view class="buy-heading-price"><text>{{ unitPriceText }}</text><text>选择适合你的规格。</text></view></view>
       <view class="buy-width buy-layout">
         <view class="buy-gallery-column"><view class="buy-gallery-sticky">
           <view class="buy-image-stage"><image v-if="activeImage && !failedImages.includes(activeImage)" :key="activeImage" :src="activeImage" :alt="product.name + ' 商品图'" mode="aspectFit" @error="imageFailed(activeImage)"/><text v-else class="buy-no-image">暂无商品图片</text></view>
           <view v-if="gallery.length > 1" class="buy-gallery-controls"><BuyButton aria-label="上一张商品图" :disabled="imageIndex <= 0" @click="imageIndex--"><uni-icons type="left" size="18" color="#6e6e73"/></BuyButton><view class="buy-dots"><BuyButton v-for="(image, index) in gallery" :key="image" :aria-label="'查看第 ' + (index + 1) + ' 张商品图'" :aria-pressed="imageIndex === index" :class="{ active: imageIndex === index }" @click="imageIndex = index"/></view><BuyButton aria-label="下一张商品图" :disabled="imageIndex >= gallery.length - 1" @click="imageIndex++"><uni-icons type="right" size="18" color="#6e6e73"/></BuyButton></view>
-          <text class="buy-gallery-caption">{{ selectedModel?.name }}<template v-if="selectedColor"> · {{ selectedColor.name }}</template></text>
+          <text class="buy-gallery-caption">{{ selectedModel?.name }}</text>
         </view></view>
         <view class="buy-configuration">
           <view class="buy-step"><text class="buy-step-title">型号：<text class="buy-step-description">选择适合你的工具。</text></text><view class="buy-options"><BuyButton v-for="model in models" :key="model.key" class="buy-option" :class="{ selected: modelKey === model.key }" :disabled="!model.available" :aria-pressed="modelKey === model.key" @click="chooseModel(model)"><view><text class="buy-option-name">{{ model.name }}</text><text v-if="model.sku" class="buy-muted">{{ model.sku }}</text></view><text class="buy-option-price">{{ model.available ? priceText(model.price) : '暂不可购买' }}</text></BuyButton></view></view>
-          <view class="buy-step"><text class="buy-step-title">外观：<text class="buy-step-description">选择你喜欢的颜色。</text></text><text class="buy-color-label">颜色 — {{ selectedColor?.name || '请选择' }}</text><view class="buy-colors"><BuyButton v-for="color in colors" :key="color.key" class="buy-color" :class="{ selected: colorKey === color.key }" :disabled="!colorAvailable(color)" :aria-pressed="colorKey === color.key" @click="chooseColor(color)"><view v-if="color.swatch" class="buy-swatch" :style="{ backgroundColor: color.swatch }"/><text>{{ color.name }}</text><text v-if="!colorAvailable(color)" class="buy-muted">暂不可选</text></BuyButton></view></view>
           <view v-if="protectOffer" class="buy-step"><text class="buy-step-title">SRAVX Protect：<text class="buy-step-description">了解工具服务。</text></text><text class="buy-step-note">{{ protectOffer.displayOnly ? '当前为权益说明，暂不收费。' : '该服务暂未开放网页购买。' }}</text><view class="buy-options"><BuyButton class="buy-option" :class="{ selected: !protectSelected }" :aria-pressed="!protectSelected" @click="protectSelected = false"><view><text class="buy-option-name">不添加 SRAVX Protect</text><text class="buy-muted">按商品公示的保修规则执行。</text></view><uni-icons v-if="!protectSelected" type="checkmarkempty" size="20" color="#0071e3"/></BuyButton><BuyButton class="buy-option" :disabled="!protectOffer.displayOnly" :class="{ selected: protectSelected }" :aria-pressed="protectSelected" @click="protectSelected = true"><view><text class="buy-option-name">添加 SRAVX Protect</text><text class="buy-muted">具体适用条件与服务规则以下单页公示为准。</text></view><uni-icons v-if="protectSelected" type="checkmarkempty" size="20" color="#0071e3"/></BuyButton></view></view>
-          <view class="buy-step"><text class="buy-step-title">数量：<text class="buy-step-description">按你的需要选择。</text></text><view class="buy-quantity"><BuyButton aria-label="减少数量" :disabled="quantity <= 1" @click="quantity--"><uni-icons type="minus" size="18" color="#1d1d1f"/></BuyButton><text aria-live="polite">{{ quantity }}</text><BuyButton aria-label="增加数量" :disabled="!canBuy || (stock !== null && quantity >= stock)" @click="quantity++"><uni-icons type="plus" size="18" color="#1d1d1f"/></BuyButton></view><text v-if="!canBuy" class="buy-step-note">{{ blockedReason }}</text></view>
-          <view class="buy-summary" aria-live="polite"><text class="buy-summary-title">你的 {{ product.name }}。</text><text class="buy-muted">{{ selectedModel?.name }} · {{ selectedColor?.name }} · {{ quantity }} 件</text><text v-if="protectSelected" class="buy-muted">已选 SRAVX Protect（权益说明）</text><text class="buy-total">{{ totalPriceText }}</text><text class="buy-step-note">商品金额，运费与其他费用以确认订单页为准。</text><BuyButton class="buy-primary" :disabled="!canBuy || adding" @click="add">{{ adding ? '正在加入…' : '加入购物袋' }}</BuyButton><text v-if="notice" class="buy-notice" role="status">{{ notice }}</text></view>
+          <view v-if="shipping.promise || shipping.reason || shipping.note" class="buy-step"><text class="buy-step-title">发货信息</text><text v-if="shipping.promise" class="buy-step-note">{{ shipping.promise }}</text><text v-if="shipping.reason" class="buy-step-note">{{ shipping.reason }}</text><text v-if="shipping.note" class="buy-step-note">{{ shipping.note }}</text></view><view class="buy-step"><text class="buy-step-title">数量：<text class="buy-step-description">按你的需要选择。</text></text><view class="buy-quantity"><BuyButton aria-label="减少数量" :disabled="quantity <= 1" @click="quantity--"><uni-icons type="minus" size="18" color="#1d1d1f"/></BuyButton><text aria-live="polite">{{ quantity }}</text><BuyButton aria-label="增加数量" :disabled="!canBuy || (stock !== null && quantity >= stock)" @click="quantity++"><uni-icons type="plus" size="18" color="#1d1d1f"/></BuyButton></view><text v-if="!canBuy" class="buy-step-note">{{ blockedReason }}</text></view>
+          <view class="buy-summary" aria-live="polite"><text class="buy-summary-title">你的 {{ product.name }}。</text><text class="buy-muted">{{ selectedModel?.name }} · {{ quantity }} 件</text><text v-if="protectSelected" class="buy-muted">已选 SRAVX Protect（权益说明）</text><text class="buy-total">{{ totalPriceText }}</text><text class="buy-step-note">商品金额，运费与其他费用以确认订单页为准。</text><BuyButton class="buy-primary" :disabled="!canBuy || adding" @click="add">{{ adding ? '正在加入…' : '加入购物袋' }}</BuyButton><text v-if="notice" class="buy-notice" role="status">{{ notice }}</text></view>
         </view>
       </view>
-      <view id="buy-details" class="buy-details"><view class="buy-width"><text class="buy-section-title">更了解你的工具。</text><view class="buy-parameter-grid"><view v-for="param in params" :key="param.label"><text>{{ param.label }}</text><text>{{ param.value }}</text></view></view><view v-if="detailImages.length" class="buy-story"><text class="buy-section-title">产品详情。</text><image v-for="image in detailImages" :key="image" :src="image" :alt="product.name + ' 详情图'" mode="widthFix"/></view></view></view>
-      <view class="buy-bottom"><view class="buy-width"><view><text>{{ product.name }}</text><text>{{ selectedModel?.name }} · {{ selectedColor?.name }}</text></view><view class="buy-bottom-actions"><text>{{ totalPriceText }}</text><BuyButton class="buy-primary" :disabled="!canBuy || adding" @click="add">加入购物袋</BuyButton></view></view></view>
+      <view id="buy-details" class="buy-details"><view class="buy-width"><text class="buy-section-title">更了解你的工具。</text><view v-if="params.length" class="buy-parameter-grid"><view v-for="param in params" :key="param.label"><text>{{ param.label }}</text><text>{{ param.value }}</text></view></view><view v-if="detailImages.length" class="buy-story"><text class="buy-section-title">产品详情。</text><image v-for="image in detailImages" :key="image" :src="image" :alt="product.name + ' 详情图'" mode="widthFix"/></view></view></view>
+      <view class="buy-bottom"><view class="buy-width"><view><text>{{ product.name }}</text><text>{{ selectedModel?.name }}</text></view><view class="buy-bottom-actions"><text>{{ totalPriceText }}</text><BuyButton class="buy-primary" :disabled="!canBuy || adding" @click="add">加入购物袋</BuyButton></view></view></view>
     </template>
   </view>
 </template>
@@ -31,7 +30,7 @@ import api from '../common/api.js'
 import cart from '../common/cart.js'
 import SravxH5GlobalNav from './SravxH5GlobalNav.vue'
 import BuyButton from './SravxBuyButton.vue'
-import { imageList, priceText, hasStructuredCatalog, modelOptions, colorOptions, selectedSku, selectionPrice, purchaseItem } from '../common/web-purchase.mjs'
+import { imageList, priceText, hasStructuredCatalog, modelOptions, colorOptions, selectedSku, selectionPrice, selectionStock, selectionShipping, purchaseItem } from '../common/web-purchase.mjs'
 
 export default {
   components: { SravxH5GlobalNav, BuyButton },
@@ -39,7 +38,7 @@ export default {
   data() { return { product: null, loading: true, error: '', modelKey: '', colorKey: '', quantity: 1, imageIndex: 0, failedImages: [], protectSelected: false, adding: false, notice: '', requestId: 0 } },
   computed: {
     models() { return this.product ? modelOptions(this.product) : [] },
-    colors() { return this.product ? colorOptions(this.product) : [] },
+    colors() { return [] },
     selectedModel() { return this.models.find(model => model.key === this.modelKey) },
     selectedColor() { return this.colors.find(color => color.key === this.colorKey) },
     structured() { return hasStructuredCatalog(this.product) },
@@ -47,14 +46,15 @@ export default {
     unitPrice() { return this.product ? selectionPrice(this.product, this.selectedModel, this.selectedColor?.id) : null },
     unitPriceText() { return priceText(this.unitPrice) },
     totalPriceText() { return priceText(this.unitPrice === null ? null : this.unitPrice * this.quantity) },
-    stock() { if (this.structured) return this.sku ? Number(this.sku.available) : 0; return this.product?.stock === undefined ? null : Math.max(0, Number(this.product.stock) || 0) },
-    canBuy() { return !!this.selectedModel && !!this.selectedColor && this.unitPrice !== null && (!this.structured || api.structuredCheckoutEnabled()) && (this.stock === null || (this.stock >= this.quantity && this.quantity > 0)) },
-    blockedReason() { return this.structured && !api.structuredCheckoutEnabled() ? '该商品的规格购买暂未开放，请稍后再试。' : '当前型号与颜色组合暂不可购买。' },
+    stock() { return selectionStock(this.product, this.sku) },
+    shipping() { return selectionShipping(this.product, this.selectedModel, this.sku) },
+    canBuy() { return !!this.selectedModel && this.unitPrice !== null && (!this.structured || api.structuredCheckoutEnabled()) && (this.stock === null || (this.stock >= this.quantity && this.quantity > 0)) },
+    blockedReason() { return this.structured && !api.structuredCheckoutEnabled() ? '该商品的规格购买暂未开放，请稍后再试。' : '当前规格暂不可购买。' },
     protectOffer() { return (this.product?.protectOffers || []).find(offer => !offer.sku_id || Number(offer.sku_id) === Number(this.sku?.id)) || null },
     gallery() { const p = this.product || {}; const variantImage = this.sku?.image_object_key; const usableVariant = /^(https?:\/\/|\/static\/)/.test(variantImage || '') ? variantImage : ''; return [...new Set([usableVariant, this.selectedModel?.image, ...imageList(p.images), p.cover_image].filter(Boolean))] },
     activeImage() { return this.gallery[this.imageIndex] || '' },
     detailImages() { return imageList(this.product?.detail_images) },
-    params() { const p = this.product || {}; return [{ label: '核心材质', value: p.steel_material || p.core_material || '未提供' }, { label: '手柄材质', value: p.handle_material || '未提供' }, { label: '尺寸', value: p.display_size || p.size || '未提供' }, { label: '重量', value: p.weight || '未提供' }, { label: '保修期', value: p.warranty_period || '未提供' }] }
+    params() { const p = this.product || {}; if (p.series === 'accessories') return []; return [{ label: '核心材质', value: p.steel_material || p.core_material || '未提供' }, { label: '手柄材质', value: p.handle_material || '未提供' }, { label: '尺寸', value: p.display_size || p.size || '未提供' }, { label: '重量', value: p.weight || '未提供' }, { label: '保修期', value: p.warranty_period || '未提供' }] }
   },
   watch: {
     productId: { immediate: true, handler() { this.load() } },
@@ -63,8 +63,13 @@ export default {
     quantity() { this.saveSelection() },
     protectSelected() { this.saveSelection() }
   },
+  mounted() { document.addEventListener('visibilitychange', this.refreshExpiredMedia) },
+  beforeUnmount() { document.removeEventListener('visibilitychange', this.refreshExpiredMedia); ++this.requestId },
   methods: {
     priceText,
+    refreshExpiredMedia() {
+      if (!document.hidden && !this.loading && Date.parse(this.product?.media_expires_at) <= Date.now()) this.load()
+    },
     async load() {
       const requestId = ++this.requestId
       this.loading = true; this.error = ''; this.product = null; this.notice = ''; this.failedImages = []
@@ -88,15 +93,15 @@ export default {
     chooseModel(model) { this.modelKey = model.key; if (!this.selectedColor || !this.colorAvailable(this.selectedColor)) this.colorKey = this.colors.find(color => this.colorAvailable(color))?.key || ''; this.notice = '' },
     chooseColor(color) { this.colorKey = color.key; this.notice = '' },
     clampQuantity() { if (this.stock === null) return; this.quantity = this.stock > 0 ? Math.min(this.quantity, Math.floor(this.stock)) : 1 },
-    saveSelection() { if (this.product && !this.loading) uni.setStorageSync('sravx_web_selection_' + this.productId, { modelKey: this.modelKey, colorKey: this.colorKey, quantity: this.quantity }) },
-    imageFailed(image) { this.failedImages = [...this.failedImages, image] },
+    saveSelection() { if (this.product && !this.loading) uni.setStorageSync('sravx_web_selection_' + this.productId, { modelKey: this.modelKey, quantity: this.quantity }) },
+    imageFailed(image) { this.failedImages = [...this.failedImages, image]; this.refreshExpiredMedia() },
     jump(id) { document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }) },
     back() { const query = new URLSearchParams(); if (this.series) query.set('series', this.series); if (this.tool) query.set('tool', this.tool); uni.reLaunch({ url: '/pages/shop/index' + (query.size ? '?' + query.toString() : '') }) },
     bag() { uni.navigateTo({ url: '/pages/cart/index' }) },
     add() {
       if (!this.canBuy || this.adding) return
       this.adding = true
-      try { cart.add(purchaseItem(this.product, this.selectedModel, this.selectedColor, this.quantity, this.protectOffer, this.protectSelected)); this.notice = '已加入购物袋'; this.bag() }
+      try { cart.add(purchaseItem(this.product, this.selectedModel, null, this.quantity, this.protectOffer, this.protectSelected)); this.notice = '已加入购物袋'; this.bag() }
       catch (error) { this.notice = error.message || '加入购物袋失败，请重试。' }
       finally { this.adding = false }
     }

@@ -5,6 +5,7 @@ import { createWechatPhoneRequester } from './auth/wechat-phone-requester.js';
 import { createPhoneService } from './auth/phone-service.js';
 import { createMysqlUserRepository } from './repositories/mysql-user-repository.js';
 import { createMysqlCatalogRepository } from './repositories/mysql-catalog-repository.js';
+import { createPublicCatalogRepository } from './media/public-catalog.js';
 import { createMysqlAddressRepository } from './repositories/mysql-address-repository.js';
 import { createMysqlToolRepository } from './repositories/mysql-tool-repository.js';
 import { createMysqlAfterSaleRepository } from './repositories/mysql-after-sale-repository.js';
@@ -136,7 +137,9 @@ export async function createRuntimeServer(environment = process.env) {
   });
   const userRepository = createMysqlUserRepository(pool);
   const structuredCheckoutEnabled = environment.STRUCTURED_CHECKOUT_ENABLED === 'true';
-  const catalogRepository = createMysqlCatalogRepository(pool, { structuredCatalog: structuredCheckoutEnabled });
+  const normalizedCatalog = environment.CATALOG_CLASSIFICATION_ENABLED === 'true';
+  if (normalizedCatalog) await pool.execute('SELECT product_id, series, tool_group FROM product_classifications LIMIT 0');
+  const storedCatalogRepository = createMysqlCatalogRepository(pool, { structuredCatalog: structuredCheckoutEnabled, normalizedCatalog });
   const addressRepository = createMysqlAddressRepository(pool);
   const toolRepository = createMysqlToolRepository(pool);
   const afterSaleRepository = createMysqlAfterSaleRepository(pool);
@@ -153,7 +156,7 @@ export async function createRuntimeServer(environment = process.env) {
   const adminRepository = createMysqlAdminRepository(pool);
   const adminSessionRepository = createMysqlAdminSessionRepository(pool);
   const mediaIntentRepository = createMysqlMediaIntentRepository(pool);
-  const adminCatalogRepository = createMysqlAdminCatalogRepository(pool);
+  const adminCatalogRepository = createMysqlAdminCatalogRepository(pool, { normalizedCatalog });
   const adminPointsProductRepository = createMysqlAdminPointsProductRepository(pool);
   const adminOperationsRepository = createMysqlAdminOperationsRepository(pool);
   const adminOrderRepository = createMysqlAdminOrderRepository(pool);
@@ -168,6 +171,7 @@ export async function createRuntimeServer(environment = process.env) {
   const inboundPool = inboundUsesBusinessDatabase ? pool : (inboundConfiguration ? mysql.createPool({ ...inboundMysqlConfiguration, waitForConnections: true, connectionLimit: 4, queueLimit: 0, enableKeepAlive: true }) : null);
   const paymentInboundRepository = inboundPool ? createMysqlPaymentInboundRepository(inboundPool) : null;
   const mediaSigner = await createOptionalCosSigner(environment);
+  const catalogRepository = createPublicCatalogRepository(storedCatalogRepository, { mediaSigner });
   const paymentCallbackService = await createOptionalPaymentCallbackService(environment, paymentInboundRepository);
   const paymentOrderService = createOptionalPaymentOrderService(environment, pool);
   const paymentEventWorker = createOptionalPaymentEventWorker(environment, paymentInboundRepository, pool);

@@ -3,51 +3,15 @@
     <el-aside width="220px" class="sidebar">
       <div class="logo"><span>SRAVX</span><small>OPERATION STUDIO</small></div>
       <el-menu :default-active="route.path" :default-openeds="['product','points-product','category','banner','order','refund','user','scissors','inquiry']" router class="menu">
-        <el-menu-item :index="workspacePath(channel)">{{ channelLabel(channel) }}入口</el-menu-item>
-        <li class="shared-label" role="presentation">共用管理 · 同一数据与接口</li>
-        <el-menu-item index="/dashboard">经营看板</el-menu-item>
-        <el-sub-menu v-if="!targetMode || catalogMode" index="product">
-          <template #title>商品管理</template>
-          <el-menu-item index="/product/list">商品列表</el-menu-item>
-          <el-menu-item index="/product/create">新建商品</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu v-if="!targetMode || catalogMode" index="points-product">
-          <template #title>积分商品</template>
-          <el-menu-item index="/points-product/list">积分商品列表</el-menu-item>
-          <el-menu-item index="/points-product/create">新建积分商品</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu v-if="!targetMode || catalogMode" index="category">
-          <template #title>分类管理</template>
-          <el-menu-item index="/category/list">分类列表</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu v-if="!targetMode || catalogMode" index="banner">
-          <template #title>内容运营</template>
-          <el-menu-item index="/banner/list">轮播图管理</el-menu-item>
-          <el-menu-item v-if="!targetMode" index="/coupon/list">优惠券管理</el-menu-item>
-          <el-menu-item v-if="!targetMode" index="/gift-card/list">礼品卡管理</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu v-if="!targetMode || operationsMode" index="order">
-          <template #title>订单管理</template>
-          <el-menu-item index="/order/list">订单列表</el-menu-item>
-          <el-menu-item index="/points-order/list">积分订单列表</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu v-if="!targetMode || operationsMode" index="refund">
-          <template #title>售后管理</template>
-          <el-menu-item v-if="!targetMode || operationsMode" index="/refund/list">售后退款</el-menu-item>
-          <el-menu-item index="/scissors/after-sale">剪刀售后</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu v-if="operationsMode" index="user">
-          <template #title>用户管理</template>
-          <el-menu-item index="/user/list">用户列表</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu v-if="!targetMode || catalogMode" index="scissors">
-          <template #title>剪刀 SN</template>
-          <el-menu-item index="/scissors/list">SN 码管理</el-menu-item>
-        </el-sub-menu>
-        <el-sub-menu v-if="operationsMode" index="inquiry">
-          <template #title>合作咨询</template>
-          <el-menu-item index="/inquiry/list">咨询列表</el-menu-item>
-        </el-sub-menu>
+        <el-menu-item v-for="workspace in workspaces" :key="workspace" :index="workspacePath(workspace)">{{ channelLabel(workspace) }}入口</el-menu-item>
+        <li class="shared-label" role="presentation">{{ channelLabel(channel) }} · {{ channel === 'common' ? '共用页面与接口' : '专属功能入口' }}</li>
+        <template v-for="group in menuGroups" :key="group.key">
+          <el-menu-item v-if="group.items.length === 1" :index="group.items[0]!.path">{{ group.items[0]!.title }}</el-menu-item>
+          <el-sub-menu v-else :index="group.key">
+            <template #title>{{ group.title }}</template>
+            <el-menu-item v-for="item in group.items" :key="item.path" :index="item.path">{{ item.title }}</el-menu-item>
+          </el-sub-menu>
+        </template>
       </el-menu>
     </el-aside>
 
@@ -55,11 +19,11 @@
       <el-header class="topbar">
         <div class="title">{{ pageTitle }}</div>
         <div class="right-area">
-          <el-radio-group :model-value="channel" aria-label="管理渠道切换" size="small" @change="switchChannel">
-            <el-radio-button value="web">网页功能</el-radio-button>
-            <el-radio-button value="miniprogram">小程序功能</el-radio-button>
+          <el-radio-group :model-value="switchSelection" aria-label="管理界面切换" size="small" @change="switchChannel">
+            <el-radio-button value="common">通用管理</el-radio-button>
+            <el-radio-button value="web">网页管理</el-radio-button>
+            <el-radio-button value="miniprogram">小程序管理</el-radio-button>
           </el-radio-group>
-          <el-tag v-if="!isWorkspacePath(route.path)" type="info" effect="plain">共用管理</el-tag>
           <el-button link type="primary" @click="handleLogout">退出登录</el-button>
         </div>
       </el-header>
@@ -71,13 +35,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { useRoute, useRouter, RouterView } from "vue-router";
 import { adminLogout } from "../lib/admin-auth";
 import { targetAdminCatalogModeEnabled, targetAdminModeEnabled, targetAdminOperationsModeEnabled } from "../lib/target-admin-auth";
 import { useAdminWorkspace } from '../lib/use-admin-workspace';
-import { channelLabel, workspacePath, isWorkspacePath, parseAdminChannel, channelSwitchPath } from '../lib/admin-workspace';
+import { channelLabel, workspacePath, isWorkspacePath, parseAdminChannel, channelSwitchPath, workspaceForPath, workspaceMenuGroups, type AdminChannel } from '../lib/admin-workspace';
 
 const route = useRoute();
 const router = useRouter();
@@ -85,19 +49,27 @@ const targetMode = targetAdminModeEnabled();
 const catalogMode = targetAdminCatalogModeEnabled();
 const operationsMode = targetAdminOperationsModeEnabled();
 const { channel, setChannel } = useAdminWorkspace();
-watch(() => route.params.channel, value => {
-  const next = parseAdminChannel(value);
-  if (next && isWorkspacePath(route.path)) setChannel(next);
+const switchSelection = ref(channel.value);
+watch(channel, value => { switchSelection.value = value; });
+const workspaces: AdminChannel[] = ['common', 'web', 'miniprogram'];
+const menuGroups = computed(() => workspaceMenuGroups(channel.value, { targetMode, catalogMode, operationsMode }));
+watch(() => route.path, value => {
+  setChannel(workspaceForPath(value));
 }, { immediate: true });
 async function switchChannel(value: unknown) {
   const next = parseAdminChannel(value);
   if (!next) return;
+  switchSelection.value = next;
   const path = channelSwitchPath(route.path, next);
-  if (path) await router.push(path);
-  else setChannel(next);
+  try {
+    if (path) await router.push(path);
+  } finally {
+    // A canceled navigation must also reset the radio's native checked state.
+    switchSelection.value = workspaceForPath(route.path);
+  }
 }
 
-const pageTitle = computed(() => String(route.meta.title || "电商管理平台"));
+const pageTitle = computed(() => isWorkspacePath(route.path) ? channelLabel(channel.value) : String(route.meta.title || "电商管理平台"));
 
 const handleLogout = async () => {
   try {

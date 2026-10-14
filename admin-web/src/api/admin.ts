@@ -139,6 +139,8 @@ export async function replyScissorsAfterSale(id: number, content: string) {
 }
 
 export interface ProductQuery {
+  series?: string;
+  toolGroup?: string;
   keyword?: string;
   status?: number;
   categoryId?: number;
@@ -488,7 +490,8 @@ export async function fetchProducts(query: ProductQuery): Promise<ProductRow[]> 
 }
 
 export async function fetchAdminProducts(query: ProductQuery): Promise<AdminProductListResult> {
-  if (targetAdminCatalogModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), categoryId: query.categoryId, status: query.status, lowStock: query.lowStock, sku: query.sku?.trim(), shippingType: query.shippingType, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminProductListResult>(`/api/v1/admin/products?${p}`); }
+  if (targetAdminCatalogModeEnabled()) { const p = new URLSearchParams(); Object.entries({ series: query.series, toolGroup: query.toolGroup, keyword: query.keyword?.trim(), categoryId: query.categoryId, status: query.status, lowStock: query.lowStock, sku: query.sku?.trim(), shippingType: query.shippingType, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminProductListResult>(`/api/v1/admin/products?${p}`); }
+  if (query.series || query.toolGroup) throw new Error('旧商品函数不支持系列筛选，请使用目标目录 API');
   const result = await callCloudFunction<CloudFunctionResponse<AdminProductListResult>>("admin-product", {
     action: "list",
     keyword: (query.keyword || "").trim(),
@@ -960,6 +963,9 @@ export async function fetchCategories(): Promise<CategoryRow[]> {
     .map((item) => ({
       id: Number(item.id),
       name: item.name,
+      parent_id: item.parent_id == null ? null : Number(item.parent_id),
+      level: Number(item.level || 1),
+      is_show: item.is_show,
       sort_order: Number(item.sort_order || 0),
       status: item.status || "active"
     }))
@@ -972,6 +978,7 @@ export interface CategoryQuery {
 }
 
 export interface CategoryInput {
+  level?: number;
   id?: number;
   parent_id?: number | null;
   name: string;
@@ -1009,7 +1016,22 @@ function normalizeAdminCategory(item: CloudCategory): CategoryRow {
 }
 
 export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<AdminCategoryListResult> {
-  if (targetAdminCatalogModeEnabled()) { const p = new URLSearchParams(); if (query.keyword?.trim()) p.set("keyword", query.keyword.trim()); if (query.is_show !== undefined && query.is_show !== "") p.set("isShow", String(query.is_show)); return targetAdminRequest<AdminCategoryListResult>(`/api/v1/admin/categories?${p}`); }
+  if (targetAdminCatalogModeEnabled()) {
+    const p = new URLSearchParams();
+    if (query.keyword?.trim()) p.set("keyword", query.keyword.trim());
+    if (query.is_show !== undefined && query.is_show !== "") p.set("isShow", String(query.is_show));
+    p.set("pageSize", "100");
+    const list: CategoryRow[] = [];
+    let total = 0;
+    for (let page = 1; page <= 100; page++) {
+      p.set("page", String(page));
+      const result = await targetAdminRequest<AdminCategoryListResult>(`/api/v1/admin/categories?${p}`);
+      list.push(...result.list.map(normalizeAdminCategory));
+      total = Number(result.total);
+      if (list.length >= total || result.list.length < 100) return { list, total };
+    }
+    throw new Error("分类数量超出加载范围，请缩小查询范围");
+  }
   const result = await callCloudFunction<CloudFunctionResponse<{ list: CloudCategory[]; total: number }>>(
     "admin-category",
     {
@@ -1034,7 +1056,7 @@ export async function createAdminCategory(payload: CategoryInput): Promise<{ id:
       if (!intentId) throw new Error("分类图片需重新上传后再保存");
       return { intentId };
     };
-    return targetAdminRequest<{ id: number }>("/api/v1/admin/categories", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav, icon: media(payload.icon), image: media(payload.image) }) });
+    return targetAdminRequest<{ id: number }>("/api/v1/admin/categories", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, level: payload.level ?? (payload.parent_id ? 2 : 1), description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav, icon: media(payload.icon), image: media(payload.image) }) });
   }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
     action: "create",
@@ -1053,7 +1075,7 @@ export async function updateAdminCategory(payload: CategoryInput): Promise<{ id:
       if (value.startsWith("catalog/categories/")) return { existingObjectKey: value };
       throw new Error("分类图片需重新上传后再保存");
     };
-    return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${payload.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav, icon: media(payload.icon), image: media(payload.image) }) });
+    return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${payload.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: payload.name, parentId: payload.parent_id ?? null, level: payload.level ?? (payload.parent_id ? 2 : 1), description: payload.description, sortOrder: payload.sort_order, isShow: payload.is_show, isNav: payload.is_nav, icon: media(payload.icon), image: media(payload.image) }) });
   }
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
     action: "update",
@@ -1965,6 +1987,7 @@ export async function createProduct(payload: CreateProductInput): Promise<{ id: 
 }
 
 export async function createAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
+  if (!targetAdminCatalogModeEnabled() && payload.params?.["目录系列"]) throw new Error("旧商品函数不支持系列与细分类持久化，请使用目标目录 API 模式；未保存商品");
   if (targetAdminCatalogModeEnabled()) {
     const primarySpec = payload.specs?.[0];
     if (!primarySpec) throw new Error("请至少填写一个规格及其履约信息");
@@ -1975,6 +1998,8 @@ export async function createAdminProduct(payload: CreateProductInput): Promise<{
       description: payload.desc,
       price: payload.price,
       categoryId: payload.category_id,
+      series: payload.params?.['目录系列'],
+      toolGroup: payload.params?.['目录分类'],
       coverImageIntentId: targetMediaIntentId(payload.cover_image),
       imageIntentIds: intentIds(payload.images),
       detailImageIntentIds: intentIds(payload.detail_images),
@@ -2026,6 +2051,11 @@ function targetProductMediaReference(value: string | undefined | null): TargetPr
   if (intentId) return { intentId };
   if (source.startsWith('catalog/products/')) return { existingObjectKey: source };
   throw new Error('商品图片已失效，请重新上传后再保存');
+}
+
+export async function executeAdminRefund(requestId: number): Promise<{ status: string }> {
+  if (!targetAdminOperationsModeEnabled()) throw new Error('请使用服务器管理端执行退款');
+  return targetAdminRequest<{ status: string }>(`/api/v1/admin/refund-requests/${requestId}/execute`, { method: 'POST' });
 }
 
 type TargetMediaReference = { intentId: string } | { existingObjectKey: string } | null;
@@ -2111,7 +2141,7 @@ function targetProductUpdateBody(payload: CreateProductInput) {
   return {
     name: payload.name, shortName: payload.short_name, description: payload.desc, price: payload.price, categoryId: payload.category_id,
     coverImage: targetProductMediaReference(payload.cover_image), images: targetProductMediaReferences(payload.images), detailImages: targetProductMediaReferences(payload.detail_images), scissorsCardImage: targetProductMediaReference(payload.scissors_card_image),
-    params: payload.params, stock: payload.stock, warrantyMonths: payload.warranty_months, hasSpec: payload.has_spec, sortOrder: payload.sort_order, isOnSale: payload.is_on_sale, isRecommend: payload.is_recommend, allowCoupon: payload.allow_coupon,
+    params: payload.params, series: payload.params?.['目录系列'], toolGroup: payload.params?.['目录分类'], stock: payload.stock, warrantyMonths: payload.warranty_months, hasSpec: payload.has_spec, sortOrder: payload.sort_order, isOnSale: payload.is_on_sale, isRecommend: payload.is_recommend, allowCoupon: payload.allow_coupon,
     shippingType: primarySpec.shipping_type, shipDeadlineDays: primarySpec.ship_deadline_days, shippingPromise: primarySpec.shipping_promise, shippingDelayReason: primarySpec.shipping_delay_reason, shippingNote: primarySpec.shipping_note,
     specs: (payload.specs || []).map((spec) => ({ name: spec.name, sku: spec.sku, image: targetProductMediaReference(spec.image), cardImage: targetProductMediaReference(spec.card_image), price: spec.price, sortOrder: spec.sort_order, shippingType: spec.shipping_type, shipDeadlineDays: spec.ship_deadline_days, shippingPromise: spec.shipping_promise, shippingDelayReason: spec.shipping_delay_reason, shippingNote: spec.shipping_note }))
   };
@@ -2126,6 +2156,7 @@ export async function fetchAdminProductDetail(id: number): Promise<Record<string
 }
 
 export async function updateAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
+  if (!targetAdminCatalogModeEnabled() && payload.params?.["目录系列"]) throw new Error("旧商品函数不支持系列与细分类持久化，请使用目标目录 API 模式；未保存商品");
   if (targetAdminCatalogModeEnabled()) {
     if (!payload.id) throw new Error("商品编号无效");
     return targetAdminRequest<{ id: number }>(`/api/v1/admin/products/${payload.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(targetProductUpdateBody(payload)) });

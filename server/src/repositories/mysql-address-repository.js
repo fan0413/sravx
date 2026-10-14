@@ -23,7 +23,7 @@ export function createMysqlAddressRepository(pool) {
       validUserId(userId);
       const [rows] = await pool.execute(
         `SELECT a.id, a.contact, a.name, a.phone, a.province, a.city, a.district, a.detail, a.is_default, a.tag
-         FROM addresses a INNER JOIN users u ON u.openid = a.openid
+         FROM addresses a INNER JOIN users u ON u.openid COLLATE utf8mb4_bin = a.openid COLLATE utf8mb4_bin
          WHERE u.id = ? ORDER BY a.is_default DESC, a.id DESC`,
         [userId]
       );
@@ -62,7 +62,7 @@ export function createMysqlAddressRepository(pool) {
     async remove(userId, addressId) {
       validUserId(userId);
       const [result] = await pool.execute(
-        `DELETE a FROM addresses a INNER JOIN users u ON u.openid = a.openid
+        `DELETE a FROM addresses a INNER JOIN users u ON u.openid COLLATE utf8mb4_bin = a.openid COLLATE utf8mb4_bin
          WHERE a.id = ? AND u.id = ?`,
         [addressId, userId]
       );

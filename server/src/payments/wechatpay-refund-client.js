@@ -30,7 +30,7 @@ export function createWechatPayRefundClient({ mchId, merchantSerialNo, merchantP
       const refund = positive(refundAmountFen, 'refundAmountFen'); const total = positive(totalAmountFen, 'totalAmountFen');
       if (refund > total) throw new Error('Refund amount cannot exceed order amount.');
       const path = '/v3/refund/domestic/refunds';
-      const payload = Object.freeze({ out_refund_no: text(outRefundNo, 'outRefundNo', 64), transaction_id: text(transactionId, 'transactionId', 64), reason: text(reason || '订单退款', 'reason', 80), notify_url: configuration.notifyUrl, amount: Object.freeze({ refund, total, currency: 'CNY' }) });
+      const payload = Object.freeze({ out_refund_no: text(outRefundNo, 'outRefundNo', 64), transaction_id: text(transactionId, 'transactionId', 64), reason: text((reason || '订单退款').slice(0, 80), 'reason', 80), notify_url: configuration.notifyUrl, amount: Object.freeze({ refund, total, currency: 'CNY' }) });
       const body = JSON.stringify(payload); const timestamp = now(); const nonceStr = randomBytes(16).toString('hex');
       const headers = Object.freeze({ authorization: authorization({ ...configuration, privateKey, path, body, timestamp, nonceStr }), 'content-type': 'application/json', accept: 'application/json' });
       const result = await request(Object.freeze({ method: 'POST', path, body, headers }));

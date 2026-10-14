@@ -93,3 +93,20 @@ test('refund success callback settles an approved refund once without another mo
   assert.equal(committed, 1);
   assert.deepEqual(calls.find(({ sql }) => sql.startsWith('UPDATE orders SET status')).values, ['wx-refund-1', 21]);
 });
+
+for (const snapshot of ['paid', 'shipped']) test(`refund success for ${snapshot} restores unshipped stock only once`, async () => {
+  const row = { id: 17, order_id: 21, status: 'processing', processed_refund_no: 'FIXTURE-RF', order_status: 'refunding', order_status_snapshot: snapshot };
+  const inventory = [];
+  const connection = { beginTransaction: async () => {}, commit: async () => {}, rollback: async () => assert.fail('must not rollback'), release() {},
+    execute: async (sql, values) => {
+      if (sql.startsWith('SELECT r.id')) return [[row]];
+      if (sql.startsWith('SELECT product_id')) return [[{ product_id: 3, quantity: 2 }]];
+      if (sql.startsWith('UPDATE products')) inventory.push(values);
+      if (sql.startsWith('UPDATE orders')) { row.status = 'refunded'; row.order_status = 'refunded'; }
+      return [{ affectedRows: 1 }];
+    } };
+  const repository = createMysqlPaymentSettlementRepository({ getConnection: async () => connection });
+  assert.equal((await repository.settleRefund({ outRefundNo: 'FIXTURE-RF', refundId: 'fixture-wx' })).settled, true);
+  assert.equal((await repository.settleRefund({ outRefundNo: 'FIXTURE-RF', refundId: 'fixture-wx' })).duplicate, true);
+  assert.deepEqual(inventory, snapshot === 'paid' ? [[2, 2, 3]] : []);
+});

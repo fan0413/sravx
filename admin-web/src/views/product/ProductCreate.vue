@@ -10,42 +10,62 @@
         <div class="editor-mode">{{ isEditMode ? "编辑模式" : "草稿模式" }}</div>
       </div>
     </template>
+    <nav class="editor-section-nav" aria-label="商品填写分区">
+      <a href="#editor-basics" @click.prevent="scrollToSection('editor-basics')"><span>01</span>基础资料</a>
+      <a href="#editor-images" @click.prevent="scrollToSection('editor-images')"><span>02</span>商品图片</a>
+      <a v-if="needsParameters" href="#editor-params" @click.prevent="scrollToSection('editor-params')"><span>03</span>参数与质保</a>
+      <a href="#editor-specs" @click.prevent="scrollToSection('editor-specs')"><span>04</span>型号规格</a>
+      <a href="#editor-sales" @click.prevent="scrollToSection('editor-sales')"><span>05</span>销售设置</a>
+    </nav>
     <div class="create-grid">
       <el-form label-width="100px" :model="form" class="form">
+        <section id="editor-basics" class="editor-section" aria-labelledby="heading-basics">
         <div class="form-section-heading">
           <span>01</span>
-          <div><strong>基础资料</strong><small>定义用户首先看到的商品信息</small></div>
+          <div><strong id="heading-basics">基础资料</strong><small>先选系列和分类，再填写名称与简介</small></div>
         </div>
-        <el-form-item label="商品分类">
-          <el-select v-model="form.category_id" placeholder="请选择分类" style="width: 240px">
+        <div class="classification-fields">
+        <el-form-item label="产品系列">
+          <el-select v-model="selectedSeries" placeholder="先选择系列" @change="changeSeries">
+            <el-option v-for="item in SERIES_OPTIONS" :key="item.key" :label="item.label" :value="item.key" />
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="selectedSeries && selectedSeries !== 'accessories'" label="工具分类">
+          <el-select v-model="selectedTool" placeholder="选择直剪、牙剪等" @change="changeTool">
+            <el-option v-for="item in TOOL_OPTIONS" :key="item.key" :label="item.label" :value="item.key" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="目录关联">
+          <el-select v-model="form.category_id" :disabled="!selectedSeries" placeholder="选择对应目录分类">
             <el-option
-              v-for="category in categoryRows"
+              v-for="category in availableCategories"
               :key="category.id"
               :label="category.name"
               :value="category.id"
             />
           </el-select>
         </el-form-item>
+        </div>
+        <el-alert v-if="selectedSeries && !availableCategories.length" title="没有对应目录分类，请先在分类管理中创建；配件细分类暂不预设。" type="warning" :closable="false" />
         <el-form-item label="商品名称">
           <el-input v-model="form.name" placeholder="请输入商品名称" />
         </el-form-item>
         <el-form-item label="短名称">
           <el-input v-model="form.short_name" placeholder="请输入短名称（用于简洁展示）" maxlength="20" />
         </el-form-item>
-        <el-form-item label="商品价格(元)">
-          <el-input v-model="form.price" placeholder="请输入价格" />
+        <el-form-item label="简短描述">
+          <el-input v-model="form.desc" type="textarea" :rows="3" placeholder="介绍商品用途、适用场景与真实卖点" />
         </el-form-item>
-        <el-form-item label="库存">
-          <el-input-number v-model="form.stock" :min="0" />
-        </el-form-item>
+        </section>
+        <section id="editor-images" class="editor-section" aria-labelledby="heading-images">
         <div class="form-section-heading">
           <span>02</span>
-          <div><strong>产品影像</strong><small>上传列表、详情和展示所需的图片</small></div>
+          <div><strong id="heading-images">商品图片</strong><small>分清列表封面、轮播图片与详情长图；保存时上传</small></div>
         </div>
         <el-form-item label="商品图片">
           <div class="image-uploader-row">
-            <div class="uploader-wrap">
-              <div class="upload-title">封面图</div>
+            <div class="uploader-wrap cover-uploader">
+              <div class="upload-title">封面图 <span class="upload-count">{{ coverUploadFiles.length }}/1</span></div>
               <el-upload
                 v-model:file-list="coverUploadFiles"
                 list-type="picture-card"
@@ -63,7 +83,7 @@
             </div>
 
             <div class="uploader-wrap">
-              <div class="upload-title">商品图片集</div>
+              <div class="upload-title">商品图片集 <span class="upload-count">{{ galleryUploadFiles.length }}/7</span></div>
               <el-upload
                 v-model:file-list="galleryUploadFiles"
                 list-type="picture-card"
@@ -114,11 +134,9 @@
             </div>
           </div>
         </el-form-item>
-        <el-form-item label="简短描述">
-          <el-input v-model="form.desc" type="textarea" :rows="3" />
-        </el-form-item>
         <el-form-item label="商品详情图">
           <div class="uploader-wrap">
+            <div class="upload-title">详情展示 <span class="upload-count">{{ detailUploadFiles.length }}/30</span></div>
             <el-upload
               v-model:file-list="detailUploadFiles"
               list-type="picture-card"
@@ -127,38 +145,18 @@
               :on-remove="syncDetailImages"
               accept="image/*"
               multiple
+              :limit="30"
             >
               <el-icon><Plus /></el-icon>
             </el-upload>
             <div class="upload-tip">该区域用于详情页展示图片，可按顺序上传多张。</div>
           </div>
         </el-form-item>
-        <el-form-item label="上架状态">
-          <el-radio-group v-model="form.is_on_sale">
-            <el-radio :value="1">上架</el-radio>
-            <el-radio :value="0">下架</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="推荐商品">
-          <el-radio-group v-model="form.is_recommend">
-            <el-radio :value="1">是</el-radio>
-            <el-radio :value="0">否</el-radio>
-          </el-radio-group>
-        </el-form-item>
-        <el-form-item label="使用优惠券">
-          <el-radio-group v-model="form.allow_coupon">
-            <el-radio :value="1">允许</el-radio>
-            <el-radio :value="0">禁用</el-radio>
-          </el-radio-group>
-          <div class="upload-tip">禁用后该商品下单时不可使用优惠券</div>
-        </el-form-item>
-        <el-form-item label="质保月数">
-          <el-input-number v-model="form.warranty_months" :min="0" :step="1" />
-          <span class="warranty-tip">0=终身质保</span>
-        </el-form-item>
+        </section>
+        <section v-if="needsParameters" id="editor-params" class="editor-section" aria-labelledby="heading-params">
         <div class="form-section-heading">
           <span>03</span>
-          <div><strong>技术信息</strong><small>补充参数、规格与可选型号</small></div>
+          <div><strong id="heading-params">参数与质保</strong><small>填写可核实的参数，保留商品原有质保设置</small></div>
         </div>
         <el-form-item label="主要参数">
           <div class="param-editor">
@@ -172,13 +170,28 @@
             </div>
           </div>
         </el-form-item>
-        <el-form-item label="规格配置">
+        <el-form-item label="质保月数">
+          <el-input-number v-model="form.warranty_months" :min="0" :step="1" />
+          <span class="warranty-tip">0=终身质保</span>
+        </el-form-item>
+        </section>
+        <section id="editor-specs" class="editor-section" aria-labelledby="heading-specs">
+        <div class="form-section-heading">
+          <span>04</span>
+          <div><strong id="heading-specs">型号规格</strong><small>每个型号分别设置图片、价格与发货信息</small></div>
+          <span class="section-count">{{ specRows.length }} 个型号</span>
+        </div>
+        <el-form-item label="规格配置" class="spec-form-item">
           <div class="spec-list">
             <div
               v-for="(spec, index) in specRows"
               :key="spec.uid"
               class="spec-editor-row"
             >
+              <div class="spec-row-heading">
+                <strong>型号 {{ String(index + 1).padStart(2, '0') }} <span>{{ spec.name || '未命名' }}</span></strong>
+                <el-button text type="danger" :disabled="specRows.length <= 1" @click="removeSpecRow(index)">删除</el-button>
+              </div>
               <div class="spec-main-row">
                 <div class="spec-image-fields">
                   <div class="spec-image-field">
@@ -197,7 +210,7 @@
                       <el-icon><Plus /></el-icon>
                     </el-upload>
                   </div>
-                  <div class="spec-image-field">
+                  <div v-if="needsParameters" class="spec-image-field">
                     <div class="upload-title">展示卡片</div>
                     <el-upload
                       v-model:file-list="spec.cardUploadFiles"
@@ -214,19 +227,14 @@
                     </el-upload>
                   </div>
                 </div>
-                <el-input v-model="spec.name" placeholder="配置名称，如：夜花黑纹款" />
-                <el-input v-model.number="spec.price" placeholder="价格" />
-                <el-input v-model="spec.sku" maxlength="64" placeholder="SKU（留空自动生成）" />
-                <el-button
-                  text
-                  type="danger"
-                  :disabled="specRows.length <= 1"
-                  @click="removeSpecRow(index)"
-                >
-                  删除
-                </el-button>
+                <div class="spec-value-fields">
+                  <label class="spec-field"><span>型号名称</span><el-input v-model="spec.name" placeholder="配置名称，如：夜花黑纹款" /></label>
+                  <label class="spec-field"><span>价格（元）</span><el-input v-model.number="spec.price" placeholder="价格" /></label>
+                  <label class="spec-field"><span>SKU 编码</span><el-input v-model="spec.sku" maxlength="64" placeholder="SKU（留空自动生成）" /></label>
+                </div>
               </div>
               <div class="spec-shipping-row">
+                <div class="upload-title">发货方式</div>
                 <el-radio-group v-model="spec.shipping_type" size="small">
                   <el-radio-button value="normal">普通现货</el-radio-button>
                   <el-radio-button value="presale">预售</el-radio-button>
@@ -237,12 +245,15 @@
                   <el-form-item label="发货天数" label-width="72px" class="nested-form-item">
                     <el-input-number v-model="spec.ship_deadline_days" :min="1" :max="120" :step="1" />
                   </el-form-item>
+                </div>
+                <details class="shipping-details" :open="spec.shipping_type !== 'normal'">
+                  <summary>发货补充信息 <span>延迟原因、承诺与说明</span></summary>
+                  <div class="shipping-details-body">
                   <el-form-item label="延迟原因" label-width="72px" class="nested-form-item">
                     <el-select
                       v-model="spec.shipping_delay_reason"
                       placeholder="请选择"
                       clearable
-                      style="width: 180px"
                     >
                       <el-option label="预售备货" value="预售备货" />
                       <el-option label="定制生产" value="定制生产" />
@@ -252,7 +263,6 @@
                       <el-option label="其他" value="其他" />
                     </el-select>
                   </el-form-item>
-                </div>
                 <el-input
                   v-model="spec.shipping_promise"
                   maxlength="120"
@@ -267,13 +277,37 @@
                   show-word-limit
                   placeholder="该规格补充说明，可写定制周期、产地直发或与用户约定的发货条件"
                 />
+                  </div>
+                </details>
                 <div class="upload-tip">用户下单选择该规格后，会按这里的天数生成预计发货时间。</div>
               </div>
             </div>
             <el-button text type="primary" @click="addSpecRow">+ 新增规格</el-button>
           </div>
         </el-form-item>
+        </section>
+        <section id="editor-sales" class="editor-section" aria-labelledby="heading-sales">
+          <div class="form-section-heading">
+            <span>05</span>
+            <div><strong id="heading-sales">销售设置</strong><small>保存前核对价格、库存及上架状态</small></div>
+          </div>
+          <div class="sales-fields">
+            <el-form-item label="商品起价(元)"><el-input :model-value="displayPrice" readonly placeholder="由规格最低价自动计算" /></el-form-item>
+            <el-form-item label="库存"><el-input-number v-model="form.stock" :min="0" /></el-form-item>
+          </div>
+          <el-form-item label="上架状态">
+            <el-radio-group v-model="form.is_on_sale"><el-radio :value="1">上架</el-radio><el-radio :value="0">下架</el-radio></el-radio-group>
+          </el-form-item>
+          <el-form-item label="推荐商品">
+            <el-radio-group v-model="form.is_recommend"><el-radio :value="1">是</el-radio><el-radio :value="0">否</el-radio></el-radio-group>
+          </el-form-item>
+          <el-form-item label="使用优惠券">
+            <el-radio-group v-model="form.allow_coupon"><el-radio :value="1">允许</el-radio><el-radio :value="0">禁用</el-radio></el-radio-group>
+            <div class="upload-tip">禁用后该商品下单时不可使用优惠券</div>
+          </el-form-item>
+        </section>
         <el-form-item class="form-actions">
+          <span class="save-hint">{{ isDeleteMode ? '删除前请确认商品与订单关联' : '保存前请核对资料与上架状态' }}</span>
           <el-button
             v-if="!isDeleteMode"
             type="primary"
@@ -311,14 +345,14 @@
             <div class="preview-section-title">型号：选择适合你的工具。</div>
             <div v-for="(spec, index) in specRows.filter((item) => item.name.trim()).slice(0, 2)" :key="spec.uid" class="preview-model" :class="{ selected: index === 0 }">
               <div><strong>{{ spec.name }}</strong><small>{{ spec.sku || "SKU 将自动生成" }}</small></div>
-              <strong>¥{{ Number(spec.price || form.price || 0).toFixed(2) }}</strong>
+              <strong>{{ validSellingPrice(spec.price) ? `¥${Number(spec.price).toFixed(2)}` : '价格待填写' }}</strong>
             </div>
             <div v-if="!specRows.some((item) => item.name.trim())" class="preview-model selected">
               <div><strong>请先添加型号</strong><small>例如：标准款</small></div>
               <strong>¥{{ displayPrice }}</strong>
             </div>
           </div>
-          <div class="params-wrap">
+          <div v-if="needsParameters" class="params-wrap">
             <div class="preview-eyebrow">TECHNICAL DETAILS</div>
             <div class="params-title">主要参数</div>
             <div class="params-card">
@@ -335,7 +369,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ArrowLeft, ArrowRight, Plus } from "@element-plus/icons-vue";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -351,9 +385,15 @@ import {
 import { targetAdminCatalogModeEnabled } from "../../lib/target-admin-auth";
 import type { UploadFile, UploadFiles, UploadRawFile, UploadUserFile } from "element-plus";
 import type { CategoryRow } from "../../api/types";
+import { SERIES_OPTIONS, TOOL_OPTIONS, categoriesForSeries, productClassification, readParams } from "../../../../sravx/common/product-classification.mjs";
+import { validSellingPrice } from "../../../../sravx/common/product-price.mjs";
 
 const router = useRouter();
 const route = useRoute();
+// Scroll within the editor without changing the hash router or form state.
+const scrollToSection = (id: string) => {
+  document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+};
 const editingId = computed(() => {
   const raw = route.params.id;
   const id = Number(raw);
@@ -362,6 +402,20 @@ const editingId = computed(() => {
 const isEditMode = computed(() => editingId.value > 0);
 const isDeleteMode = computed(() => route.path.includes("/product/delete/"));
 const categoryRows = ref<CategoryRow[]>([]);
+const selectedSeries = ref("");
+const needsParameters = computed(() => ["basic", "pro", "master"].includes(selectedSeries.value));
+const originalWarrantyMonths = ref<number | undefined>();
+const selectedTool = ref("");
+const originalParams = ref<Record<string, string>>({});
+const originalCardImage = ref("");
+const originalSortOrder = ref(0);
+let editorLoadVersion = 0;
+const availableCategories = computed(() => categoriesForSeries(categoryRows.value, selectedSeries.value, selectedTool.value));
+function changeSeries() { selectedTool.value = ""; form.category_id = undefined; }
+function changeTool() {
+  const options = availableCategories.value;
+  form.category_id = options.length === 1 ? options[0]?.id : undefined;
+}
 const form = reactive({
   category_id: undefined as number | undefined,
   name: "",
@@ -397,7 +451,8 @@ type SpecEditorRow = {
   cardUploadFiles: UploadUserFile[];
   image: string;
   card_image: string;
-  price: number;
+  original_card_image: string;
+  price: number | string;
   sku: string;
   shipping_type: ShippingType;
   ship_deadline_days: number;
@@ -415,7 +470,8 @@ const createSpecRow = (): SpecEditorRow => ({
   cardUploadFiles: [],
   image: "",
   card_image: "",
-  price: 0,
+  original_card_image: "",
+  price: "",
   sku: "",
   shipping_type: "normal",
   ship_deadline_days: 2,
@@ -433,7 +489,10 @@ const previewImage = computed(
     "https://img.yzcdn.cn/vant/apple-1.jpg"
 );
 
-const displayPrice = computed(() => (form.price && Number(form.price) > 0 ? form.price : "0.00"));
+const displayPrice = computed(() => {
+  const prices = specRows.value.filter(item => item.name.trim() && validSellingPrice(item.price)).map(item => Number(item.price));
+  return prices.length ? Math.min(...prices).toFixed(2) : "";
+});
 const categoryName = computed(
   () => categoryRows.value.find((item) => item.id === form.category_id)?.name || "-"
 );
@@ -489,9 +548,17 @@ const toShippingType = (value: unknown): ShippingType => {
   return ["normal", "presale", "custom", "delayed"].includes(type) ? (type as ShippingType) : "normal";
 };
 
-const loadProductDetail = async (id: number) => {
+const loadProductDetail = async (id: number, version: number) => {
   const detail = await fetchAdminProductDetail(id);
+  if (version !== editorLoadVersion) return;
   form.category_id = Number(detail.category_id || 0) || undefined;
+  const classification = productClassification(detail, categoryRows.value);
+  selectedSeries.value = classification.series;
+  selectedTool.value = classification.tool === "other" ? "" : classification.tool;
+  originalParams.value = Object.fromEntries(Object.entries(readParams(detail.params)).map(([key, value]) => [key, String(value)]));
+  originalCardImage.value = String(detail.scissors_card_image || "");
+  originalSortOrder.value = Number(detail.sort_order || 0);
+  originalWarrantyMonths.value = detail.warranty_months == null ? undefined : Number(detail.warranty_months);
   form.name = String(detail.name || "");
   form.short_name = String(detail.short_name || "");
   form.price = String(detail.price || "");
@@ -523,6 +590,7 @@ const loadProductDetail = async (id: number) => {
     .map((item) => String(item || "").trim())
     .filter((item) => item.startsWith("cloud://") || item.startsWith("catalog/"));
   const urlMap = await resolveAdminFileUrls(allObjectKeys);
+  if (version !== editorLoadVersion) return;
 
   coverUploadFiles.value = cover ? buildUploadFilesFromUrls([cover], urlMap) : [];
   galleryUploadFiles.value = buildUploadFilesFromUrls(images, urlMap);
@@ -531,9 +599,7 @@ const loadProductDetail = async (id: number) => {
   syncGalleryImages(undefined, galleryUploadFiles.value as UploadFiles);
   syncDetailImages(undefined, detailUploadFiles.value as UploadFiles);
 
-  const savedParams = detail.params && typeof detail.params === "object" && !Array.isArray(detail.params)
-    ? detail.params as Record<string, unknown>
-    : {};
+  const savedParams = readParams(detail.params);
   const paramsData: Record<string, unknown> = {
     核心材质: savedParams.核心材质 ?? detail.core_material ?? "",
     手柄材质: savedParams.手柄材质 ?? detail.handle_material ?? "",
@@ -554,7 +620,8 @@ const loadProductDetail = async (id: number) => {
           const rawSpecCardImage = String((item as Record<string, unknown>).card_image || "");
           const image = toPreviewUrl(rawSpecImage, urlMap);
           const cardImage = toPreviewUrl(rawSpecCardImage, urlMap);
-          const price = Number((item as Record<string, unknown>).price || 0);
+          const rawPrice = (item as Record<string, unknown>).price;
+          const price = typeof rawPrice === "number" || typeof rawPrice === "string" ? rawPrice : "";
           const sku = String((item as Record<string, unknown>).sku || "");
           const shippingType = toShippingType((item as Record<string, unknown>).shipping_type || fallbackShippingType);
           const shipDeadlineDays = Math.max(
@@ -569,6 +636,7 @@ const loadProductDetail = async (id: number) => {
             name,
             image,
             card_image: cardImage,
+            original_card_image: rawSpecCardImage,
             price,
             sku,
             shipping_type: shippingType,
@@ -585,19 +653,35 @@ const loadProductDetail = async (id: number) => {
       : [createSpecRow()];
 };
 
-onMounted(async () => {
+async function loadEditor() {
+  const version = ++editorLoadVersion;
+  const id = editingId.value;
+  selectedSeries.value = ""; selectedTool.value = "";
+  originalParams.value = {}; originalCardImage.value = ""; originalSortOrder.value = 0;
+  originalWarrantyMonths.value = undefined;
+  Object.assign(form, { category_id: undefined, name: "", short_name: "", price: "", stock: 0, desc: "", is_on_sale: 1, is_recommend: 0, allow_coupon: 1, warranty_months: 12 });
+  coverUploadFiles.value = []; galleryUploadFiles.value = []; detailUploadFiles.value = [];
+  coverImages.value = []; galleryImages.value = []; detailImages.value = [];
+  paramRows.value = paramRows.value.map(item => ({ ...item, value: "" }));
+  specRows.value = [createSpecRow()];
   try {
-    categoryRows.value = await fetchCategories();
-    if (isEditMode.value) {
-      await loadProductDetail(editingId.value);
-    }
-    if (!form.category_id && categoryRows.value.length > 0) {
-      form.category_id = categoryRows.value[0].id;
+    const categories = await fetchCategories();
+    if (version !== editorLoadVersion) return;
+    categoryRows.value = categories;
+    if (id) {
+      await loadProductDetail(id, version);
+      if (version !== editorLoadVersion) return;
+      if (form.category_id && !availableCategories.value.some(item => item.id === form.category_id)) {
+        ElMessage.warning("原商品目录不符合系列/细分类，请重新选择目录关联后保存；原值尚未修改");
+      }
     }
   } catch (error) {
+    if (version !== editorLoadVersion) return;
     ElMessage.error(error instanceof Error ? `商品数据读取失败：${error.message}` : "商品数据读取失败");
   }
-});
+}
+onMounted(loadEditor);
+watch(editingId, loadEditor);
 
 const getRawFile = (file: UploadUserFile): File | null => {
   const raw = file.raw;
@@ -802,7 +886,7 @@ const escapeHtml = (value: string) =>
     .replace(/'/g, "&#39;");
 
 const buildConfirmHtml = () => {
-  const paramItems = paramRows.value
+  const paramItems = (needsParameters.value ? paramRows.value : [])
     .map((item) => ({ key: item.key.trim(), value: item.value.trim() }))
     .filter((item) => item.key && item.value);
   const specItems = specRows.value
@@ -840,7 +924,7 @@ const buildConfirmHtml = () => {
               `<div style="display:grid;gap:4px;background:#fff;padding:8px;border-radius:6px;">
                  <div style="display:flex;justify-content:space-between;gap:12px;">
                    <span style="color:#303133;">#${item.index} ${escapeHtml(item.name)}</span>
-                    <span style="color:#606266;">¥${item.price} ｜ 规格图${item.hasImage ? "有" : "无"} ｜ 卡片${item.hasCardImage ? "有" : "无"}</span>
+                    <span style="color:#606266;">¥${item.price} ｜ 规格图${item.hasImage ? "有" : "无"}${needsParameters.value ? ` ｜ 卡片${item.hasCardImage ? "有" : "无"}` : ""}</span>
                  </div>
                  <div style="color:#606266;">${escapeHtml(item.shippingType)} ｜ ${escapeHtml(item.shippingPromise)}</div>
                  <div style="color:#909399;">原因：${escapeHtml(item.shippingReason || "-")} ｜ 说明：${escapeHtml(item.shippingNote || "-")}</div>
@@ -857,7 +941,7 @@ const buildConfirmHtml = () => {
           <div><span style="color:#909399;">分类：</span><span>${escapeHtml(categoryName.value)}</span></div>
           <div><span style="color:#909399;">商品名称：</span><span>${escapeHtml(form.name.trim())}</span></div>
           <div><span style="color:#909399;">短名称：</span><span>${escapeHtml(form.short_name.trim() || "-")}</span></div>
-          <div><span style="color:#909399;">价格：</span><span>¥${Number(form.price || 0)}</span></div>
+          <div><span style="color:#909399;">最低规格价：</span><span>¥${displayPrice.value}</span></div>
           <div><span style="color:#909399;">库存：</span><span>${form.stock}</span></div>
           <div><span style="color:#909399;">状态：</span><span>${form.is_on_sale ? "上架" : "下架"} / ${
             form.is_recommend ? "推荐" : "普通"
@@ -875,10 +959,10 @@ const buildConfirmHtml = () => {
         </div>
       </div>
 
-      <div style="background:#fff;padding:10px 12px;border-radius:8px;margin-bottom:10px;">
+      ${needsParameters.value ? `<div style="background:#fff;padding:10px 12px;border-radius:8px;margin-bottom:10px;">
         <div style="font-weight:600;color:#303133;margin-bottom:8px;">主要参数</div>
         ${paramsHtml}
-      </div>
+      </div>` : ""}
 
       <div style="background:#fff;padding:10px 12px;border-radius:8px;">
         <div style="font-weight:600;color:#303133;margin-bottom:8px;">规格配置</div>
@@ -945,6 +1029,10 @@ const handleDelete = async () => {
 };
 
 const handleSave = async () => {
+  if (!targetAdminCatalogModeEnabled()) {
+    ElMessage.warning("当前旧商品函数不能完整保存系列与细分类；请配置目标目录 API 模式后再编辑。不会自动开启迁移开关。");
+    return;
+  }
   if (!form.name.trim()) {
     ElMessage.warning("请先填写商品名称");
     return;
@@ -953,16 +1041,13 @@ const handleSave = async () => {
     ElMessage.warning("请先填写短名称");
     return;
   }
-  if (!form.category_id) {
-    ElMessage.warning("请先选择商品分类");
+  if (!selectedSeries.value || (selectedSeries.value !== "accessories" && !selectedTool.value) || !availableCategories.value.some(item => item.id === form.category_id)) {
+    ElMessage.warning("请先选择系列、细分类及匹配的目录关联");
     return;
   }
-  if (!String(form.price).trim()) {
-    ElMessage.warning("请先填写商品价格");
-    return;
-  }
-  if (!Number.isFinite(Number(form.price)) || Number(form.price) < 0) {
-    ElMessage.warning("商品价格格式不正确");
+  const invalidPriceSpec = specRows.value.find(item => item.name.trim() && !validSellingPrice(item.price));
+  if (invalidPriceSpec) {
+    ElMessage.warning(`请填写规格「${invalidPriceSpec.name.trim()}」的有效价格（大于0，最多两位小数）`);
     return;
   }
   if (!form.desc.trim()) {
@@ -981,11 +1066,12 @@ const handleSave = async () => {
     ElMessage.warning("请至少上传 1 张商品详情图");
     return;
   }
-  const missingParam = paramRows.value.find((item) => !item.value.trim());
+  const missingParam = needsParameters.value ? paramRows.value.find((item) => !item.value.trim()) : undefined;
   if (missingParam) {
     ElMessage.warning(`请先填写主要参数：${missingParam.key}`);
     return;
   }
+  if (!specRows.value.some(item => item.name.trim())) { ElMessage.warning("请至少填写一个规格名称"); return; }
   const invalidSpecShipping = specRows.value.find(
     (item) => item.name.trim() && (!Number.isFinite(Number(item.ship_deadline_days)) || Number(item.ship_deadline_days) < 1)
   );
@@ -1005,12 +1091,12 @@ const handleSave = async () => {
 
   saving.value = true;
   try {
-    const paramPayload = paramRows.value.reduce<Record<string, string>>((acc, item) => {
+    const paramPayload = (needsParameters.value ? paramRows.value : []).reduce<Record<string, string>>((acc, item) => {
       const key = item.key.trim();
       const value = item.value.trim();
       if (key && value) acc[key] = value;
       return acc;
-    }, {});
+    }, { ...originalParams.value, "目录系列": selectedSeries.value, "目录分类": selectedSeries.value === "accessories" ? "accessories" : selectedTool.value });
 
     const buildPayload = async (uploadBasePath?: string) => {
       const uploadFiles = (files: UploadUserFile[], folder: string) =>
@@ -1029,15 +1115,15 @@ const handleSave = async () => {
           const uploadedSpecImages = uploadBasePath
             ? await resolveUploadUrls((item.uploadFiles || []).slice(0, 1), `${uploadBasePath}/specs`)
             : [];
-          const uploadedSpecCardImages = uploadBasePath
+          const uploadedSpecCardImages = needsParameters.value && uploadBasePath
             ? await resolveUploadUrls((item.cardUploadFiles || []).slice(0, 1), `${uploadBasePath}/spec-cards`)
             : [];
 
           return {
             name: specName,
             image: uploadedSpecImages[0] || "",
-            card_image: uploadedSpecCardImages[0] || "",
-            price: Number(item.price || 0),
+            card_image: needsParameters.value ? (uploadedSpecCardImages[0] || "") : item.original_card_image,
+            price: Number(item.price),
             sku: item.sku.trim(),
             sort_order: index + 1,
             shipping_type: item.shipping_type,
@@ -1069,17 +1155,17 @@ const handleSave = async () => {
         name: form.name,
         short_name: form.short_name,
         desc: form.desc,
-        price: Number(form.price || 0),
+        price: Number(displayPrice.value),
         category_id: form.category_id,
         cover_image: coverUploaded[0] || "",
         images: galleryUploaded,
         detail_images: detailUploaded,
         params: paramPayload,
         stock: form.stock,
-        warranty_months: form.warranty_months ?? 12,
-        scissors_card_image: "",
+        warranty_months: needsParameters.value ? (form.warranty_months ?? 12) : originalWarrantyMonths.value,
+        scissors_card_image: originalCardImage.value,
         has_spec: specs.length > 0 ? 1 : 0,
-        sort_order: 0,
+        sort_order: originalSortOrder.value,
         is_on_sale: form.is_on_sale,
         is_recommend: form.is_recommend,
         allow_coupon: form.allow_coupon,
@@ -1116,20 +1202,68 @@ const handleSave = async () => {
 <style scoped>
 .create-grid {
   display: grid;
-  grid-template-columns: minmax(520px, 1fr) 390px;
-  gap: 28px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 24px;
   align-items: start;
   max-width: 1440px;
   margin: 0 auto;
 }
 
 .form {
+  min-width: 0;
   max-width: 100%;
-  padding: 30px 32px 12px;
-  border: 1px solid rgba(60, 60, 67, 0.12);
-  border-radius: 22px;
-  background: #fff;
+  padding: 0 0 90px;
 }
+
+.product-editor-page {
+  --editor-accent: var(--sravx-accent, #9b6234);
+}
+
+.product-editor-page :deep(.el-card__body) { background: #f5f6f8; }
+
+.editor-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 auto 24px;
+  max-width: 1440px;
+}
+.editor-section-nav a {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  color: #515154;
+  border: 1px solid #e4e4e8;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #fff;
+  text-decoration: none;
+  font-size: 13px;
+}
+.editor-section-nav a:hover,
+.editor-section-nav a:focus-visible { color: var(--editor-accent); border-color: var(--editor-accent); }
+.editor-section-nav span { color: var(--editor-accent); font-size: 11px; font-weight: 700; }
+.editor-section {
+  min-width: 0;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid #e4e4e8;
+  border-radius: 16px;
+  background: #fff;
+  scroll-margin-top: 92px;
+}
+.editor-section > .el-form-item:last-child { margin-bottom: 0; }
+.classification-fields,
+.sales-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+.classification-fields :deep(.el-form-item__label),
+.sales-fields :deep(.el-form-item__label) { float: none; display: block; height: auto; text-align: left; padding-bottom: 6px; line-height: 20px; }
+.classification-fields :deep(.el-form-item),
+.sales-fields :deep(.el-form-item) { display: block; }
+.classification-fields :deep(.el-form-item__content),
+.sales-fields :deep(.el-form-item__content) { margin-left: 0 !important; }
+.form :deep(.el-form-item__content) { min-width: 0; }
+.section-count { margin-left: auto; white-space: nowrap; color: #86868b !important; background: #f5f6f8 !important; width: auto !important; padding: 6px 10px; border-radius: 8px !important; }
+.upload-count { color: #86868b; font-size: 12px; font-weight: 400; margin-left: 8px; }
 
 .editor-heading {
   display: flex;
@@ -1179,9 +1313,7 @@ const handleSave = async () => {
 }
 
 .form-section-heading:not(:first-child) {
-  margin-top: 38px;
-  padding-top: 30px;
-  border-top: 1px solid rgba(60, 60, 67, 0.12);
+  margin-top: 0;
 }
 
 .form-section-heading > span {
@@ -1191,7 +1323,7 @@ const handleSave = async () => {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: #1d1d1f;
+  background: var(--editor-accent);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -1205,12 +1337,22 @@ const handleSave = async () => {
 .form :deep(.el-form-item) {
   max-width: 840px;
   margin-bottom: 20px;
+  display: block;
 }
 
 .form :deep(.el-form-item__label) {
   color: #515154;
   font-weight: 600;
+  float: none;
+  display: block;
+  height: auto;
+  text-align: left;
+  padding-bottom: 6px;
+  line-height: 20px;
 }
+.form :deep(.el-form-item__content) { margin-left: 0 !important; }
+.form :deep(.el-alert) { margin-bottom: 20px; }
+.cover-uploader:has(.el-upload-list__item) :deep(.el-upload--picture-card) { display: none; }
 
 .form-section-heading strong {
   color: #1d1d1f;
@@ -1224,10 +1366,21 @@ const handleSave = async () => {
 }
 
 .form-actions {
-  margin-top: 36px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(60, 60, 67, 0.12);
+  position: fixed;
+  left: 252px;
+  right: 32px;
+  bottom: 16px;
+  z-index: 30;
+  margin: 0 !important;
+  max-width: none !important;
+  padding: 14px 20px;
+  border: 1px solid #e4e4e8;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 4px 20px rgba(29, 29, 31, 0.08);
 }
+.form-actions :deep(.el-form-item__content) { margin-left: 0 !important; justify-content: flex-end; gap: 8px; }
+.save-hint { margin-right: auto; color: #86868b; font-size: 12px; }
 
 .param-editor {
   width: 100%;
@@ -1240,7 +1393,7 @@ const handleSave = async () => {
 .image-uploader-row {
   width: 100%;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -1347,25 +1500,40 @@ const handleSave = async () => {
 
 .spec-editor-row {
   display: grid;
-  gap: 10px;
-  padding: 12px;
-  margin-bottom: 8px;
+  gap: 18px;
+  padding: 20px;
+  margin-bottom: 4px;
   align-items: start;
   border: 1px solid #ebeef5;
-  border-radius: 8px;
-  background: #fafafa;
+  border-radius: 12px;
+  background: #fff;
 }
+
+.spec-form-item { display: block; }
+.spec-form-item > :deep(.el-form-item__label) { display: none; }
+.spec-form-item > :deep(.el-form-item__content) { margin-left: 0 !important; }
+.spec-row-heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding-bottom: 12px; border-bottom: 1px solid #ebeef5; }
+.spec-row-heading strong { font-size: 13px; color: var(--editor-accent); min-width: 0; overflow-wrap: anywhere; }
+.spec-row-heading strong span { color: #1d1d1f; margin-left: 10px; }
+.spec-value-fields { display: grid; gap: 12px; min-width: 0; }
+.spec-field { display: grid; gap: 6px; font-size: 12px; color: #515154; }
+.shipping-details { border: 1px solid #e4e4e8; border-radius: 10px; }
+.shipping-details summary { cursor: pointer; padding: 10px 12px; color: #515154; font-size: 13px; }
+.shipping-details summary span { margin-left: 8px; color: #86868b; font-size: 12px; }
+.shipping-details-body { display: grid; gap: 12px; padding: 8px 12px 14px; }
+.shipping-details :deep(.el-select) { width: 100%; }
+.shipping-grid :deep(.el-form-item) { margin-bottom: 0; }
 
 .spec-main-row {
   display: grid;
-  grid-template-columns: 320px minmax(180px, 1fr) 120px 100px 56px;
-  gap: 12px;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: 20px;
   align-items: start;
 }
 
 .spec-image-fields {
   display: grid;
-  grid-template-columns: repeat(2, 140px);
+  grid-template-columns: repeat(2, 110px);
   gap: 12px;
 }
 
@@ -1377,7 +1545,7 @@ const handleSave = async () => {
 .spec-shipping-row {
   display: grid;
   gap: 10px;
-  padding-left: 320px;
+  padding-left: 0;
 }
 
 .sku-label {
@@ -1387,9 +1555,11 @@ const handleSave = async () => {
 }
 
 .spec-editor-row :deep(.el-upload--picture-card) {
-  width: 140px;
-  height: 140px;
+  width: 110px;
+  height: 110px;
 }
+.spec-editor-row :deep(.el-upload-list--picture-card .el-upload-list__item) { width: 110px; height: 110px; margin-right: 0; }
+.spec-image-field:has(.el-upload-list__item) :deep(.el-upload--picture-card) { display: none; }
 
 .param-key-fixed {
   color: #606266;
@@ -1403,6 +1573,12 @@ const handleSave = async () => {
   border: 1px solid rgba(60, 60, 67, 0.12);
   border-radius: 22px;
   background: #fff;
+  max-height: calc(100vh - 190px);
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .form-actions { left: 206px; right: 18px; }
 }
 
 .preview-title {
@@ -1429,7 +1605,7 @@ const handleSave = async () => {
 .hero {
   position: relative;
   background: #f2f2f7;
-  height: 300px;
+  height: 220px;
 }
 
 .hero-image {
@@ -1560,13 +1736,22 @@ const handleSave = async () => {
   text-align: right;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1350px) {
+  .create-grid { grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; }
+  .editor-section { padding: 20px; }
+  .spec-main-row { grid-template-columns: 1fr; }
+  .spec-value-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .spec-field:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 1100px) {
   .create-grid {
     grid-template-columns: 1fr;
   }
 
   .preview-panel {
     position: static;
+    max-height: none;
+    max-width: 500px;
   }
 
   .image-uploader-row {
@@ -1582,14 +1767,18 @@ const handleSave = async () => {
   }
 
   .spec-image-fields {
-    grid-template-columns: repeat(2, 140px);
+    grid-template-columns: repeat(2, 110px);
   }
 }
 
 @media (max-width: 720px) {
   .form {
-    padding: 22px 18px 8px;
+    padding: 0 0 90px;
   }
+  .editor-section { padding: 16px; }
+  .classification-fields, .sales-fields, .spec-value-fields { grid-template-columns: 1fr; }
+  .param-editor-row { grid-template-columns: 100px minmax(0, 1fr); }
+  .save-hint { display: none; }
 
   .editor-heading {
     display: block;
