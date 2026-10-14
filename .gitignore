@@ -65,3 +65,24 @@ unpackage/
 *.tsbuildinfo
 .env.*
 !.env.example
+
+# Local development instructions and historical work records stay on this machine.
+**/AGENTS.md
+/design-qa.md
+/配置指南.md
+/specs/
+/sravx/specs/
+/docs/*
+!/docs/README.md
+!/docs/architecture.md
+!/docs/api-reference.md
+!/docs/project-showcase.md
+!/docs/project-status-and-next-tasks.md
+!/docs/website-release-2026-10-14.md
+
+# Unused images from the earlier showcase stay local; current four images are tracked.
+/sravx/public/official/orbit/fishbone.png
+/sravx/public/official/orbit/fluffy.png
+/sravx/public/official/orbit/green-curve.png
+/sravx/public/official/orbit/natural.png
+/sravx/public/official/orbit/pink-curve.png

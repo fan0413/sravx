@@ -1,45 +1,23 @@
-# SRAVX 电商管理端（Vue 3）
+# 管理后台
 
-基于 `Vue3 + Vite + TypeScript + Vue Router + Element Plus` 的管理后台，包含：
+用于编辑商品、分类、图片以及查看订单和售后，使用Vue 3、TypeScript、Vue Router和Element Plus。
 
-- 商品管理：商品列表、新建商品
-- 订单管理：订单列表、订单详情
-- 用户管理：用户列表
+## 启动和检查
 
-## 本地启动
+- npm ci：安装依赖。
+- npm run dev：本地开发。
+- npm run build：检查类型并构建，产物在dist。
+- node --test scripts/*.test.mjs：检查工作区和请求封装。
 
-```bash
-npm install
-npm run dev
-```
+默认同域请求后端，本地开发由Vite代理转发。需要独立接口地址时再配置VITE_API_BASE_URL，不把账号密码写进仓库。
 
-默认本地地址：`http://localhost:5173`
+## 代码在哪
 
-## 构建产物
+- src/views：后台页面。
+- src/api/admin.ts：商品、订单、用户等请求函数。
+- src/lib/target-admin-auth.ts：登录会话、请求封装和图片上传。
+- src/router：页面路由，使用hash方式，刷新不会找不到静态页面。
 
-```bash
-npm run build
-```
+通用、网页和小程序工作区主要用于整理功能入口，不代表三个不同数据库，也不自动分开轮播内容。旧云开发适配器不再执行。
 
-构建后产物目录为 `dist/`。
-
-## 当前接口与交付边界
-
-- 当前管理端使用服务器API，默认同域请求；开发/预览通过Vite代理。身份会话与权限由服务器校验，不使用旧CloudBase适配器。
-- 管理端与官网、小程序分别构建和发布，源码更新不自动改变线上版本。
-- 本地可运行`node --test scripts/*.test.mjs`；`npm run build`包含类型检查。真实后台登录、写商品或审批退款不得作为无授权面试演示。
-
-## 路由与刷新策略
-
-- 当前项目使用 `hash` 路由（`createWebHashHistory`），静态托管无需额外重写规则
-- 如果后续切换成 `history` 路由，需要在静态托管配置 URL 重写到 `index.html`
-
-## 环境变量
-
-默认不需要覆盖接口域名。确有独立环境时参考当前`src/lib/target-admin-auth.ts`的配置契约，不把生产会话或密钥写入环境示例。
-
-# 渠道工作区
-
-顶部可切换网页功能与小程序功能，入口分别为 `#/channel/web`、`#/channel/miniprogram`。共用业务仍使用原页面和原 API；在共用编辑页切换不会跳转或清空表单。渠道偏好仅保存于本机，不是权限或数据库切换。
-
-当前工作区只组织已有功能入口，欢迎页/官网导航独立编辑、商品渠道展示/排序尚未接入；轮播也不会按工作区自动隔离。验收详情见主工作区 `docs/admin-channel-workspace-validation-2026-10-08.md`。
+函数参数见代码类型及[接口说明](../docs/api-reference.md)。不要用真实账号、订单和退款来演示后台。

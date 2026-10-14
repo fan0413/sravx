@@ -2,11 +2,13 @@ import { decryptInboundPayload, decryptWechatPayResource } from './wechatpay-cal
 
 const nonRetryableCodes = new Set(['UNSUPPORTED_EVENT', 'INVALID_TRANSACTION', 'INVALID_REFUND', 'ORDER_NOT_FOUND', 'ORDER_SETTLEMENT_CONFLICT', 'ORDER_INVENTORY_NOT_FOUND', 'POINTS_INVENTORY_NOT_FOUND', 'POINTS_LEDGER_NOT_FOUND', 'REFUND_NOT_FOUND', 'REFUND_SETTLEMENT_CONFLICT']);
 
+/** 创建通知处理器：每次取一条已保存的支付/退款通知，处理成功再标记完成。 */
 export function createPaymentEventConsumer({ inboundRepository, settlementRepository, apiV3Key, inboundEncryptionKey, consumerName = 'wechat-transaction-settlement' }) {
   if (!inboundRepository || typeof inboundRepository.claimNext !== 'function' || typeof inboundRepository.complete !== 'function' || typeof inboundRepository.block !== 'function') throw new Error('A payment inbound repository is required.');
   if (!settlementRepository || typeof settlementRepository.settleTransaction !== 'function') throw new Error('A payment settlement repository is required.');
   return Object.freeze({
     async consumeOne() {
+      // 先领取记录，避免两个处理器同时处理同一条通知；重复业务由仓储再次检查。
       const event = await inboundRepository.claimNext(consumerName);
       if (!event) return Object.freeze({ consumed: false });
       try {

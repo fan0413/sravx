@@ -3,6 +3,8 @@ function positiveId(value) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+/** 处理公开商品GET路径：pathname是路径，searchParams是筛选参数，repository负责查询。
+ * 返回{status,data}或{status,error}；不属于目录的路径返回null，让主路由继续处理。 */
 export async function catalogResponse(pathname, searchParams, repository) {
   if (pathname === '/api/v1/catalog/home') {
     return { status: 200, data: await repository.home() };

@@ -17,6 +17,7 @@ export const parentRoutes = {
   'pages/register/index': HOME
 }
 export function pageStack() { return typeof getCurrentPages === 'function' ? getCurrentPages() : [] }
+/** 根据当前页面和参数找上级入口；订单页优先返回对应订单详情。 */
 export function parentUrl(route, options = {}) {
   route = String(route || '').replace(/^\//, '')
   let parent = parentRoutes[route] || HOME
@@ -29,6 +30,7 @@ export function parentUrl(route, options = {}) {
   return parent
 }
 // Never rely on browser history.length: it can point outside this application.
+/** 有应用页面历史则返回；直接进入或返回失败时，重新打开安全的上级页面。 */
 export function goBackOrParent(fallback) {
   const stack = pageStack(), current = stack[stack.length - 1] || {}
   const url = fallback || parentUrl(current.route || current.$page?.route, current.options || current.$page?.options)

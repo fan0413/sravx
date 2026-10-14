@@ -16,6 +16,7 @@ const JSON_HEADERS = Object.freeze({
   'x-frame-options': 'DENY'
 });
 
+/** 读取JSON请求；先限制字节数，格式不正确时交给统一错误处理。 */
 async function readJsonBody(request, maximumBytes = 8192) {
   const raw = await readRawBody(request, maximumBytes);
   try {
@@ -96,6 +97,7 @@ function inquiryInput(value) {
   });
 }
 
+/** 创建HTTP服务。运行时传入数据库等模块；测试可以传模拟模块，不连接生产数据。 */
 export function createServer({ sessionSecret, catalogRepository = new EmptyCatalogRepository(), loginService = null, adminLoginService = null, phoneService = null, userRepository = null, addressRepository = null, toolRepository = null, afterSaleRepository = null, orderReadRepository = null, orderWriteRepository = null, structuredCheckoutRepository = null, structuredCheckoutEnabled = false, pointsOrderWriteRepository = null, refundRepository = null, refundExecutionService = null, giftCardReadRepository = null, giftCardRepository = null, couponRepository = null, sessionRepository = null, adminSessionRepository = null, adminRepository = null, adminCatalogRepository = null, adminPointsProductRepository = null, adminOperationsRepository = null, adminOrderRepository = null, adminScissorsRepository = null, adminAfterSaleRepository = null, inquiryRepository = null, mediaIntentRepository = null, mediaSigner = null, paymentCallbackService = null, paymentOrderService = null, paymentInboundRepository = null, healthCheck = null, auditLogger = null }) {
   validateSigningSecret(sessionSecret);
   return http.createServer((request, response) => {
@@ -112,6 +114,7 @@ export function createServer({ sessionSecret, catalogRepository = new EmptyCatal
         // Audit output must not interrupt the client response path.
       }
     });
+    // 签名验证之外还检查会话是否已退出，不能只相信前端保存的token。
     const authenticatedSession = async () => {
       const token = getBearerToken(request.headers.authorization);
       const session = verifySession(token, sessionSecret);

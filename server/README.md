@@ -1,30 +1,26 @@
-# SRAVX API 代码导航
+# 后端
 
-本目录是 `api.sravxpet.com` 的 Node.js 服务源码。它不包含生产密钥；运行时配置由服务器受限环境文件提供。
+Node.js服务，负责登录、商品、地址、订单、图片和售后等接口。数据放MySQL，图片放私有COS。
 
-## 启动路径
+## 运行
 
-`src/main.js` → `src/runtime.js` → `src/server.js`
+- npm ci：安装依赖。
+- npm test：运行本地测试，不需要生产账号。
+- npm start：启动服务，需要自己配置数据库和相关环境变量。
 
-- `main.js` 只负责启动 HTTP 服务。
-- `runtime.js` 负责创建 MySQL 连接、业务仓储、会话、COS 与支付服务。
-- `server.js` 负责 HTTP 路由、认证、输入校验与错误边界；业务 SQL 不应放在这里。
+不要把服务器密码、证书或用户数据放进仓库，也不要为了本地运行复制生产凭据。
 
-## 业务模块
+## 主要文件
 
-- `auth/`：微信登录、手机号绑定、后台账号登录。
-- `repositories/`：按领域封装 MySQL 查询和事务。
-- `payments/`：微信支付下单、回调验签、加密入站账本和结算消费者。
-- `media/`：COS 上传许可和对象键确认。
-- `observability/`：请求追踪与脱敏审计。
-- `migrations/`：受控结构迁移，禁止在请求处理中修改数据库结构。
+- src/main.js：启动入口。
+- src/runtime.js：连接数据库并组装功能。
+- src/server.js：根据请求路径处理接口，检查身份和参数。
+- src/repositories：查询数据库和保存数据。
+- src/media：图片上传许可和临时显示地址。
+- src/payments：支付通知、订单状态更新。
+- migrations：数据库结构修改脚本；不要在页面请求中自动改表。
+- test：测试代码。
 
-## 维护规则
+前端可以显示金额，但下单金额、库存和订单状态必须由后端检查。支付通知重复到达时不能重复处理，申请退款成功也不等于退款到账。
 
-1. 新路由先在 `server.js` 建立认证和输入边界，再在独立仓储中实现数据操作。
-2. 金额、库存、用户身份、订单状态必须由服务端读取和事务决定。
-3. 支付回调先持久化，再异步消费；不得在回调请求中直接依赖客户端数据。
-4. 每次代码变更至少运行 `npm test`；涉及小程序接口时同时构建对应 UniApp 模式。
-5. 生产配置、证书、回调原文和用户隐私不得提交到此目录。
-
-完整架构和任务清单见 `../docs/architecture.md` 与 `../docs/project-status-and-next-tasks.md`。
+[接口说明](../docs/api-reference.md)介绍前端调用方式；[代码分工](../docs/architecture.md)介绍整体结构。

@@ -1,3 +1,4 @@
+/** 编辑价格必须大于0，最多两位小数；这里的单位是元。 */
 export function validSellingPrice(value) {
   if (typeof value !== 'number' && typeof value !== 'string') return false
   const text = String(value).trim()
@@ -8,6 +9,7 @@ function number(value) {
   const result = Number(value)
   return Number.isFinite(result) && result >= 0 ? result : null
 }
+/** 计算列表起价：SKU用分转元，普通规格使用元；没有有效价格时返回null而不是0。 */
 export function productStartingPrice(product = {}) {
   if (Array.isArray(product.skus) && (product.skus.length || product.models?.length || product.colors?.length)) {
     const values = product.skus.filter(sku => Number(sku.is_on_sale ?? 1) !== 0).map(sku => number(sku.price_fen)).filter(value => value !== null && Number.isInteger(value)).map(value => value / 100)

@@ -1,3 +1,4 @@
+// 当前请求使用服务器接口。保留的旧云开发分支不代表已接入；函数说明见docs/api-reference.md。
 import { callCloudFunction, getTempFileUrlMap, uploadFileToCloud } from "../lib/cloudbase";
 import { targetAdminCatalogModeEnabled, targetAdminOperationsModeEnabled, targetAdminRequest, targetAdminUploadImage, targetMediaIntentId } from "../lib/target-admin-auth";
 import type {
@@ -99,6 +100,7 @@ export type ScissorsAfterSaleRow = {
 };
 export type AfterSaleServiceAddress = { id?: number; label: string; contact: string; phone: string; province?: string; city?: string; district?: string; detail: string; is_enabled?: boolean; sort_order?: number };
 
+/** 查询剪刀售后工单；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchScissorsAfterSales(query: { status?: string; keyword?: string; serviceType?: string } = {}): Promise<ScissorsAfterSaleRow[]> {
   if (targetAdminOperationsModeEnabled()) {
     const params = new URLSearchParams();
@@ -112,12 +114,14 @@ export async function fetchScissorsAfterSales(query: { status?: string; keyword?
   return unwrapCloudResponse(result, "获取剪刀售后工单失败");
 }
 
+/** 查询售后服务地址列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAfterSaleServiceAddresses(): Promise<AfterSaleServiceAddress[]> {
   if (targetAdminOperationsModeEnabled()) return targetAdminRequest<AfterSaleServiceAddress[]>('/api/v1/admin/after-sale-service-addresses');
   const result = await callCloudFunction<CloudFunctionResponse<AfterSaleServiceAddress[]>>("scissors", { action: "afterSaleServiceAddressList" });
   return unwrapCloudResponse(result, "获取售后收件地址失败");
 }
 
+/** 保存售后服务地址；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function saveAfterSaleServiceAddress(address: AfterSaleServiceAddress) {
   if (targetAdminOperationsModeEnabled()) {
     const path = address.id ? `/api/v1/admin/after-sale-service-addresses/${address.id}` : '/api/v1/admin/after-sale-service-addresses';
@@ -127,11 +131,13 @@ export async function saveAfterSaleServiceAddress(address: AfterSaleServiceAddre
   return unwrapCloudResponse(result, "保存售后收件地址失败");
 }
 
+/** 更新剪刀售后处理结果；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function updateScissorsAfterSale(payload: Record<string, unknown>) {
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; status: string }>>("scissors", { action: "afterSaleAdminUpdate", ...payload });
   return unwrapCloudResponse(result, "更新售后工单失败");
 }
 
+/** 回复剪刀售后处理结果；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function replyScissorsAfterSale(id: number, content: string) {
   if (targetAdminOperationsModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/after-sales/${id}/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("scissors", { action: "afterSaleAdminReply", id, content });
@@ -465,6 +471,7 @@ function unwrapCloudResponse<T>(res: CloudFunctionResponse<T>, fallbackError: st
   return res.data as T;
 }
 
+/** 查询后台概览；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchOverview(): Promise<OverviewStats> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<OverviewStats>("/api/v1/admin/overview");
   const result = await callCloudFunction<CloudFunctionResponse<OverviewStats>>("admin-stats", {
@@ -473,6 +480,7 @@ export async function fetchOverview(): Promise<OverviewStats> {
   return unwrapCloudResponse(result, "获取经营看板数据失败");
 }
 
+/** 查询商品列表，返回数组。 */
 export async function fetchProducts(query: ProductQuery): Promise<ProductRow[]> {
   const result = await callCloudFunction<CloudFunctionResponse<ProductRow[]>>("product", {
     action: "list",
@@ -489,6 +497,7 @@ export async function fetchProducts(query: ProductQuery): Promise<ProductRow[]> 
   return rows;
 }
 
+/** 分页查询后台商品，返回list和total。 */
 export async function fetchAdminProducts(query: ProductQuery): Promise<AdminProductListResult> {
   if (targetAdminCatalogModeEnabled()) { const p = new URLSearchParams(); Object.entries({ series: query.series, toolGroup: query.toolGroup, keyword: query.keyword?.trim(), categoryId: query.categoryId, status: query.status, lowStock: query.lowStock, sku: query.sku?.trim(), shippingType: query.shippingType, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminProductListResult>(`/api/v1/admin/products?${p}`); }
   if (query.series || query.toolGroup) throw new Error('旧商品函数不支持系列筛选，请使用目标目录 API');
@@ -511,6 +520,7 @@ export async function fetchAdminProducts(query: ProductQuery): Promise<AdminProd
   };
 }
 
+/** 新增积分商品；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function createPointsProduct(payload: CreatePointsProductInput): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>('/api/v1/admin/points-products', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(targetPointsProductPayload(payload)) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-points-product", {
@@ -520,6 +530,7 @@ export async function createPointsProduct(payload: CreatePointsProductInput): Pr
   return unwrapCloudResponse(result, "创建积分商品失败");
 }
 
+/** 更新积分商品；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function updatePointsProduct(payload: CreatePointsProductInput): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) {
     const id = Number(payload.id);
@@ -533,6 +544,7 @@ export async function updatePointsProduct(payload: CreatePointsProductInput): Pr
   return unwrapCloudResponse(result, "更新积分商品失败");
 }
 
+/** 切换显示或上下架状态：积分商品；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function togglePointsProduct(id: number, is_on_sale: number): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/points-products/${id}/on-sale`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ isOnSale: is_on_sale }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-points-product", {
@@ -543,6 +555,7 @@ export async function togglePointsProduct(id: number, is_on_sale: number): Promi
   return unwrapCloudResponse(result, "更新积分商品状态失败");
 }
 
+/** 查询积分商品列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminPointsProducts(query: PointsProductQuery): Promise<AdminPointsProductListResult> {
   if (targetAdminCatalogModeEnabled()) {
     const params = new URLSearchParams();
@@ -576,6 +589,7 @@ export async function fetchAdminPointsProducts(query: PointsProductQuery): Promi
   };
 }
 
+/** 查询积分商品详情；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchPointsProductDetail(id: number): Promise<PointsProductRow | undefined> {
   if (targetAdminCatalogModeEnabled()) return normalizeTargetPointsProduct(await targetAdminRequest<PointsProductRow>(`/api/v1/admin/points-products/${id}`));
   const result = await callCloudFunction<CloudFunctionResponse<PointsProductRow>>("admin-points-product", {
@@ -625,6 +639,7 @@ export async function fetchPointsProductDetail(id: number): Promise<PointsProduc
   };
 }
 
+/** 查询普通订单列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchOrders(query: OrderQuery): Promise<AdminOrderListResult> {
   if (targetAdminOperationsModeEnabled()) {
     const params = new URLSearchParams();
@@ -646,6 +661,7 @@ export async function fetchOrders(query: OrderQuery): Promise<AdminOrderListResu
   };
 }
 
+/** 查询普通订单详情；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchOrderById(id: string): Promise<OrderDetailResult | undefined> {
   const orderId = Number(id);
   if (!Number.isFinite(orderId) || orderId <= 0) return undefined;
@@ -666,6 +682,7 @@ export async function fetchOrderById(id: string): Promise<OrderDetailResult | un
   return unwrapCloudResponse(result, "获取订单详情失败");
 }
 
+/** 查询积分订单列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchPointsOrders(query: PointsOrderQuery): Promise<AdminPointsOrderListResult> {
   if (targetAdminOperationsModeEnabled()) {
     const params = new URLSearchParams();
@@ -687,6 +704,7 @@ export async function fetchPointsOrders(query: PointsOrderQuery): Promise<AdminP
   };
 }
 
+/** 查询积分订单详情；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchPointsOrderDetail(id: number): Promise<PointsOrderDetail | undefined> {
   if (targetAdminOperationsModeEnabled()) {
     const data = await targetAdminRequest<Record<string, unknown>>(`/api/v1/admin/orders/${id}?type=points`);
@@ -733,6 +751,7 @@ export interface PendingShipQuery {
   pageSize?: number;
 }
 
+/** 查询待发货订单；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchPendingShipOrders(query: PendingShipQuery = {}): Promise<PendingShipRow[]> {
   const result = await callCloudFunction<CloudFunctionResponse<{ list: PendingShipRow[]; total: number }>>("admin-order", {
     action: "pendingShip",
@@ -752,6 +771,7 @@ export type ShippingAddressInput = Pick<
   "addr_name" | "addr_phone" | "addr_province" | "addr_city" | "addr_district" | "addr_detail"
 >;
 
+/** 更新订单收货地址；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function updateOrderShippingAddress(
   id: number,
   address: ShippingAddressInput
@@ -769,6 +789,7 @@ export async function updateOrderShippingAddress(
   return unwrapCloudResponse(result, "修改收货地址失败");
 }
 
+/** 提交一批订单的物流公司和单号；可能影响真实发货，不用于普通演示。 */
 export async function shipOrders(ids: number[], logisticsCompany: string, logisticsNo: string): Promise<ShipOrdersResult> {
   if (targetAdminOperationsModeEnabled()) {
     if (ids.length !== 1) throw new Error('目标模式暂只支持在订单详情中逐单手动发货');
@@ -784,6 +805,7 @@ export async function shipOrders(ids: number[], logisticsCompany: string, logist
   return unwrapCloudResponse(result, "发货失败");
 }
 
+/** 重试某个订单的微信发货信息同步，返回同步结果。 */
 export async function retryWechatShipping(orderId: number): Promise<WechatShippingSyncItem> {
   const result = await callCloudFunction<CloudFunctionResponse<WechatShippingSyncItem>>("admin-order", {
     action: "retryWechatShipping",
@@ -792,6 +814,7 @@ export async function retryWechatShipping(orderId: number): Promise<WechatShippi
   return unwrapCloudResponse(result, "同步微信发货信息失败");
 }
 
+/** 更新订单延迟发货说明，具体原因和期限字段见payload类型。 */
 export async function delayOrderShipping(payload: {
   id: number;
   expected_ship_time: string;
@@ -827,6 +850,7 @@ export async function delayOrderShipping(payload: {
   return unwrapCloudResponse(result, "调整发货时间失败");
 }
 
+/** 查询退款申请列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminRefunds(query: RefundQuery): Promise<AdminRefundListResult> {
   if (targetAdminOperationsModeEnabled()) {
     const params = new URLSearchParams();
@@ -851,6 +875,7 @@ export async function fetchAdminRefunds(query: RefundQuery): Promise<AdminRefund
   };
 }
 
+/** 查询待审核退款数量；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchPendingRefundCount(): Promise<number> {
   if (targetAdminOperationsModeEnabled()) return (await targetAdminRequest<AdminRefundListResult>('/api/v1/admin/refund-requests?status=pending_review&page=1&pageSize=1')).total || 0;
   const result = await callCloudFunction<CloudFunctionResponse<AdminRefundListResult>>("admin-order", {
@@ -864,6 +889,7 @@ export async function fetchPendingRefundCount(): Promise<number> {
   return Number(data?.total || 0);
 }
 
+/** 查询退款申请详情；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminRefundDetail(requestId: number): Promise<RefundDetailResult> {
   if (targetAdminOperationsModeEnabled()) {
     return targetAdminRequest<RefundDetailResult>(`/api/v1/admin/refund-requests/${requestId}`);
@@ -882,6 +908,7 @@ export async function fetchAdminRefundDetail(requestId: number): Promise<RefundD
   };
 }
 
+/** 提交同意或拒绝审核；审核通过不等于退款到账。 */
 export async function reviewAdminRefund(payload: RefundReviewInput): Promise<{ requestId: number; decision: string }> {
   if (targetAdminOperationsModeEnabled()) return targetAdminRequest<{ requestId: number; decision: string }>(`/api/v1/admin/refund-requests/${payload.requestId}/decision`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: payload.decision, adminNote: payload.adminNote || '' }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ requestId: number; decision: string }>>("admin-order", {
@@ -891,6 +918,7 @@ export async function reviewAdminRefund(payload: RefundReviewInput): Promise<{ r
   return unwrapCloudResponse(result, "退款审核操作失败");
 }
 
+/** 查询用户列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchUsers(query: UserQuery): Promise<UserRow[]> {
   const result = await callCloudFunction<CloudFunctionResponse<AdminUserListResult>>("admin-user", {
     action: "list",
@@ -903,6 +931,7 @@ export async function fetchUsers(query: UserQuery): Promise<UserRow[]> {
   return Array.isArray(data?.list) ? data.list : [];
 }
 
+/** 查询带总数的用户列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchUsersWithTotal(query: UserQuery): Promise<AdminUserListResult> {
   if (targetAdminOperationsModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.username?.trim(), status: query.status, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([key, value]) => { if (value !== undefined && value !== "") p.set(key, String(value)); }); return targetAdminRequest<AdminUserListResult>(`/api/v1/admin/users?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<AdminUserListResult>>("admin-user", {
@@ -919,6 +948,7 @@ export async function fetchUsersWithTotal(query: UserQuery): Promise<AdminUserLi
   };
 }
 
+/** 查询后台用户详情；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminUserDetail(id: number): Promise<AdminUserDetailResult> {
   if (targetAdminOperationsModeEnabled()) { const data = await targetAdminRequest<{ user: Record<string, unknown> | null; addresses: Record<string, unknown>[] }>(`/api/v1/admin/users/${id}`); return { user: data.user || null, addresses: Array.isArray(data.addresses) ? data.addresses : [], orders: [], coupons: [] }; }
   const result = await callCloudFunction<CloudFunctionResponse<AdminUserDetailResult>>("admin-user", {
@@ -934,6 +964,7 @@ export async function fetchAdminUserDetail(id: number): Promise<AdminUserDetailR
   };
 }
 
+/** 更新用户资料；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function updateAdminUser(payload: {
   id: number;
   username: string;
@@ -950,6 +981,7 @@ export async function updateAdminUser(payload: {
   return unwrapCloudResponse(result, "更新用户失败");
 }
 
+/** 查询分类列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchCategories(): Promise<CategoryRow[]> {
   if (targetAdminCatalogModeEnabled()) {
     const { list } = await fetchAdminCategories({ is_show: 1 });
@@ -1015,6 +1047,7 @@ function normalizeAdminCategory(item: CloudCategory): CategoryRow {
   };
 }
 
+/** 查询分类列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<AdminCategoryListResult> {
   if (targetAdminCatalogModeEnabled()) {
     const p = new URLSearchParams();
@@ -1047,6 +1080,7 @@ export async function fetchAdminCategories(query: CategoryQuery = {}): Promise<A
   };
 }
 
+/** 新增分类；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function createAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) {
     const media = (value: string | undefined) => {
@@ -1065,6 +1099,7 @@ export async function createAdminCategory(payload: CategoryInput): Promise<{ id:
   return unwrapCloudResponse(result, "新增分类失败");
 }
 
+/** 更新分类；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function updateAdminCategory(payload: CategoryInput): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) {
     if (!payload.id) throw new Error("缺少分类 ID");
@@ -1084,6 +1119,7 @@ export async function updateAdminCategory(payload: CategoryInput): Promise<{ id:
   return unwrapCloudResponse(result, "更新分类失败");
 }
 
+/** 切换显示或上下架状态：分类；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function toggleAdminCategory(id: number, is_show: number): Promise<{ id: number; is_show: number }> {
   if (targetAdminCatalogModeEnabled()) {
     const { list } = await targetAdminRequest<AdminCategoryListResult>("/api/v1/admin/categories?pageSize=100");
@@ -1100,6 +1136,7 @@ export async function toggleAdminCategory(id: number, is_show: number): Promise<
   return unwrapCloudResponse(result, "切换分类状态失败");
 }
 
+/** 删除分类；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function deleteAdminCategory(id: number): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/categories/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-category", {
@@ -1344,6 +1381,7 @@ export interface ImportGiftCardsInput extends Omit<SaveGiftCardInput, "code"> {
   codes?: string[];
 }
 
+/** 查询礼品卡列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchGiftCards(query: GiftCardQuery): Promise<GiftCardListResult> {
   const result = await callCloudFunction<CloudFunctionResponse<GiftCardListResult>>("giftCard", {
     action: "adminList",
@@ -1361,6 +1399,7 @@ export async function fetchGiftCards(query: GiftCardQuery): Promise<GiftCardList
   };
 }
 
+/** 查询礼品卡兑换记录；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchGiftRecords(query: GiftRecordQuery): Promise<GiftRecordListResult> {
   const result = await callCloudFunction<CloudFunctionResponse<GiftRecordListResult>>("giftCard", {
     action: "adminRecords",
@@ -1376,6 +1415,7 @@ export async function fetchGiftRecords(query: GiftRecordQuery): Promise<GiftReco
   };
 }
 
+/** 查询礼品卡表单选项；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchGiftCardOptions(): Promise<GiftCardOptionsResult> {
   let data: GiftCardOptionsResult;
   try {
@@ -1428,6 +1468,7 @@ export async function fetchGiftCardOptions(): Promise<GiftCardOptionsResult> {
   };
 }
 
+/** 检查礼品卡兑换码是否重复；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function checkGiftCardCode(code: string): Promise<{ exists: boolean; code: string }> {
   const result = await callCloudFunction<CloudFunctionResponse<{ exists: boolean; code: string }>>("giftCard", {
     action: "adminCheckCode",
@@ -1436,6 +1477,7 @@ export async function checkGiftCardCode(code: string): Promise<{ exists: boolean
   return unwrapCloudResponse(result, "校验兑换码失败");
 }
 
+/** 新增礼品卡资料；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function createGiftCard(payload: SaveGiftCardInput): Promise<{ id: number; code: string }> {
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; code: string }>>("giftCard", {
     action: "adminCreate",
@@ -1444,6 +1486,7 @@ export async function createGiftCard(payload: SaveGiftCardInput): Promise<{ id: 
   return unwrapCloudResponse(result, "创建礼品卡失败");
 }
 
+/** 批量导入礼品卡列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function importGiftCards(payload: ImportGiftCardsInput): Promise<{
   inserted: number;
   skipped: number;
@@ -1468,6 +1511,7 @@ export async function importGiftCards(payload: ImportGiftCardsInput): Promise<{
   };
 }
 
+/** 更新礼品卡资料；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function updateGiftCard(payload: {
   id: number;
   title?: string;
@@ -1508,6 +1552,7 @@ export interface InquiryQuery {
   pageSize?: number;
 }
 
+/** 查询优惠券活动列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminCoupons(query: AdminCouponQuery): Promise<AdminCouponListResult> {
   const result = await callCloudFunction<CloudFunctionResponse<AdminCouponListResult>>(
     "admin-coupon",
@@ -1526,6 +1571,7 @@ export async function fetchAdminCoupons(query: AdminCouponQuery): Promise<AdminC
   };
 }
 
+/** 预览优惠券发放对象；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function previewCouponTargets(
   input: PreviewCouponTargetsInput
 ): Promise<CouponTargetPreviewResult> {
@@ -1547,6 +1593,7 @@ export async function previewCouponTargets(
   };
 }
 
+/** 发放优惠券活动；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function issueAdminCoupon(payload: IssueCouponInput): Promise<CouponIssueResult> {
   const result = await callCloudFunction<CloudFunctionResponse<CouponIssueResult>>("admin-coupon", {
     action: "issue",
@@ -1562,6 +1609,7 @@ export async function issueAdminCoupon(payload: IssueCouponInput): Promise<Coupo
   };
 }
 
+/** 删除优惠券活动；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function deleteAdminCoupon(id: number): Promise<{ id: number }> {
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-coupon", {
     action: "delete",
@@ -1715,6 +1763,7 @@ export interface ScissorsDetailResult {
   } | null;
 }
 
+/** 查询剪刀库存列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminScissors(query: ScissorsQuery): Promise<ScissorsListResult> {
   if (targetAdminCatalogModeEnabled()) {
     const parameters = new URLSearchParams();
@@ -1755,6 +1804,7 @@ export async function fetchAdminScissors(query: ScissorsQuery): Promise<Scissors
   };
 }
 
+/** 查询剪刀批次列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminScissorsBatches(
   page = 1,
   pageSize = 30
@@ -1775,6 +1825,7 @@ export async function fetchAdminScissorsBatches(
   };
 }
 
+/** 查询剪刀关联商品选项；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminScissorsProducts(): Promise<ScissorsProductOption[]> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<ScissorsProductOption[]>("/api/v1/admin/scissors/products");
   const result = await callCloudFunction<CloudFunctionResponse<ScissorsProductOption[]>>(
@@ -1785,6 +1836,7 @@ export async function fetchAdminScissorsProducts(): Promise<ScissorsProductOptio
   return Array.isArray(data) ? data : [];
 }
 
+/** 批量生成剪刀序列号批次；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function batchGenerateScissors(
   payload: BatchGenerateScissorsInput
 ): Promise<BatchGenerateScissorsResult> {
@@ -1799,6 +1851,7 @@ export async function batchGenerateScissors(
   return unwrapCloudResponse(result, "批量生成 SN 失败");
 }
 
+/** 查询剪刀档案详情；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminScissorsDetail(params: {
   id?: number;
   sn?: string;
@@ -1833,6 +1886,7 @@ export async function fetchAdminScissorsDetail(params: {
   return data;
 }
 
+/** 删除未使用剪刀记录；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function deleteUnusedScissors(ids: number[]): Promise<{ deleted: number; requested: number }> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ deleted: number; requested: number }>("/api/v1/admin/scissors", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ deleted: number; requested: number }>>(
@@ -1874,6 +1928,7 @@ export interface AdminBannerInput {
   end_time?: string | null;
 }
 
+/** 查询轮播图列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminBanners(query: AdminBannerQuery = {}): Promise<AdminBannerListResult> {
   if (targetAdminCatalogModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), position: query.position?.trim(), isActive: query.is_active, page: query.page || 1, pageSize: query.pageSize || 50 }).forEach(([k,v]) => { if (v !== undefined && v !== "") p.set(k, String(v)); }); return targetAdminRequest<AdminBannerListResult>(`/api/v1/admin/banners?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<AdminBannerListResult>>("admin-banner", {
@@ -1891,6 +1946,7 @@ export async function fetchAdminBanners(query: AdminBannerQuery = {}): Promise<A
   };
 }
 
+/** 查询轮播图详情；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchAdminBannerDetail(id: number): Promise<BannerRow> {
   const result = await callCloudFunction<CloudFunctionResponse<BannerRow>>("admin-banner", {
     action: "detail",
@@ -1899,6 +1955,7 @@ export async function fetchAdminBannerDetail(id: number): Promise<BannerRow> {
   return unwrapCloudResponse(result, "获取轮播图详情失败");
 }
 
+/** 保存轮播图；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function saveAdminBanner(payload: AdminBannerInput): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) {
     const body = {
@@ -1926,6 +1983,7 @@ export async function saveAdminBanner(payload: AdminBannerInput): Promise<{ id: 
   return unwrapCloudResponse(result, payload.id ? "更新轮播图失败" : "新增轮播图失败");
 }
 
+/** 切换显示或上下架状态：轮播图；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function toggleAdminBanner(id: number, isActive: number): Promise<{ id: number; is_active: number }> {
   if (targetAdminCatalogModeEnabled()) {
     const { list } = await targetAdminRequest<AdminBannerListResult>("/api/v1/admin/banners?pageSize=100");
@@ -1945,6 +2003,7 @@ export async function toggleAdminBanner(id: number, isActive: number): Promise<{
   return unwrapCloudResponse(result, "更新轮播图状态失败");
 }
 
+/** 更新轮播排序；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function updateAdminBannerSort(id: number, sortOrder: number): Promise<{ id: number; sort_order: number }> {
   if (targetAdminCatalogModeEnabled()) {
     const { list } = await targetAdminRequest<AdminBannerListResult>("/api/v1/admin/banners?pageSize=100");
@@ -1964,6 +2023,7 @@ export async function updateAdminBannerSort(id: number, sortOrder: number): Prom
   return unwrapCloudResponse(result, "更新轮播图排序失败");
 }
 
+/** 删除轮播图；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function deleteAdminBanner(id: number): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/banners/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-banner", {
@@ -1973,11 +2033,13 @@ export async function deleteAdminBanner(id: number): Promise<{ id: number }> {
   return unwrapCloudResponse(result, "删除轮播图失败");
 }
 
+/** 查询轮播图列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchBanners(): Promise<BannerRow[]> {
   const result = await fetchAdminBanners({ is_active: 1, pageSize: 100 });
   return result.list;
 }
 
+/** 保留旧调用名称，商品创建规则仍由对应接口检查。 */
 export async function createProduct(payload: CreateProductInput): Promise<{ id: number }> {
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("product", {
     action: "add",
@@ -1986,6 +2048,7 @@ export async function createProduct(payload: CreateProductInput): Promise<{ id: 
   return unwrapCloudResponse(result, "创建商品失败");
 }
 
+/** 新增商品，提交分类、规格和图片引用。 */
 export async function createAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
   if (!targetAdminCatalogModeEnabled() && payload.params?.["目录系列"]) throw new Error("旧商品函数不支持系列与细分类持久化，请使用目标目录 API 模式；未保存商品");
   if (targetAdminCatalogModeEnabled()) {
@@ -2053,6 +2116,7 @@ function targetProductMediaReference(value: string | undefined | null): TargetPr
   throw new Error('商品图片已失效，请重新上传后再保存');
 }
 
+/** 执行已允许的退款请求，需要管理员权限；不要在普通演示中调用。 */
 export async function executeAdminRefund(requestId: number): Promise<{ status: string }> {
   if (!targetAdminOperationsModeEnabled()) throw new Error('请使用服务器管理端执行退款');
   return targetAdminRequest<{ status: string }>(`/api/v1/admin/refund-requests/${requestId}/execute`, { method: 'POST' });
@@ -2146,6 +2210,7 @@ function targetProductUpdateBody(payload: CreateProductInput) {
     specs: (payload.specs || []).map((spec) => ({ name: spec.name, sku: spec.sku, image: targetProductMediaReference(spec.image), cardImage: targetProductMediaReference(spec.card_image), price: spec.price, sortOrder: spec.sort_order, shippingType: spec.shipping_type, shipDeadlineDays: spec.ship_deadline_days, shippingPromise: spec.shipping_promise, shippingDelayReason: spec.shipping_delay_reason, shippingNote: spec.shipping_note }))
   };
 }
+/** 读取后台商品详情用于编辑。 */
 export async function fetchAdminProductDetail(id: number): Promise<Record<string, unknown>> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<Record<string, unknown>>(`/api/v1/admin/products/${id}`);
   const result = await callCloudFunction<CloudFunctionResponse<Record<string, unknown>>>("admin-product", {
@@ -2155,6 +2220,7 @@ export async function fetchAdminProductDetail(id: number): Promise<Record<string
   return unwrapCloudResponse(result, "获取商品详情失败");
 }
 
+/** 保存商品修改，payload必须含id。 */
 export async function updateAdminProduct(payload: CreateProductInput): Promise<{ id: number }> {
   if (!targetAdminCatalogModeEnabled() && payload.params?.["目录系列"]) throw new Error("旧商品函数不支持系列与细分类持久化，请使用目标目录 API 模式；未保存商品");
   if (targetAdminCatalogModeEnabled()) {
@@ -2168,6 +2234,7 @@ export async function updateAdminProduct(payload: CreateProductInput): Promise<{
   return unwrapCloudResponse(result, "后台更新商品失败");
 }
 
+/** 删除商品，后端检查权限和引用关系。 */
 export async function deleteAdminProduct(id: number): Promise<{ id: number }> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number }>(`/api/v1/admin/products/${id}`, { method: "DELETE" });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-product", {
@@ -2177,6 +2244,7 @@ export async function deleteAdminProduct(id: number): Promise<{ id: number }> {
   return unwrapCloudResponse(result, "后台删除商品失败");
 }
 
+/** 更新商品库存，stock的具体处理以服务器仓储为准。 */
 export async function restockAdminProduct(id: number, stock: number): Promise<{ id: number; stock: number }> {
   if (targetAdminCatalogModeEnabled()) return targetAdminRequest<{ id: number; stock: number }>(`/api/v1/admin/products/${id}/stock`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ stock }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; stock: number }>>("admin-product", {
@@ -2187,6 +2255,7 @@ export async function restockAdminProduct(id: number, stock: number): Promise<{ 
   return unwrapCloudResponse(result, "后台更新库存失败");
 }
 
+/** 批量上传图片，返回图片引用，不是永久显示URL。 */
 export async function uploadAdminImages(files: File[], folder: string) {
   if (targetAdminCatalogModeEnabled() && (folder.startsWith("banners/") || folder.startsWith("products/") || folder.startsWith("points-products/") || folder.startsWith("categories/"))) {
     return Promise.all(files.map((file) => targetAdminUploadImage(file, folder)));
@@ -2201,6 +2270,7 @@ export async function uploadAdminImages(files: File[], folder: string) {
   return uploaded;
 }
 
+/** 把对象引用换成临时图片地址。 */
 export async function resolveAdminFileUrls(fileIDs: string[]) {
   if (targetAdminCatalogModeEnabled()) {
     const objectKeys = fileIDs.filter((item) => item.startsWith("catalog/"));
@@ -2211,11 +2281,13 @@ export async function resolveAdminFileUrls(fileIDs: string[]) {
   return getTempFileUrlMap(fileIDs);
 }
 
+/** 读取商品规格组合。 */
 export async function fetchStructuredProductVariants(id: number): Promise<StructuredProductVariantResult> {
   if (!targetAdminCatalogModeEnabled()) throw new Error("结构化商品仅可在目标 API 模式下维护");
   return targetAdminRequest<StructuredProductVariantResult>(`/api/v1/admin/products/${id}/variants`);
 }
 
+/** 整体替换规格组合，不是追加单个规格。 */
 export async function replaceStructuredProductVariants(id: number, payload: StructuredProductVariantInput): Promise<StructuredProductVariantResult> {
   if (!targetAdminCatalogModeEnabled()) throw new Error("结构化商品仅可在目标 API 模式下维护");
   return targetAdminRequest<StructuredProductVariantResult>(`/api/v1/admin/products/${id}/variants`, {
@@ -2223,21 +2295,25 @@ export async function replaceStructuredProductVariants(id: number, payload: Stru
   });
 }
 
+/** 旧优惠券规则入口，当前旧适配器会拒绝调用，不能当作已接入功能。 */
 export async function fetchCouponRules(): Promise<CouponRuleRow[]> {
   const result = await callCloudFunction<CloudFunctionResponse<CouponRuleRow[]>>("admin-coupon", { action: "rules" });
   const data = unwrapCloudResponse(result, "获取优惠券规则失败");
   return Array.isArray(data) ? data : [];
 }
 
+/** 旧优惠券规则保存入口，目前不应作为服务器功能演示。 */
 export async function setCouponRule(rule: CouponRuleInput): Promise<{ id: number }> {
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number }>>("admin-coupon", { action: "setRule", ...rule });
   return unwrapCloudResponse(result, "保存优惠券规则失败");
 }
 
+/** 旧规则删除入口，目前不应作为服务器功能演示。 */
 export async function deleteCouponRule(id: number): Promise<void> {
   await callCloudFunction("admin-coupon", { action: "deleteRule", id });
 }
 
+/** 查询合作咨询列表；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function fetchInquiries(query: InquiryQuery): Promise<InquiryListResult> {
   if (targetAdminOperationsModeEnabled()) { const p = new URLSearchParams(); Object.entries({ keyword: query.keyword?.trim(), status: query.status, page: query.page || 1, pageSize: query.pageSize || 20 }).forEach(([key, value]) => { if (value !== undefined && value !== "") p.set(key, String(value)); }); return targetAdminRequest<InquiryListResult>(`/api/v1/admin/inquiries?${p}`); }
   const result = await callCloudFunction<CloudFunctionResponse<InquiryListResult>>("admin-inquiry", {
@@ -2254,6 +2330,7 @@ export async function fetchInquiries(query: InquiryQuery): Promise<InquiryListRe
   };
 }
 
+/** 更新咨询处理状态；参数及结果类型见函数签名，失败由页面捕获并提示。 */
 export async function updateInquiryStatus(id: number, status: number): Promise<{ id: number; status: number }> {
   if (targetAdminOperationsModeEnabled()) return targetAdminRequest<{ id: number; status: number }>(`/api/v1/admin/inquiries/${id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ status }) });
   const result = await callCloudFunction<CloudFunctionResponse<{ id: number; status: number }>>("admin-inquiry", {
@@ -2362,6 +2439,7 @@ export interface SfOrderParams {
   expressTypeId?: string | number;
 }
 
+/** 顺丰旧入口尚未迁移，服务器模式会拒绝调用，不用于真实物流演示。 */
 export async function sfShip(params: SfOrderParams): Promise<SfShipResult> {
   const result = await callCloudFunction<CloudFunctionResponse<SfShipResult>>("sf-express", {
     action: "order",
@@ -2371,6 +2449,7 @@ export async function sfShip(params: SfOrderParams): Promise<SfShipResult> {
   return unwrapCloudResponse(result, "顺丰下单失败");
 }
 
+/** 顺丰旧入口尚未迁移，服务器模式会拒绝调用，不用于真实物流演示。 */
 export async function sfBatchShip(orders: SfOrderParams[]): Promise<SfBatchShipResult> {
   const shipped: SfShipResult[] = [];
   const errors: SfShipError[] = [];
@@ -2385,6 +2464,7 @@ export async function sfBatchShip(orders: SfOrderParams[]): Promise<SfBatchShipR
   return { shipped, errors };
 }
 
+/** 顺丰旧入口尚未迁移，服务器模式会拒绝调用，不用于真实物流演示。 */
 export async function sfConfirmShip(
   shipments: Array<{ orderId: number; waybillNo: string }>
 ): Promise<SfConfirmShipResult> {
@@ -2395,6 +2475,7 @@ export async function sfConfirmShip(
   return unwrapCloudResponse(result, "确认顺丰发货失败");
 }
 
+/** 顺丰旧入口尚未迁移，服务器模式会拒绝调用，不用于真实物流演示。 */
 export async function sfWaybillPrint(
   waybillNos: string[],
   options: SfWaybillPrintOptions = {}
@@ -2410,6 +2491,7 @@ export async function sfWaybillPrint(
   return unwrapCloudResponse(result, "顺丰面单打印失败");
 }
 
+/** 顺丰旧入口尚未迁移，服务器模式会拒绝调用，不用于真实物流演示。 */
 export async function sfRoute(trackingNumber: string): Promise<SfRouteResult> {
   const result = await callCloudFunction<CloudFunctionResponse<SfRouteResult>>("sf-express", {
     action: "route",
@@ -2418,6 +2500,7 @@ export async function sfRoute(trackingNumber: string): Promise<SfRouteResult> {
   return unwrapCloudResponse(result, "顺丰轨迹查询失败");
 }
 
+/** 顺丰旧入口尚未迁移，服务器模式会拒绝调用，不用于真实物流演示。 */
 export async function sfCancelWaybill(params: { orderId?: number; orderNo?: string; waybillNo: string }): Promise<SfWaybillActionResult> {
   const result = await callCloudFunction<CloudFunctionResponse<SfWaybillActionResult>>("sf-express", {
     action: "cancel",
@@ -2426,6 +2509,7 @@ export async function sfCancelWaybill(params: { orderId?: number; orderNo?: stri
   return unwrapCloudResponse(result, "顺丰运单取消失败");
 }
 
+/** 顺丰旧入口尚未迁移，服务器模式会拒绝调用，不用于真实物流演示。 */
 export async function sfInterceptWaybill(params: { orderId?: number; orderNo?: string; waybillNo: string }): Promise<SfWaybillActionResult> {
   const result = await callCloudFunction<CloudFunctionResponse<SfWaybillActionResult>>("sf-express", {
     action: "intercept",
@@ -2434,6 +2518,7 @@ export async function sfInterceptWaybill(params: { orderId?: number; orderNo?: s
   return unwrapCloudResponse(result, "顺丰运单拦截失败");
 }
 
+/** 顺丰旧入口尚未迁移，服务器模式会拒绝调用，不用于真实物流演示。 */
 export async function sfHealth(): Promise<SfHealthResult> {
   const result = await callCloudFunction<CloudFunctionResponse<SfHealthResult>>("sf-express", {
     action: "health"

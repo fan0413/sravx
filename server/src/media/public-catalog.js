@@ -6,8 +6,10 @@ function list(value) {
   try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed : []; }
   catch { return value ? [value] : []; }
 }
+/** 包装已过滤可见商品的仓储：把图片引用换成临时URL，不修改数据库里的对象键。 */
 export function createPublicCatalogRepository(repository, { mediaSigner, clock = () => Date.now() } = {}) {
   const present = async (value) => {
+    // 同一次响应的相同图片只签名一次；15分钟到期后前端要重新读取。
     const signed = new Map();
     const image = async (reference) => {
       if (!reference || typeof reference !== 'string') return '';
